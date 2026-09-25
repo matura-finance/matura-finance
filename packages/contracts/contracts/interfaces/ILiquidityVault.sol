@@ -20,7 +20,7 @@ interface ILiquidityVault {
 
     event VaultFunded(bytes32 indexed claimId, address indexed to, uint256 faceAmount, uint256 advanceAmount);
     event SettlementReturned(bytes32 indexed claimId, uint256 faceAmount, uint256 principalCleared);
-    event MandateUpdated(uint256 liquidityCap, uint16 baseDiscountBps, uint16 durationBpsPerDay);
+    event MandateUpdated(Mandate mandate);
     event IssuerAllowed(address indexed issuer, bool allowed);
     event LiquidityWithdrawn(address indexed to, uint256 amount);
 
@@ -30,6 +30,7 @@ interface ILiquidityVault {
     error ClaimTypeUnsupported();
     error ReturnMismatch();
     error ZeroAddress();
+    error InvalidMandate();
 
     function token() external view returns (address);
 

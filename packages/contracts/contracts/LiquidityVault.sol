@@ -8,6 +8,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ILiquidityVault} from "./interfaces/ILiquidityVault.sol";
 import {ClaimTypes} from "./libraries/ClaimEnums.sol";
+import {MaturaConstants} from "./libraries/MaturaConstants.sol";
 import {MaturaPricing} from "./libraries/MaturaPricing.sol";
 
 /// @title LiquidityVault
@@ -49,10 +50,24 @@ contract LiquidityVault is ILiquidityVault, AccessControl, ReentrancyGuardTransi
     /// @param mandate_ The initial mandate configuration.
     constructor(address admin, address token_, Mandate memory mandate_) {
         if (admin == address(0) || token_ == address(0)) revert ZeroAddress();
+        _validateMandate(mandate_);
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _token = IERC20(token_);
         _mandate = mandate_;
+        emit MandateUpdated(mandate_);
+    }
+
+    /// @dev Rejects an obviously-broken mandate that would silently disable funding.
+    function _validateMandate(Mandate memory m) private pure {
+        if (m.minFace > m.maxFace || m.maxFace == 0 || m.liquidityCap == 0) revert InvalidMandate();
+        // A zero-duration, zero-premium quote must be priceable (base within the cap).
+        if (m.baseDiscountBps > MaturaConstants.MAX_DISCOUNT_BPS) revert InvalidMandate();
+        for (uint256 t = 0; t < ClaimTypes.COUNT; ++t) {
+            if (uint256(m.baseDiscountBps) + uint256(m.claimTypePremiumBps[t]) > MaturaConstants.MAX_DISCOUNT_BPS) {
+                revert InvalidMandate();
+            }
+        }
     }
 
     /// @notice Returns the settlement token address.
@@ -208,8 +223,9 @@ contract LiquidityVault is ILiquidityVault, AccessControl, ReentrancyGuardTransi
     /// @dev DEFAULT_ADMIN_ROLE only. Emits the key pricing/cap fields for off-chain indexing.
     /// @param m The new mandate configuration.
     function setMandate(Mandate calldata m) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _validateMandate(m);
         _mandate = m;
-        emit MandateUpdated(m.liquidityCap, m.baseDiscountBps, m.durationBpsPerDay);
+        emit MandateUpdated(m);
     }
 
     /// @notice Adds or removes an issuer from the allow-list.
