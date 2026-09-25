@@ -6,12 +6,15 @@ pragma solidity 0.8.28;
 ///         A signer may back only ONE issuer (OZ Nonces is keyed by signer address, so a
 ///         shared signer would let one issuer consume another's attestation nonce).
 interface IIssuerRegistry {
+    /// @dev Field order packs `active` + `signerEpoch` into the `signer` slot (20 + 1 + 8 = 29
+    ///      bytes), so an issuer occupies 3 storage slots instead of 5. `signerEpoch` is uint64
+    ///      (only bumped on rotation — astronomically sufficient).
     struct Issuer {
-        address issuerAddress;
         address signer;
-        bytes32 metadataHash;
         bool active;
-        uint256 signerEpoch;
+        uint64 signerEpoch;
+        address issuerAddress;
+        bytes32 metadataHash;
     }
 
     event IssuerRegistered(address indexed issuer, address indexed signer, bytes32 metadataHash);

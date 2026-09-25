@@ -92,7 +92,7 @@ contract IssuerRegistry is IIssuerRegistry, AccessControl {
         delete signerToIssuer[oldSigner];
         signerToIssuer[newSigner] = issuer;
 
-        uint256 newEpoch = record.signerEpoch + 1;
+        uint64 newEpoch = record.signerEpoch + 1;
         record.signerEpoch = newEpoch;
         record.signer = newSigner;
 

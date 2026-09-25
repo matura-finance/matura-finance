@@ -24,16 +24,19 @@ interface IClaimRegistry {
 
     /// @dev Canonical stored claim. `financedFaceValue` is preserved after settlement (never zeroed);
     ///      `state` uses the frozen ClaimStates ordinals.
+    /// @dev Field order packs the small fields into the `beneficiary` slot (address 20 + 3×uint8 +
+    ///      uint64 = 31 bytes), so a claim occupies 5 storage slots instead of 7. `dueDate` is a
+    ///      unix-seconds uint64 (safe past year 2554); money stays uint256.
     struct Claim {
         address beneficiary;
-        address issuer;
         uint8 claimType;
+        uint8 state;
+        uint8 sliceCount;
+        uint64 dueDate;
+        address issuer;
         address token;
         uint256 faceValue;
         uint256 financedFaceValue;
-        uint256 dueDate;
-        uint8 state;
-        uint8 sliceCount;
     }
 
     event ClaimRegistered(

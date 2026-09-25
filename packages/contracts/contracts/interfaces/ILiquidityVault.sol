@@ -7,14 +7,17 @@ pragma solidity 0.8.28;
 ///         return principal. The vault is intentionally decoupled from ClaimRegistry — the router
 ///         supplies claim pricing inputs (claimType, dueDate) it read from the authoritative registry.
 interface ILiquidityVault {
+    /// @dev Field order packs the config scalars into one slot (uint8 + uint16 + uint16 + uint32 =
+    ///      9 bytes); money stays uint256; premiums are their own slot. `maxDurationDays` is uint32
+    ///      (millennia). ~4 slots instead of 6.
     struct Mandate {
         uint8 supportedTypesBitmap; // bit i = ClaimTypes ordinal i
-        uint256 minFace;
-        uint256 maxFace;
-        uint256 maxDurationDays;
-        uint256 liquidityCap;
         uint16 baseDiscountBps;
         uint16 durationBpsPerDay;
+        uint32 maxDurationDays;
+        uint256 minFace;
+        uint256 maxFace;
+        uint256 liquidityCap;
         uint16[3] claimTypePremiumBps; // indexed by ClaimTypes ordinal
     }
 

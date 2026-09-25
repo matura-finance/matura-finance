@@ -4,6 +4,7 @@ pragma solidity 0.8.28;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {IClaimRegistry} from "./interfaces/IClaimRegistry.sol";
 import {IIssuerRegistry} from "./interfaces/IIssuerRegistry.sol";
@@ -94,7 +95,7 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
             token: att.token,
             faceValue: att.faceValue,
             financedFaceValue: 0,
-            dueDate: att.dueDate,
+            dueDate: SafeCast.toUint64(att.dueDate),
             state: ClaimStates.ATTESTED,
             sliceCount: 0
         });
