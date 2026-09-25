@@ -117,9 +117,13 @@ manifest), not a config tweak.
 
 **Artifacts.** `pnpm --filter @matura/contracts contracts:export-abis` regenerates
 `@matura/chain/src/abis/*.ts` (`as const`) from compiled artifacts — never
-hand-copied. Deployed addresses live in `@matura/chain/src/deployments.ts`,
-populated from Ignition output; `AddressBook` carries a `vaultRegistry` slot and the
-app enumerates individual vaults on-chain via `VaultRegistry.getVaults()`.
+hand-copied. Deployed addresses live in per-chain manifests
+`@matura/chain/src/deployments/<chainId>.json` (written atomically by the deploy
+script, Zod-validated, **never hand-edited**) + a codegen'd `deployments.generated.ts`;
+`deployments.ts` exposes typed accessors (`getDeployment`/`getManifest`/`getNamedVaults`/
+`getSources`). `AddressBook` carries the 6 core slots (incl. `vaultRegistry`) and the app
+enumerates individual vaults on-chain via `VaultRegistry.getVaults()`; the manifest also
+records the two named demo vaults and the source obligors as convenience pointers.
 
 ## Toolchain
 

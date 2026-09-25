@@ -54,6 +54,11 @@ jobs:
           pnpm --filter @matura/contracts contracts:export-abis
           git diff --exit-code packages/chain/src/abis
 
+      - name: Deployment manifest loader is fresh
+        run: |
+          pnpm --filter @matura/chain gen:deployments
+          git diff --exit-code packages/chain/src/deployments.generated.ts
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

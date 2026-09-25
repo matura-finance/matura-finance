@@ -5,4 +5,5 @@ export { liquidityVaultAbi } from "./liquidityVault.js";
 export { maturaRouterAbi } from "./maturaRouter.js";
 export { mockUSDTAbi } from "./mockUSDT.js";
 export { settlementManagerAbi } from "./settlementManager.js";
+export { sourceObligorAbi } from "./sourceObligor.js";
 export { vaultRegistryAbi } from "./vaultRegistry.js";

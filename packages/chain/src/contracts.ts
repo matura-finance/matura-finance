@@ -7,6 +7,7 @@ import {
   maturaRouterAbi,
   settlementManagerAbi,
   liquidityVaultAbi,
+  sourceObligorAbi,
 } from "./abis/index.js";
 
 /**
@@ -30,3 +31,9 @@ export const contractAbis = {
  * `VaultRegistry.getVaults()`, so their addresses are discovered at runtime, not from the manifest.
  */
 export const vaultAbi = liquidityVaultAbi;
+
+/**
+ * SourceObligor ABI. Not an `AddressBook` slot either — obligor addresses live in the manifest's
+ * `sources` map (`getSources`), so this is exposed as a convenience binding alongside `vaultAbi`.
+ */
+export const sourceAbi = sourceObligorAbi;

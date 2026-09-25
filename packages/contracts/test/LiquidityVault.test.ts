@@ -20,14 +20,37 @@ function computeQuote(
 
 const BASE = BigInt(demoMandate.baseDiscountBps); // 100
 const DAY = BigInt(demoMandate.durationBpsPerDay); // 5
-const PREMIUM = demoMandate.claimTypePremiumBps.map((p) => BigInt(p)); // [0, 50, 25]
+// Fixed-length tuple (not `.map`, which widens to `bigint[]`) so indexing by a literal
+// CLAIM_TYPE ordinal stays `bigint` under noUncheckedIndexedAccess.
+const PREMIUM = [
+  BigInt(demoMandate.claimTypePremiumBps[0]),
+  BigInt(demoMandate.claimTypePremiumBps[1]),
+  BigInt(demoMandate.claimTypePremiumBps[2]),
+] as const; // [0n, 50n, 25n]
 
 /// LiquidityVault in isolation: MockUSDT + vault with the demo mandate, ROUTER_ROLE and
 /// SETTLEMENT_ROLE granted to test EOAs so fund/onSettlementReturn can be driven directly.
 describe("LiquidityVault", () => {
   async function deployVault(mandate: typeof demoMandate = demoMandate, seed?: bigint) {
     const { viem, networkHelpers } = await network.create();
-    const [admin, router, settler, user, other] = await viem.getWalletClients();
+    // Narrow the five demo wallets once (noUncheckedIndexedAccess makes array access `| undefined`);
+    // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+    const wallets = await viem.getWalletClients();
+    const [w0, w1, w2, w3, w4] = wallets;
+    if (
+      w0 === undefined ||
+      w1 === undefined ||
+      w2 === undefined ||
+      w3 === undefined ||
+      w4 === undefined
+    ) {
+      throw new Error("Expected at least 5 wallet clients from the test network.");
+    }
+    const admin = w0;
+    const router = w1;
+    const settler = w2;
+    const user = w3;
+    const other = w4;
     const publicClient = await viem.getPublicClient();
 
     const usdt = await viem.deployContract("MockUSDT", []);

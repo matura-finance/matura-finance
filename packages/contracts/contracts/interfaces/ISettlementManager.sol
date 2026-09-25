@@ -46,4 +46,8 @@ interface ISettlementManager {
     function setTreasury(address treasury) external; // DEFAULT_ADMIN_ROLE
     function setFeeBps(uint16 feeBps) external; // DEFAULT_ADMIN_ROLE, <= MAX_FEE_BPS
     function getAllocations(bytes32 claimId) external view returns (Allocation[] memory);
+
+    /// @notice The current protocol fee in basis points, applied as a surcharge on `faceValue`.
+    /// @return The fee in basis points.
+    function feeBps() external view returns (uint16);
 }

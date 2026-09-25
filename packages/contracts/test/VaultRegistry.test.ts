@@ -8,7 +8,16 @@ import { ROLES } from "./helpers/constants.js";
 describe("VaultRegistry", () => {
   async function deploy() {
     const { viem } = await network.create();
-    const [admin, vaultA, vaultB, outsider] = await viem.getWalletClients();
+    // Narrow the four demo wallets once (noUncheckedIndexedAccess makes array access `| undefined`);
+    // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+    const [w0, w1, w2, w3] = await viem.getWalletClients();
+    if (w0 === undefined || w1 === undefined || w2 === undefined || w3 === undefined) {
+      throw new Error("Expected at least 4 wallet clients from the test network.");
+    }
+    const admin = w0;
+    const vaultA = w1;
+    const vaultB = w2;
+    const outsider = w3;
     const registry = await viem.deployContract("VaultRegistry", [admin.account.address]);
     return { viem, registry, admin, vaultA, vaultB, outsider };
   }

@@ -15,7 +15,12 @@ Secrets are never hardcoded — they are resolved at runtime via `configVariable
 ```bash
 hardhat keystore set BSC_TESTNET_RPC_URL
 hardhat keystore set DEPLOYER_PRIVATE_KEY
+hardhat keystore set ISSUER_PRIVATE_KEY   # EIP-712 attestation signer (most sensitive)
 ```
+
+`ISSUER_PRIVATE_KEY` is only wired into the **`bscTestnetSeed`** network (used solely by
+`seed:bsc-testnet`), so `deploy`/`verify` never decrypt it. It only ever signs typed data
+off-chain — never broadcasts a transaction.
 
 ## Scripts
 
@@ -27,10 +32,58 @@ pnpm contracts:test         # unit + integration + fast-check + gas (node:test +
 pnpm typecheck              # hardhat compile && tsc --noEmit (types + fixtures)
 pnpm contracts:export-abis  # regenerate @matura/chain/src/abis from artifacts
 pnpm clean                  # hardhat clean
-
-# Deploy (wires roles, registers + seeds the demo vault; parameterizable via --parameters):
-hardhat ignition deploy ignition/modules/MaturaProtocol.ts --network bscTestnet
 ```
+
+## Deployment & seeding
+
+Deployment uses **Hardhat Ignition** (declarative deploy + role wiring); seeding is a separate
+idempotent viem script (issuer registration, funding, Alice's three EIP-712 claims). Deployed
+addresses are written to a validated per-chain manifest at
+`@matura/chain/src/deployments/<chainId>.json` (+ a generated typed loader) — **never hand-edited**.
+
+### Local (one documented command)
+
+```bash
+# Terminal 1 — a persistent local chain (chainId 31337):
+pnpm --filter @matura/contracts node
+
+# Terminal 2 — deploy -> seed -> verify, leaving a queryable chain:
+pnpm --filter @matura/contracts demo:local
+
+pnpm --filter @matura/contracts demo:settle   # optional: end-to-end obligor self-settlement (local only)
+pnpm --filter @matura/contracts demo:reset    # clear local journal + zero-seed the manifest
+```
+
+`deploy:local` / `seed:local` / `verify:local` are also runnable individually. Scripts are
+idempotent — re-running resumes only what's missing, or fails clearly on conflicting state.
+
+### BSC Testnet (two explicit steps — no auto-chain against a live network)
+
+```bash
+pnpm --filter @matura/contracts deploy:bsc-testnet   # writes + you commit 97.json
+pnpm --filter @matura/contracts seed:bsc-testnet     # uses the bscTestnetSeed network (issuer key)
+pnpm --filter @matura/contracts verify:bsc-testnet
+```
+
+Every script that connects to a chain asserts the connected chainId first and **refuses BSC Mainnet
+(56)** (`demo:reset` is the exception — it opens no connection and only rewrites local `31337`
+artifacts). After a testnet deploy, commit the regenerated `packages/chain/src/deployments/97.json`
+and `deployments.generated.ts` (this replaces the old manual `deployments.ts` edit).
+
+There is no automated testnet reset (you cannot un-deploy). The chain-97 Ignition deployment journal
+(`ignition/deployments/matura-bsctestnet/`) is the resume key — preserve/commit it; to re-point at a
+fresh protocol, deploy a new set and commit the new `97.json`. `demo:reset` is **local-only**.
+
+## Faucets & BSC Testnet
+
+You need **tBNB** (testnet BNB) for gas on chain 97. Request it from the official BNB Chain testnet
+faucet: <https://www.bnbchain.org/en/testnet-faucet> (one address at a time; do not script it).
+
+Test **MockUSDT** is available to any address via the on-chain, per-address-capped faucet
+(`MockUSDT.faucet(amount)`, ≤ 10,000 units cumulative) for user-facing testing. Vault/demo funding
+uses admin `mint` and is handled by the seed script — not the faucet.
+
+> Testnet demo actors are **public-key throwaway identities** — never send anything of value to them.
 
 ## Contents
 
