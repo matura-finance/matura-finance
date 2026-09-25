@@ -39,6 +39,11 @@ async function main(): Promise<void> {
   const claimRegistry = await viem.getContractAt("ClaimRegistry", manifest.addresses.claimRegistry);
   const stableVault = await viem.getContractAt("LiquidityVault", manifest.namedVaults.stableVault);
   const flexVault = await viem.getContractAt("LiquidityVault", manifest.namedVaults.flexVault);
+  const settlementContract = await viem.getContractAt(
+    "SettlementManager",
+    manifest.addresses.settlementManager,
+  );
+  const vaultRegistry = await viem.getContractAt("VaultRegistry", manifest.addresses.vaultRegistry);
 
   const failures: string[] = [];
   const check = (label: string, ok: boolean): void => {
@@ -64,7 +69,8 @@ async function main(): Promise<void> {
 
   // 2. Role-holder enumeration (RoleGranted − RoleRevoked) — a true separation-invariant check.
   const holdersOf = async (
-    contract: typeof claimRegistry | typeof stableVault,
+    contract:
+      typeof claimRegistry | typeof stableVault | typeof settlementContract | typeof vaultRegistry,
     role: Hex,
   ): Promise<Set<string>> => {
     const granted = await contract.getEvents.RoleGranted(
@@ -102,6 +108,36 @@ async function main(): Promise<void> {
       `${name} SETTLEMENT_ROLE holders == {settlement}`,
       eq(await holdersOf(contract, ROLES.SETTLEMENT_ROLE), [settlement]),
     );
+  }
+  // settlementManager's ROUTER_ROLE gates registerAllocation — a second holder could forge
+  // settlement allocations, so pin it to exactly {router} too (P2-4).
+  check(
+    "settlementManager ROUTER_ROLE holders == {router}",
+    eq(await holdersOf(settlementContract, ROLES.ROUTER_ROLE), [router]),
+  );
+
+  // DEFAULT_ADMIN_ROLE holders can grant/revoke the roles above at will, so the separation is only
+  // an invariant if admin is a single, expected EOA and no protocol contract holds it (P2-4).
+  const protocolAddrs = new Set<string>(manifestAddresses(manifest).map((a) => getAddress(a)));
+  let adminAddr: string | undefined;
+  for (const [name, contract] of [
+    ["claimRegistry", claimRegistry],
+    ["stableVault", stableVault],
+    ["flexVault", flexVault],
+    ["settlementManager", settlementContract],
+    ["vaultRegistry", vaultRegistry],
+  ] as const) {
+    const admins = await holdersOf(contract, ROLES.DEFAULT_ADMIN_ROLE);
+    check(`${name} DEFAULT_ADMIN_ROLE has exactly one holder`, admins.size === 1);
+    const [only] = [...admins];
+    if (only !== undefined) {
+      adminAddr ??= only;
+      check(`${name} DEFAULT_ADMIN_ROLE holder consistent across contracts`, only === adminAddr);
+      check(
+        `${name} DEFAULT_ADMIN_ROLE holder is an EOA (not a protocol contract)`,
+        !protocolAddrs.has(only),
+      );
+    }
   }
 
   // 3. Mandates match the typed config exactly. Derive the on-chain shape from viem's inferred
