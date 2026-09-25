@@ -65,6 +65,9 @@ async function main(): Promise<void> {
   // non-zero) — NOT on `deploymentBlock !== "0"`, since a genesis-block deploy on a fresh local
   // node legitimately records "0", and re-keying on the sentinel would re-snapshot the current
   // tip on a second run, breaking verify's event scan.
+  // Edge (testnet manual recovery): if the Ignition journal is lost but this manifest still holds
+  // old non-zero addresses, a redeploy mints NEW contracts yet keeps the OLD block — only ever too
+  // LOW, so event scans over-scan (harmless). `demo:reset` zeroes both locally so it can't happen.
   const prior = readManifest(chainId);
   const deploymentBlock =
     prior !== undefined && prior.addresses.mockUsdt !== ZERO_ADDRESS
