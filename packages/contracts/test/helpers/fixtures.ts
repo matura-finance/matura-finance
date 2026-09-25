@@ -1,5 +1,5 @@
 import { network } from "hardhat";
-import { parseUnits, getAddress, type Address, type Hex } from "viem";
+import { getAddress, type Address, type Hex } from "viem";
 import { ROLES } from "./constants.js";
 import {
   CLAIM_ATTESTATION_TYPES,
@@ -7,18 +7,11 @@ import {
   claimRegistryDomain,
   routerDomain,
 } from "./eip712.js";
+import { DEMO_MANDATE } from "../../config/demo-mandate.js";
 
-/// Demo vault mandate used across tests. Order MUST match ILiquidityVault.Mandate.
-export const demoMandate = {
-  supportedTypesBitmap: 0b111, // PAYROLL | FREELANCE_ESCROW | STREAM
-  minFace: parseUnits("100", 6),
-  maxFace: parseUnits("100000", 6),
-  maxDurationDays: 180n,
-  liquidityCap: parseUnits("1000000", 6),
-  baseDiscountBps: 100,
-  durationBpsPerDay: 5,
-  claimTypePremiumBps: [0, 50, 25] as [number, number, number],
-} as const;
+/// Demo vault mandate used across tests — re-exported from the shared config so tests and the
+/// Ignition deploy module use the exact same mandate.
+export const demoMandate = DEMO_MANDATE;
 
 interface RouteLegInput {
   claimId: Hex;

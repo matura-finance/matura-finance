@@ -6,6 +6,7 @@
     "contracts:compile": "hardhat compile",
     "contracts:test": "hardhat test",
     "contracts:export-abis": "hardhat compile && node scripts/export-abis.ts",
+    "typecheck": "hardhat compile && tsc --noEmit",
     "clean": "hardhat clean"
   },
   "devDependencies": {
