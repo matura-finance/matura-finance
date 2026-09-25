@@ -48,6 +48,7 @@ contract LiquidityVault is ILiquidityVault, AccessControl, ReentrancyGuardTransi
     /// @param token_ The ERC20 settlement token used for advances and returns.
     /// @param mandate_ The initial mandate configuration.
     constructor(address admin, address token_, Mandate memory mandate_) {
+        if (admin == address(0) || token_ == address(0)) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         _token = IERC20(token_);

@@ -65,6 +65,7 @@ interface IClaimRegistry {
     error TokenNotSettlement();
     error ClaimNotFound();
     error NotMatured();
+    error ZeroAddress();
 
     /// @notice Verify an issuer attestation and register the claim as ATTESTED (permissionless submit).
     function registerClaim(ClaimAttestation calldata att, bytes calldata signature) external;

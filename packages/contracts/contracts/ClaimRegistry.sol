@@ -37,7 +37,7 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712, Nonces {
     /// @param settlementToken_ the single settlement token every claim must use
     constructor(address admin, address issuerRegistry_, address settlementToken_) EIP712("MaturaClaimRegistry", "1") {
         if (admin == address(0) || issuerRegistry_ == address(0) || settlementToken_ == address(0)) {
-            revert TokenNotSettlement();
+            revert ZeroAddress();
         }
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(CLAIM_REVIEWER_ROLE, admin);

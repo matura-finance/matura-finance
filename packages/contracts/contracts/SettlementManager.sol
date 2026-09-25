@@ -54,6 +54,7 @@ contract SettlementManager is ISettlementManager, AccessControl, ReentrancyGuard
     /// @param claimRegistry_ The authoritative {IClaimRegistry}.
     /// @param token_ The ERC-20 settlement token.
     constructor(address admin, address claimRegistry_, address token_) {
+        if (admin == address(0) || claimRegistry_ == address(0) || token_ == address(0)) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _claimRegistry = IClaimRegistry(claimRegistry_);
         _token = IERC20(token_);

@@ -54,6 +54,7 @@ interface IMaturaRouter {
     error MaxLegsExceeded();
     error MandateRejected();
     error InsufficientLiquidity();
+    error ZeroAddress();
 
     /// @notice Execute a signed route: reserve slices + fund the user atomically. Reverts the whole
     ///         transaction if any leg fails. `signature` is the user's EIP-712 signature over `route`.

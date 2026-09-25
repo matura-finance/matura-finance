@@ -52,6 +52,10 @@ contract MaturaRouter is IMaturaRouter, AccessControl, EIP712, Nonces, Reentranc
         address settlementManager_,
         address token_
     ) EIP712("MaturaRouter", "1") {
+        if (
+            admin == address(0) || claimRegistry_ == address(0) || vaultRegistry_ == address(0)
+                || issuerRegistry_ == address(0) || settlementManager_ == address(0) || token_ == address(0)
+        ) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
         claimRegistry = IClaimRegistry(claimRegistry_);

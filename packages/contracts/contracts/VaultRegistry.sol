@@ -20,6 +20,7 @@ contract VaultRegistry is IVaultRegistry, AccessControl {
     /// @notice Deploys the registry and grants full administration to `admin`.
     /// @param admin The address that receives `DEFAULT_ADMIN_ROLE`.
     constructor(address admin) {
+        if (admin == address(0)) revert ZeroAddress();
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
