@@ -24,6 +24,11 @@ import {ClaimStates} from "../libraries/ClaimEnums.sol";
 ///      - Holds only disposable, pre-funded balance; a griefer can at most trigger legitimate
 ///        settlements of funded, matured claims (which is the point) — it never custodies value it
 ///        is unwilling to pay out.
+///      - No obligor<->claim binding: {settle} is permissionless and settles ANY settleable claim
+///        from this obligor's own balance, so on a shared testnet anyone can drain one obligor to
+///        settle an unrelated claim. Not theft (funds only flow through the legit settlement path;
+///        an attacker with no issuer key cannot name themselves beneficiary) — acceptable for the
+///        demo, but do NOT rely on per-obligor accounting.
 contract SourceObligor {
     using SafeERC20 for IERC20;
 
