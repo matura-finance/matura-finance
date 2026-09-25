@@ -8,6 +8,11 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Dummy, non-secret values so `prisma generate` and the API bootstrap resolve
+    # env at build/test time. No real database is contacted (health check only).
+    env:
+      NODE_ENV: test
+      DATABASE_URL: "postgresql://localhost:5432/matura?schema=public"
     steps:
       - uses: actions/checkout@v4
 
@@ -50,4 +55,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      # Use the open-source gitleaks Docker image directly. The gitleaks-action
+      # wrapper requires a paid license for organization repos; the CLI does not.
+      - name: Scan for secrets (gitleaks)
+        run: |
+          docker run --rm -v "${{ github.workspace }}:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            dir /repo -c /repo/.gitleaks.toml --redact --no-banner --exit-code 1
