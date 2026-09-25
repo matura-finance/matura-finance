@@ -103,6 +103,8 @@ describe("ClaimRegistry", () => {
         att.token,
         att.faceValue,
         att.dueDate,
+        att.externalIdHash,
+        att.evidenceHash,
       ],
     );
     const claim = await claimRegistry.read.getClaim([att.claimId]);

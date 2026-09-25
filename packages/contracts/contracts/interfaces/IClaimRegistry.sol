@@ -43,7 +43,9 @@ interface IClaimRegistry {
         uint8 claimType,
         address token,
         uint256 faceValue,
-        uint256 dueDate
+        uint256 dueDate,
+        bytes32 externalIdHash,
+        bytes32 evidenceHash
     );
     event ClaimStateChanged(bytes32 indexed claimId, uint8 previousState, uint8 newState);
     event ClaimSliceReserved(bytes32 indexed claimId, uint256 faceAmount, uint256 financedFaceValue);

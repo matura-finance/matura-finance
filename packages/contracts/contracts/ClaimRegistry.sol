@@ -100,7 +100,15 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
         });
 
         emit ClaimRegistered(
-            att.claimId, att.issuer, att.beneficiary, att.claimType, att.token, att.faceValue, att.dueDate
+            att.claimId,
+            att.issuer,
+            att.beneficiary,
+            att.claimType,
+            att.token,
+            att.faceValue,
+            att.dueDate,
+            att.externalIdHash,
+            att.evidenceHash
         );
     }
 
