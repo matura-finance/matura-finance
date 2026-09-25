@@ -49,6 +49,11 @@ jobs:
       - name: Contracts test
         run: pnpm contracts:test
 
+      - name: Contracts ABI export is fresh
+        run: |
+          pnpm --filter @matura/contracts contracts:export-abis
+          git diff --exit-code packages/chain/src/abis
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
