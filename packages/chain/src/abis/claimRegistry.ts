@@ -95,22 +95,6 @@ export const claimRegistryAbi = [
     type: "error",
   },
   {
-    inputs: [
-      {
-        internalType: "address",
-        name: "account",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "currentNonce",
-        type: "uint256",
-      },
-    ],
-    name: "InvalidAccountNonce",
-    type: "error",
-  },
-  {
     inputs: [],
     name: "InvalidClaimState",
     type: "error",
@@ -142,6 +126,11 @@ export const claimRegistryAbi = [
   },
   {
     inputs: [],
+    name: "NonceAlreadyUsed",
+    type: "error",
+  },
+  {
+    inputs: [],
     name: "NotAuthorized",
     type: "error",
   },
@@ -153,6 +142,22 @@ export const claimRegistryAbi = [
   {
     inputs: [],
     name: "OverAssignment",
+    type: "error",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint8",
+        name: "bits",
+        type: "uint8",
+      },
+      {
+        internalType: "uint256",
+        name: "value",
+        type: "uint256",
+      },
+    ],
+    name: "SafeCastOverflowedUintDowncast",
     type: "error",
   },
   {
@@ -174,6 +179,11 @@ export const claimRegistryAbi = [
   {
     inputs: [],
     name: "TokenNotSettlement",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ZeroAddress",
     type: "error",
   },
   {
@@ -225,6 +235,18 @@ export const claimRegistryAbi = [
         internalType: "uint256",
         name: "dueDate",
         type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "externalIdHash",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "bytes32",
+        name: "evidenceHash",
+        type: "bytes32",
       },
     ],
     name: "ClaimRegistered",
@@ -493,14 +515,29 @@ export const claimRegistryAbi = [
             type: "address",
           },
           {
-            internalType: "address",
-            name: "issuer",
-            type: "address",
-          },
-          {
             internalType: "uint8",
             name: "claimType",
             type: "uint8",
+          },
+          {
+            internalType: "uint8",
+            name: "state",
+            type: "uint8",
+          },
+          {
+            internalType: "uint8",
+            name: "sliceCount",
+            type: "uint8",
+          },
+          {
+            internalType: "uint64",
+            name: "dueDate",
+            type: "uint64",
+          },
+          {
+            internalType: "address",
+            name: "issuer",
+            type: "address",
           },
           {
             internalType: "address",
@@ -516,21 +553,6 @@ export const claimRegistryAbi = [
             internalType: "uint256",
             name: "financedFaceValue",
             type: "uint256",
-          },
-          {
-            internalType: "uint256",
-            name: "dueDate",
-            type: "uint256",
-          },
-          {
-            internalType: "uint8",
-            name: "state",
-            type: "uint8",
-          },
-          {
-            internalType: "uint8",
-            name: "sliceCount",
-            type: "uint8",
           },
         ],
         internalType: "struct IClaimRegistry.Claim",
@@ -622,6 +644,30 @@ export const claimRegistryAbi = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        internalType: "address",
+        name: "signer",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "nonce",
+        type: "uint256",
+      },
+    ],
+    name: "isNonceUsed",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "issuerRegistry",
     outputs: [
@@ -671,25 +717,6 @@ export const claimRegistryAbi = [
     name: "markMatured",
     outputs: [],
     stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
-    ],
-    name: "nonces",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    stateMutability: "view",
     type: "function",
   },
   {

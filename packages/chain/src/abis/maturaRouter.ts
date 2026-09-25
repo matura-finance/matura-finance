@@ -208,6 +208,11 @@ export const maturaRouterAbi = [
   },
   {
     inputs: [],
+    name: "ZeroAddress",
+    type: "error",
+  },
+  {
+    inputs: [],
     name: "ZeroTargetAdvance",
     type: "error",
   },

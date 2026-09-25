@@ -279,18 +279,8 @@ export const issuerRegistryAbi = [
         components: [
           {
             internalType: "address",
-            name: "issuerAddress",
-            type: "address",
-          },
-          {
-            internalType: "address",
             name: "signer",
             type: "address",
-          },
-          {
-            internalType: "bytes32",
-            name: "metadataHash",
-            type: "bytes32",
           },
           {
             internalType: "bool",
@@ -298,9 +288,19 @@ export const issuerRegistryAbi = [
             type: "bool",
           },
           {
-            internalType: "uint256",
+            internalType: "uint64",
             name: "signerEpoch",
-            type: "uint256",
+            type: "uint64",
+          },
+          {
+            internalType: "address",
+            name: "issuerAddress",
+            type: "address",
+          },
+          {
+            internalType: "bytes32",
+            name: "metadataHash",
+            type: "bytes32",
           },
         ],
         internalType: "struct IIssuerRegistry.Issuer",

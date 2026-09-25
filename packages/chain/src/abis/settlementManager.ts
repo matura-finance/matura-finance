@@ -254,6 +254,25 @@ export const settlementManagerAbi = [
     inputs: [
       {
         indexed: true,
+        internalType: "bytes32",
+        name: "claimId",
+        type: "bytes32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "vault",
+        type: "address",
+      },
+    ],
+    name: "SettlementReturnFailed",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: "address",
         name: "treasury",
         type: "address",

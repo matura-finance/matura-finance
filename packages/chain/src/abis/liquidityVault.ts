@@ -20,6 +20,21 @@ export const liquidityVaultAbi = [
             type: "uint8",
           },
           {
+            internalType: "uint16",
+            name: "baseDiscountBps",
+            type: "uint16",
+          },
+          {
+            internalType: "uint16",
+            name: "durationBpsPerDay",
+            type: "uint16",
+          },
+          {
+            internalType: "uint32",
+            name: "maxDurationDays",
+            type: "uint32",
+          },
+          {
             internalType: "uint256",
             name: "minFace",
             type: "uint256",
@@ -31,23 +46,8 @@ export const liquidityVaultAbi = [
           },
           {
             internalType: "uint256",
-            name: "maxDurationDays",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
             name: "liquidityCap",
             type: "uint256",
-          },
-          {
-            internalType: "uint16",
-            name: "baseDiscountBps",
-            type: "uint16",
-          },
-          {
-            internalType: "uint16",
-            name: "durationBpsPerDay",
-            type: "uint16",
           },
           {
             internalType: "uint16[3]",
@@ -101,11 +101,6 @@ export const liquidityVaultAbi = [
   },
   {
     inputs: [],
-    name: "DurationTooLong",
-    type: "error",
-  },
-  {
-    inputs: [],
     name: "EnforcedPause",
     type: "error",
   },
@@ -116,17 +111,12 @@ export const liquidityVaultAbi = [
   },
   {
     inputs: [],
-    name: "FaceOutOfRange",
-    type: "error",
-  },
-  {
-    inputs: [],
     name: "InsufficientLiquidity",
     type: "error",
   },
   {
     inputs: [],
-    name: "IssuerNotAllowed",
+    name: "InvalidMandate",
     type: "error",
   },
   {
@@ -137,6 +127,11 @@ export const liquidityVaultAbi = [
   {
     inputs: [],
     name: "MandateRejected",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "NothingToWriteOff",
     type: "error",
   },
   {
@@ -164,6 +159,31 @@ export const liquidityVaultAbi = [
     inputs: [],
     name: "ZeroAddress",
     type: "error",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "bytes32",
+        name: "claimId",
+        type: "bytes32",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "faceAmount",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "principalCleared",
+        type: "uint256",
+      },
+    ],
+    name: "ClaimWrittenOff",
+    type: "event",
   },
   {
     anonymous: false,
@@ -207,22 +227,52 @@ export const liquidityVaultAbi = [
     anonymous: false,
     inputs: [
       {
+        components: [
+          {
+            internalType: "uint8",
+            name: "supportedTypesBitmap",
+            type: "uint8",
+          },
+          {
+            internalType: "uint16",
+            name: "baseDiscountBps",
+            type: "uint16",
+          },
+          {
+            internalType: "uint16",
+            name: "durationBpsPerDay",
+            type: "uint16",
+          },
+          {
+            internalType: "uint32",
+            name: "maxDurationDays",
+            type: "uint32",
+          },
+          {
+            internalType: "uint256",
+            name: "minFace",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "maxFace",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "liquidityCap",
+            type: "uint256",
+          },
+          {
+            internalType: "uint16[3]",
+            name: "claimTypePremiumBps",
+            type: "uint16[3]",
+          },
+        ],
         indexed: false,
-        internalType: "uint256",
-        name: "liquidityCap",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint16",
-        name: "baseDiscountBps",
-        type: "uint16",
-      },
-      {
-        indexed: false,
-        internalType: "uint16",
-        name: "durationBpsPerDay",
-        type: "uint16",
+        internalType: "struct ILiquidityVault.Mandate",
+        name: "mandate",
+        type: "tuple",
       },
     ],
     name: "MandateUpdated",
@@ -510,6 +560,19 @@ export const liquidityVaultAbi = [
   },
   {
     inputs: [],
+    name: "fundableLiquidity",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "getMandate",
     outputs: [
       {
@@ -518,6 +581,21 @@ export const liquidityVaultAbi = [
             internalType: "uint8",
             name: "supportedTypesBitmap",
             type: "uint8",
+          },
+          {
+            internalType: "uint16",
+            name: "baseDiscountBps",
+            type: "uint16",
+          },
+          {
+            internalType: "uint16",
+            name: "durationBpsPerDay",
+            type: "uint16",
+          },
+          {
+            internalType: "uint32",
+            name: "maxDurationDays",
+            type: "uint32",
           },
           {
             internalType: "uint256",
@@ -531,23 +609,8 @@ export const liquidityVaultAbi = [
           },
           {
             internalType: "uint256",
-            name: "maxDurationDays",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
             name: "liquidityCap",
             type: "uint256",
-          },
-          {
-            internalType: "uint16",
-            name: "baseDiscountBps",
-            type: "uint16",
-          },
-          {
-            internalType: "uint16",
-            name: "durationBpsPerDay",
-            type: "uint16",
           },
           {
             internalType: "uint16[3]",
@@ -849,6 +912,21 @@ export const liquidityVaultAbi = [
             type: "uint8",
           },
           {
+            internalType: "uint16",
+            name: "baseDiscountBps",
+            type: "uint16",
+          },
+          {
+            internalType: "uint16",
+            name: "durationBpsPerDay",
+            type: "uint16",
+          },
+          {
+            internalType: "uint32",
+            name: "maxDurationDays",
+            type: "uint32",
+          },
+          {
             internalType: "uint256",
             name: "minFace",
             type: "uint256",
@@ -860,23 +938,8 @@ export const liquidityVaultAbi = [
           },
           {
             internalType: "uint256",
-            name: "maxDurationDays",
-            type: "uint256",
-          },
-          {
-            internalType: "uint256",
             name: "liquidityCap",
             type: "uint256",
-          },
-          {
-            internalType: "uint16",
-            name: "baseDiscountBps",
-            type: "uint16",
-          },
-          {
-            internalType: "uint16",
-            name: "durationBpsPerDay",
-            type: "uint16",
           },
           {
             internalType: "uint16[3]",
@@ -947,6 +1010,19 @@ export const liquidityVaultAbi = [
       },
     ],
     name: "withdraw",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "claimId",
+        type: "bytes32",
+      },
+    ],
+    name: "writeOffClaim",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
