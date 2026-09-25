@@ -1,5 +1,18 @@
-import { keccak256, parseUnits, toHex } from "viem";
+import { keccak256, parseUnits, toHex, type Hex } from "viem";
 import { CLAIM_TYPE } from "./constants.js";
+
+/// Deterministic bytes32 claim id from a claim label — the shared derivation used by the seed
+/// (to register), verify (to look up), and demo-settle (to route). Same label ⇒ same id, so the
+/// seed is idempotent and other scripts can find Alice's claims without reading tx logs.
+export function claimIdFor(label: string): Hex {
+  return keccak256(toHex(`claim:${label}`));
+}
+
+/// Deterministic bytes32 external-id hash for a claim label (the attestation's `externalIdHash`,
+/// which must be globally unique per claim).
+export function externalIdFor(label: string): Hex {
+  return keccak256(toHex(`ext:${label}`));
+}
 
 /// Demo scenario data — the SINGLE source shared by the seed, verify, and demo scripts. All money
 /// is a `parseUnits(x, 6)` bigint (6-dp MockUSDT base units); `dueInDays` is a plain `number`.

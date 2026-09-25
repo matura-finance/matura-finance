@@ -10,7 +10,11 @@
     "clean": "hardhat clean",
     "node": "hardhat node",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
-    "deploy:bsc-testnet": "hardhat run scripts/deploy.ts --network bscTestnet"
+    "deploy:bsc-testnet": "hardhat run scripts/deploy.ts --network bscTestnet",
+    "seed:local": "hardhat run scripts/seed.ts --network localhost",
+    "seed:bsc-testnet": "hardhat run scripts/seed.ts --network bscTestnetSeed",
+    "verify:local": "hardhat run scripts/verify.ts --network localhost",
+    "verify:bsc-testnet": "hardhat run scripts/verify.ts --network bscTestnet"
   },
   "devDependencies": {
     "hardhat": "3.18.0",
