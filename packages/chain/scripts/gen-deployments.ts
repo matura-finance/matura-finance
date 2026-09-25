@@ -16,9 +16,14 @@ import { basename, dirname, join } from "node:path";
 register(
   "data:text/javascript," +
     encodeURIComponent(
+      // Relative `.js` specifiers in OUR src/ point at `.ts` sources (repo convention). Remap
+      // those and let a genuine failure THROW with the `.ts` path (surfaces a broken import
+      // instead of masking it — review finding P2-7). Third-party `.js` imports (e.g. zod's own
+      // internal modules under node_modules) are left untouched so they resolve normally.
       "export async function resolve(spec, ctx, next) {" +
-        "  if ((spec.startsWith('./') || spec.startsWith('../')) && spec.endsWith('.js')) {" +
-        "    try { return await next(spec.slice(0, -3) + '.ts', ctx); } catch { /* fall through */ }" +
+        "  const fromDep = ctx.parentURL && ctx.parentURL.includes('/node_modules/');" +
+        "  if (!fromDep && (spec.startsWith('./') || spec.startsWith('../')) && spec.endsWith('.js')) {" +
+        "    return next(spec.slice(0, -3) + '.ts', ctx);" +
         "  }" +
         "  return next(spec, ctx);" +
         "}",
