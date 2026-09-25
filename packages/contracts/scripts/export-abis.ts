@@ -18,6 +18,7 @@ const WANTED = new Set([
   "VaultRegistry",
   "MaturaRouter",
   "SettlementManager",
+  "SourceObligor",
 ]);
 
 interface HardhatArtifact {
