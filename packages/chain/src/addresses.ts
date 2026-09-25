@@ -5,7 +5,7 @@ import { z } from "zod";
  * preserved (EIP-55 checksums are validated at the `@matura/shared` boundary,
  * not here — this package deals in raw viem addresses).
  */
-const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid EVM address");
+export const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "Invalid EVM address");
 
 /**
  * Zod schema for the set of Matura contract addresses on a single chain.

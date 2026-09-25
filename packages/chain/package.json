@@ -16,7 +16,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "gen:deployments": "node scripts/gen-deployments.ts"
   },
   "dependencies": {
     "viem": "catalog:",

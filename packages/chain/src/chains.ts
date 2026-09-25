@@ -28,3 +28,30 @@ export const bscTestnet = defineChain({
   },
   testnet: true,
 });
+
+/**
+ * Local Hardhat / EDR development chain id. Exported `as const` so it narrows to
+ * the literal `31337`.
+ */
+export const LOCAL_CHAIN_ID = 31337 as const;
+
+/**
+ * viem chain definition for the local Hardhat dev node. Points at the default
+ * `hardhat node` JSON-RPC endpoint; used by scripts and tests targeting a
+ * locally-running EDR chain.
+ */
+export const hardhatLocal = defineChain({
+  id: LOCAL_CHAIN_ID,
+  name: "Hardhat Local",
+  nativeCurrency: {
+    name: "Ether",
+    symbol: "ETH",
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ["http://127.0.0.1:8545"],
+    },
+  },
+  testnet: true,
+});
