@@ -1,7 +1,7 @@
 import { network } from "hardhat";
 import { getAddress, keccak256, toHex, parseUnits, type Address, type Hex } from "viem";
 import { assertChainId } from "./lib/network-guard.js";
-import { readManifest } from "./lib/read-manifest.js";
+import { readManifest, manifestAddresses, isManifestDeployed } from "./lib/read-manifest.js";
 import { CLAIM_ATTESTATION_TYPES, claimRegistryDomain } from "../config/eip712.js";
 import { CLAIM_STATE } from "../config/constants.js";
 import {
@@ -14,7 +14,7 @@ import {
   externalIdFor,
 } from "../config/demo.js";
 import { STABLE_MANDATE, FLEX_MANDATE } from "../config/vault-mandates.js";
-import { ALLOWED_CHAIN_IDS, ZERO_ADDRESS, DAY_SECONDS } from "./lib/constants.js";
+import { ALLOWED_CHAIN_IDS, DAY_SECONDS } from "./lib/constants.js";
 
 const OBLIGOR_FUNDING = parseUnits("25000", 6); // covers the largest claim face (+ fee headroom)
 
@@ -31,16 +31,16 @@ async function main(): Promise<void> {
   const chainId = await assertChainId(publicClient, ALLOWED_CHAIN_IDS);
 
   const manifest = readManifest(chainId);
-  if (manifest === undefined || manifest.addresses.mockUsdt === ZERO_ADDRESS) {
-    throw new Error(`No deployment for chainId ${String(chainId)} — run deploy first.`);
+  if (manifest === undefined || !isManifestDeployed(manifest)) {
+    throw new Error(`No complete deployment for chainId ${String(chainId)} — run deploy first.`);
   }
-  // Fail fast if the addresses have no code (e.g. the local node was restarted after a deploy).
-  for (const [name, address] of Object.entries(manifest.addresses)) {
-    const code = await publicClient.getCode({ address: address as Address });
+  // Fail fast if any address (core + vaults + sources) has no code (e.g. node restarted after deploy).
+  for (const address of manifestAddresses(manifest)) {
+    const code = await publicClient.getCode({ address });
     if (code === undefined || code === "0x") {
       throw new Error(
-        `No contract code at ${name} (${address}) on chainId ${String(chainId)} — node ` +
-          `restarted? Run demo:reset (local) then deploy again.`,
+        `No contract code at ${address} on chainId ${String(chainId)} — node restarted? ` +
+          "Run demo:reset (local) then deploy again.",
       );
     }
   }

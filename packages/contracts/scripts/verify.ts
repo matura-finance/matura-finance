@@ -2,11 +2,11 @@ import { network } from "hardhat";
 import { getAddress, type Address, type Hex } from "viem";
 import { assertChainId } from "./lib/network-guard.js";
 import { assertWiring } from "./lib/assert-wiring.js";
-import { readManifest } from "./lib/read-manifest.js";
 import { ROLES, CLAIM_STATE, CLAIM_TYPE } from "../config/constants.js";
 import { STABLE_MANDATE, FLEX_MANDATE, type VaultMandate } from "../config/vault-mandates.js";
 import { ALICE_CLAIMS, REQUEST_A, REQUEST_B, claimIdFor } from "../config/demo.js";
-import { ALLOWED_CHAIN_IDS, ZERO_ADDRESS } from "./lib/constants.js";
+import { ALLOWED_CHAIN_IDS } from "./lib/constants.js";
+import { readManifest, manifestAddresses, isManifestDeployed } from "./lib/read-manifest.js";
 
 /// Read-only verification of a seeded Matura chain. Exits non-zero on any failure. Confirms: both
 /// vault mandates, balances, the role wiring + reserve/release separation invariant (via
@@ -21,8 +21,17 @@ async function main(): Promise<void> {
   const chainId = await assertChainId(publicClient, ALLOWED_CHAIN_IDS);
 
   const manifest = readManifest(chainId);
-  if (manifest === undefined || manifest.addresses.mockUsdt === ZERO_ADDRESS) {
-    throw new Error(`No deployment for chainId ${String(chainId)} — run deploy first.`);
+  if (manifest === undefined || !isManifestDeployed(manifest)) {
+    throw new Error(`No complete deployment for chainId ${String(chainId)} — run deploy first.`);
+  }
+  // Liveness probe: every manifest address (core + vaults + sources) must have code on this chain.
+  for (const address of manifestAddresses(manifest)) {
+    const code = await publicClient.getCode({ address });
+    if (code === undefined || code === "0x") {
+      throw new Error(
+        `No contract code at ${address} on chainId ${String(chainId)} (node restarted?).`,
+      );
+    }
   }
   const fromBlock = BigInt(manifest.deploymentBlock);
 
