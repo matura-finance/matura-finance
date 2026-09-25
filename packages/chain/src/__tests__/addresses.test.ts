@@ -10,6 +10,7 @@ describe("AddressBook", () => {
       mockUsdt: VALID_ADDRESS,
       issuerRegistry: VALID_ADDRESS,
       claimRegistry: VALID_ADDRESS,
+      vaultRegistry: VALID_ADDRESS,
       router: VALID_ADDRESS,
       settlementManager: VALID_ADDRESS,
     };

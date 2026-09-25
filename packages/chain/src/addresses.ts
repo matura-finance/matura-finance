@@ -15,6 +15,7 @@ export const AddressBook = z.object({
   mockUsdt: evmAddress,
   issuerRegistry: evmAddress,
   claimRegistry: evmAddress,
+  vaultRegistry: evmAddress,
   router: evmAddress,
   settlementManager: evmAddress,
 });
@@ -34,6 +35,7 @@ export const zeroAddressBook: AddressBook = {
   mockUsdt: ZERO_ADDRESS,
   issuerRegistry: ZERO_ADDRESS,
   claimRegistry: ZERO_ADDRESS,
+  vaultRegistry: ZERO_ADDRESS,
   router: ZERO_ADDRESS,
   settlementManager: ZERO_ADDRESS,
 };
