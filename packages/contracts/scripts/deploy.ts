@@ -25,6 +25,10 @@ async function main(): Promise<void> {
     `Deploying MaturaProtocol to chainId ${String(chainId)} (deploymentId ${deploymentId})…`,
   );
 
+  // Snapshot the block BEFORE deploying: the correct `fromBlock` lower bound for scanning
+  // deploy-time events (constructors + role grants), which land in the blocks that follow.
+  const preDeployBlock = await publicClient.getBlockNumber();
+
   const d = await ignition.deploy(MaturaProtocol, { deploymentId });
 
   const addresses = {
@@ -62,7 +66,7 @@ async function main(): Promise<void> {
   const deploymentBlock =
     prior !== undefined && prior.deploymentBlock !== "0"
       ? prior.deploymentBlock
-      : (await publicClient.getBlockNumber()).toString();
+      : preDeployBlock.toString();
 
   const manifest: DeploymentManifestData = {
     chainId,
