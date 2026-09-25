@@ -28,11 +28,29 @@ library MaturaPricing {
         uint256 faceAmount,
         uint256 dueDate
     ) internal view returns (uint256 advanceAmount, uint256 discountAmount) {
-        if (dueDate <= block.timestamp) revert DueDateInPast();
+        bool ok;
+        (ok, advanceAmount, discountAmount) = tryQuote(baseDiscountBps, durationBpsPerDay, premiumBps, faceAmount, dueDate);
+        if (!ok) {
+            if (dueDate <= block.timestamp) revert DueDateInPast();
+            revert DiscountCapExceeded();
+        }
+    }
+
+    /// @notice Non-reverting variant for view/router hot-path use. Returns ok=false instead of
+    ///         reverting when the claim is past due or the discount cap would be exceeded.
+    function tryQuote(
+        uint16 baseDiscountBps,
+        uint16 durationBpsPerDay,
+        uint16 premiumBps,
+        uint256 faceAmount,
+        uint256 dueDate
+    ) internal view returns (bool ok, uint256 advanceAmount, uint256 discountAmount) {
+        if (dueDate <= block.timestamp) return (false, 0, 0);
         uint256 daysToDue = (dueDate - block.timestamp) / 1 days;
         uint256 totalBps = uint256(baseDiscountBps) + (uint256(durationBpsPerDay) * daysToDue) + uint256(premiumBps);
-        if (totalBps > MaturaConstants.MAX_DISCOUNT_BPS) revert DiscountCapExceeded();
+        if (totalBps > MaturaConstants.MAX_DISCOUNT_BPS) return (false, 0, 0);
         discountAmount = Math.mulDiv(faceAmount, totalBps, MaturaConstants.BPS_DENOMINATOR, Math.Rounding.Ceil);
         advanceAmount = faceAmount - discountAmount;
+        ok = true;
     }
 }
