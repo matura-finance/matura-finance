@@ -7,7 +7,7 @@ import { computeAbiBuildId } from "./lib/abi-build-id.js";
 import { writeJsonAtomic } from "./lib/atomic-write.js";
 import { readManifest, manifestPath } from "./lib/read-manifest.js";
 import type { DeploymentManifestData } from "./lib/manifest-types.js";
-import { ALLOWED_CHAIN_IDS, BSC_TESTNET_CHAIN_ID } from "./lib/constants.js";
+import { ALLOWED_CHAIN_IDS, BSC_TESTNET_CHAIN_ID, ZERO_ADDRESS } from "./lib/constants.js";
 
 /// Deploy (or idempotently re-apply) the Matura protocol via Ignition, assert the wiring, and
 /// write the validated deployment manifest. Run:
@@ -61,9 +61,13 @@ async function main(): Promise<void> {
   console.log("Wiring assertions passed.");
 
   // Deployment block: preserve a prior non-zero value across idempotent re-runs; else snapshot now.
+  // Preserve the prior block across idempotent re-runs, keyed on *deployed-ness* (addresses
+  // non-zero) — NOT on `deploymentBlock !== "0"`, since a genesis-block deploy on a fresh local
+  // node legitimately records "0", and re-keying on the sentinel would re-snapshot the current
+  // tip on a second run, breaking verify's event scan.
   const prior = readManifest(chainId);
   const deploymentBlock =
-    prior !== undefined && prior.deploymentBlock !== "0"
+    prior !== undefined && prior.addresses.mockUsdt !== ZERO_ADDRESS
       ? prior.deploymentBlock
       : preDeployBlock.toString();
 
