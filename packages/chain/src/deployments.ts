@@ -45,7 +45,13 @@ export function isDeployed(chainId: number): boolean {
   if (manifest === undefined) {
     return false;
   }
-  return Object.values(manifest.addresses).every((address) => address !== ZERO_ADDRESS);
+  // A full deploy has every slot non-zero — core addresses AND the named vaults AND the sources,
+  // not just the 6 core slots (a partial deploy should not read as deployed).
+  return [
+    ...Object.values(manifest.addresses),
+    ...Object.values(manifest.namedVaults),
+    ...Object.values(manifest.sources),
+  ].every((address) => address !== ZERO_ADDRESS);
 }
 
 /**
