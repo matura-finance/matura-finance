@@ -2,8 +2,12 @@
 pragma solidity 0.8.28;
 
 /// @title ClaimTypes
-/// @notice Canonical claim-type ordinals. MUST match `packages/shared/src/enums.ts`
-///         `CLAIM_TYPES` exactly (a three-way parity test asserts Solidity ⇄ Zod ⇄ Prisma).
+/// @notice Canonical claim-type ordinals. MUST match `packages/shared/src/enums.ts` `CLAIM_TYPES`.
+/// @dev Adding a claim type is a coordinated edit across six sites — keep them in sync:
+///      (1) this library (+ `COUNT`); (2) `ILiquidityVault.Mandate.claimTypePremiumBps` fixed-array
+///      length; (3) `packages/shared/src/enums.ts`; (4) the Prisma enum; (5) the contracts parity
+///      test (`test/EnumParity.test.ts` + `test/helpers/constants.ts`); (6) `apps/api` parity spec
+///      and the Ignition demo mandate. `EnumParity` and the api spec guard drift.
 library ClaimTypes {
     uint8 internal constant PAYROLL = 0;
     uint8 internal constant FREELANCE_ESCROW = 1;

@@ -104,8 +104,16 @@ claim `PAID` under a strict conservation check.
 (settlement) split is a hard invariant — no address holds both.
 
 **Enum ordinals are law.** Solidity `ClaimTypes`/`ClaimStates` ordinals mirror
-`@matura/shared` `CLAIM_TYPES`/`CLAIM_STATES`; a three-way parity test
-(`apps/api/src/enum-parity.spec.ts`) keeps Solidity ⇄ Zod ⇄ Prisma in sync.
+`@matura/shared` `CLAIM_TYPES`/`CLAIM_STATES`; parity tests
+(`packages/contracts/test/EnumParity.test.ts` reads the Solidity source,
+`apps/api/src/enum-parity.spec.ts` checks Zod ⇄ Prisma) keep the layers in sync.
+
+**Single settlement token (P0).** `ClaimRegistry`, `SettlementManager`, and
+`MaturaRouter` are each constructed with one MockUSDT address, and `AddressBook`
+carries one token slot — the deployed topology is single-token even though
+`Claim.token`/`VaultSummary.token` are per-entity. Multi-token is a deliberate
+future migration (per-token router/settlement or a token dimension in the
+manifest), not a config tweak.
 
 **Artifacts.** `pnpm --filter @matura/contracts contracts:export-abis` regenerates
 `@matura/chain/src/abis/*.ts` (`as const`) from compiled artifacts — never
