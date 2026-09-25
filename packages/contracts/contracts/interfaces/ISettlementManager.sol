@@ -23,6 +23,9 @@ interface ISettlementManager {
     );
     event TreasuryUpdated(address indexed treasury);
     event FeeUpdated(uint16 feeBps);
+    /// @notice A vault received its face slice but its accounting callback reverted (e.g. role
+    ///         revoked). Settlement still completes; admin should reconcile via vault.writeOffClaim.
+    event SettlementReturnFailed(bytes32 indexed claimId, address indexed vault);
 
     error NotMature();
     error AlreadySettled();

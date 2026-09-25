@@ -120,7 +120,12 @@ contract SettlementManager is ISettlementManager, AccessControl, ReentrancyGuard
             Allocation memory a = allocs[i];
             vaultDistribution += a.faceAmount;
             _token.safeTransfer(a.vault, a.faceAmount);
-            ILiquidityVault(a.vault).onSettlementReturn(claimId, a.faceAmount);
+            // The vault has already received its face; a failing accounting callback (e.g. its
+            // SETTLEMENT_ROLE was revoked) must not brick the whole claim's settlement.
+            try ILiquidityVault(a.vault).onSettlementReturn(claimId, a.faceAmount) {}
+            catch {
+                emit SettlementReturnFailed(claimId, a.vault);
+            }
         }
 
         if (vaultDistribution != financed) revert ConservationViolation();
