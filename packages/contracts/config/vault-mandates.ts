@@ -1,7 +1,8 @@
 import { parseUnits } from "viem";
 
-/// Named vault mandates — the SINGLE source shared by the test fixtures and the Ignition deploy
-/// module, so tested config can never drift from deployed config. A hand-written interface plus
+/// Named vault mandates — the SINGLE source shared by the Ignition deploy module, the seed/verify
+/// scripts, and `test/VaultMandates.test.ts`, so tested config can never drift from deployed
+/// config (the deployed vaults read these exact objects). A hand-written interface plus
 /// `satisfies` is the reliable gate (Ignition's arg typing is weaker). viem maps uint8/16/32 →
 /// `number` and uint256 → `bigint`, so `maxDurationDays` is a plain `number` while every money
 /// field MUST be a `parseUnits(x, 6)` bigint — never a `100e6` numeric literal (that is a

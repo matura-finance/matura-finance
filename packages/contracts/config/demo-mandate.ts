@@ -1,10 +1,11 @@
 import { parseUnits } from "viem";
 
-/// Seed liquidity for the demo vault.
-export const LIQUIDITY_CAP = parseUnits("1000000", 6);
+/// Seed liquidity for the demo vault (internal to this module's DEMO_MANDATE).
+const LIQUIDITY_CAP = parseUnits("1000000", 6);
 
-/// Demo vault mandate — the SINGLE source shared by the test fixtures and the Ignition deploy
-/// module, so the tested config can never drift from the deployed config. Keys match
+/// Demo vault mandate used by the test fixtures (`test/helpers/fixtures.ts`) and the contract unit
+/// suite. NOTE: the vaults the protocol actually DEPLOYS use `config/vault-mandates.ts`
+/// (STABLE_MANDATE / FLEX_MANDATE) — this single-vault mandate is a test fixture only. Keys match
 /// ILiquidityVault.Mandate; `maxDurationDays` is a uint32 (number, not bigint).
 export const DEMO_MANDATE = {
   supportedTypesBitmap: 0b111, // PAYROLL | FREELANCE_ESCROW | STREAM

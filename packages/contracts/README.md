@@ -65,9 +65,14 @@ pnpm --filter @matura/contracts seed:bsc-testnet     # uses the bscTestnetSeed n
 pnpm --filter @matura/contracts verify:bsc-testnet
 ```
 
-Every script asserts the connected chainId first and **refuses BSC Mainnet (56)**. After a testnet
-deploy, commit the regenerated `packages/chain/src/deployments/97.json` and
-`deployments.generated.ts` (this replaces the old manual `deployments.ts` edit).
+Every script that connects to a chain asserts the connected chainId first and **refuses BSC Mainnet
+(56)** (`demo:reset` is the exception — it opens no connection and only rewrites local `31337`
+artifacts). After a testnet deploy, commit the regenerated `packages/chain/src/deployments/97.json`
+and `deployments.generated.ts` (this replaces the old manual `deployments.ts` edit).
+
+There is no automated testnet reset (you cannot un-deploy). The chain-97 Ignition deployment journal
+(`ignition/deployments/matura-bsctestnet/`) is the resume key — preserve/commit it; to re-point at a
+fresh protocol, deploy a new set and commit the new `97.json`. `demo:reset` is **local-only**.
 
 ## Faucets & BSC Testnet
 
