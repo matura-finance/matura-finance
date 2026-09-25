@@ -14,7 +14,10 @@
     "seed:local": "hardhat run scripts/seed.ts --network localhost",
     "seed:bsc-testnet": "hardhat run scripts/seed.ts --network bscTestnetSeed",
     "verify:local": "hardhat run scripts/verify.ts --network localhost",
-    "verify:bsc-testnet": "hardhat run scripts/verify.ts --network bscTestnet"
+    "verify:bsc-testnet": "hardhat run scripts/verify.ts --network bscTestnet",
+    "demo:local": "pnpm run deploy:local && pnpm run seed:local && pnpm run verify:local",
+    "demo:settle": "hardhat run scripts/demo-settle.ts --network localhost",
+    "demo:reset": "node scripts/demo-reset.ts"
   },
   "devDependencies": {
     "hardhat": "3.18.0",
