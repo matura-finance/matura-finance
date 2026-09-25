@@ -46,7 +46,29 @@ export async function deployProtocol() {
   const { viem, networkHelpers } = connection;
   const publicClient = await viem.getPublicClient();
   const wallets = await viem.getWalletClients();
-  const [admin, issuerSigner, user, beneficiary, treasury, other, issuer] = wallets;
+  // Narrow the seven demo wallets once (noUncheckedIndexedAccess makes array access `| undefined`);
+  // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+  // Assigning to fresh consts gives them a non-`undefined` *declared* type, so nested closures
+  // (createEligibleClaim/signRoute) capture `WalletClient`, not `WalletClient | undefined`.
+  const [w0, w1, w2, w3, w4, w5, w6] = wallets;
+  if (
+    w0 === undefined ||
+    w1 === undefined ||
+    w2 === undefined ||
+    w3 === undefined ||
+    w4 === undefined ||
+    w5 === undefined ||
+    w6 === undefined
+  ) {
+    throw new Error("Expected at least 7 wallet clients from the test network.");
+  }
+  const admin = w0;
+  const issuerSigner = w1;
+  const user = w2;
+  const beneficiary = w3;
+  const treasury = w4;
+  const other = w5;
+  const issuer = w6;
 
   const usdt = await viem.deployContract("MockUSDT", []);
   const issuerRegistry = await viem.deployContract("IssuerRegistry", [admin.account.address]);

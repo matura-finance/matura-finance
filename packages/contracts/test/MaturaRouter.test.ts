@@ -46,7 +46,9 @@ describe("MaturaRouter", () => {
     assert.equal((await claimRegistry.read.getClaim([claimId])).state, CLAIM_STATE.FUNDED);
     const allocs = await ctx.settlement.read.getAllocations([claimId]);
     assert.equal(allocs.length, 1);
-    assert.equal(allocs[0].faceAmount, faceValue);
+    const [alloc] = allocs;
+    assert.ok(alloc);
+    assert.equal(alloc.faceAmount, faceValue);
   });
 
   it("funds a two-leg multi-claim route atomically", async () => {

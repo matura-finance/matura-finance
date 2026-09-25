@@ -11,7 +11,24 @@ const OTHER_HASH = keccak256(toHex("issuer-metadata-v2"));
 async function deployRegistry() {
   const { viem } = await network.create();
   const publicClient = await viem.getPublicClient();
-  const [admin, issuer, signer, newSigner, other] = await viem.getWalletClients();
+  const wallets = await viem.getWalletClients();
+  // Narrow the five demo wallets once (noUncheckedIndexedAccess makes array access `| undefined`);
+  // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+  const [w0, w1, w2, w3, w4] = wallets;
+  if (
+    w0 === undefined ||
+    w1 === undefined ||
+    w2 === undefined ||
+    w3 === undefined ||
+    w4 === undefined
+  ) {
+    throw new Error("Expected at least 5 wallet clients from the test network.");
+  }
+  const admin = w0;
+  const issuer = w1;
+  const signer = w2;
+  const newSigner = w3;
+  const other = w4;
   const registry = await viem.deployContract("IssuerRegistry", [admin.account.address]);
   return { viem, publicClient, registry, admin, issuer, signer, newSigner, other };
 }

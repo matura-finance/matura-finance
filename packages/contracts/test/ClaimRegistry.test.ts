@@ -24,7 +24,28 @@ interface Attestation {
 async function setup() {
   const { viem, networkHelpers } = await network.create();
   const publicClient = await viem.getPublicClient();
-  const [admin, issuerSigner, user, router, settlement, other] = await viem.getWalletClients();
+  const wallets = await viem.getWalletClients();
+  // Narrow the six wallets once (noUncheckedIndexedAccess makes array access `| undefined`);
+  // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+  // Assigning to fresh consts gives them a non-`undefined` *declared* type, so the nested `sign`
+  // closure captures `WalletClient`, not `WalletClient | undefined`.
+  const [w0, w1, w2, w3, w4, w5] = wallets;
+  if (
+    w0 === undefined ||
+    w1 === undefined ||
+    w2 === undefined ||
+    w3 === undefined ||
+    w4 === undefined ||
+    w5 === undefined
+  ) {
+    throw new Error("Expected at least 6 wallet clients from the test network.");
+  }
+  const admin = w0;
+  const issuerSigner = w1;
+  const user = w2;
+  const router = w3;
+  const settlement = w4;
+  const other = w5;
   const chainId = await publicClient.getChainId();
 
   const usdt = await viem.deployContract("MockUSDT", []);

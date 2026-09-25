@@ -16,7 +16,16 @@ describe("SettlementManager", () => {
 
   async function deploy() {
     const { viem } = await network.create();
-    const [admin, router, outsider, treasury] = await viem.getWalletClients();
+    // Narrow the four demo wallets once (noUncheckedIndexedAccess makes array access `| undefined`);
+    // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+    const [w0, w1, w2, w3] = await viem.getWalletClients();
+    if (w0 === undefined || w1 === undefined || w2 === undefined || w3 === undefined) {
+      throw new Error("Expected at least 4 wallet clients from the test network.");
+    }
+    const admin = w0;
+    const router = w1;
+    const outsider = w2;
+    const treasury = w3;
 
     const usdt = await viem.deployContract("MockUSDT", []);
     const issuerRegistry = await viem.deployContract("IssuerRegistry", [admin.account.address]);
@@ -75,8 +84,12 @@ describe("SettlementManager", () => {
 
     const allocs = await settlement.read.getAllocations([claimId]);
     assert.equal(allocs.length, 1);
-    assert.equal(getAddress(allocs[0].vault), vault);
-    assert.equal(allocs[0].faceAmount, a + b);
+    const [alloc0] = allocs;
+    if (alloc0 === undefined) {
+      throw new Error("Expected an allocation entry for the claim.");
+    }
+    assert.equal(getAddress(alloc0.vault), vault);
+    assert.equal(alloc0.faceAmount, a + b);
   });
 
   it("keeps distinct vaults as separate entries", async () => {
@@ -97,10 +110,14 @@ describe("SettlementManager", () => {
 
     const allocs = await settlement.read.getAllocations([claimId]);
     assert.equal(allocs.length, 2);
-    assert.equal(getAddress(allocs[0].vault), v1);
-    assert.equal(allocs[0].faceAmount, a);
-    assert.equal(getAddress(allocs[1].vault), v2);
-    assert.equal(allocs[1].faceAmount, b);
+    const [alloc0, alloc1] = allocs;
+    if (alloc0 === undefined || alloc1 === undefined) {
+      throw new Error("Expected two allocation entries for the claim.");
+    }
+    assert.equal(getAddress(alloc0.vault), v1);
+    assert.equal(alloc0.faceAmount, a);
+    assert.equal(getAddress(alloc1.vault), v2);
+    assert.equal(alloc1.faceAmount, b);
   });
 
   it("emits AllocationRegistered with the per-call faceAmount", async () => {
@@ -152,7 +169,11 @@ describe("SettlementManager", () => {
     });
     const allocs = await settlement.read.getAllocations([claimId]);
     assert.equal(allocs.length, MAX_SLICES_PER_CLAIM);
-    assert.equal(allocs[0].faceAmount, amount * 2n);
+    const [alloc0] = allocs;
+    if (alloc0 === undefined) {
+      throw new Error("Expected an allocation entry for the claim.");
+    }
+    assert.equal(alloc0.faceAmount, amount * 2n);
   });
 
   it("reverts AccessControlUnauthorizedAccount for a non-ROUTER registerAllocation caller", async () => {

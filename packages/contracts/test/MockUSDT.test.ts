@@ -10,7 +10,15 @@ describe("MockUSDT", () => {
 
   async function deploy() {
     const { viem } = await network.create();
-    const [admin, user, other] = await viem.getWalletClients();
+    // Narrow the three demo wallets (noUncheckedIndexedAccess makes array access `| undefined`);
+    // the EDR dev network always provides 20, so this is a type guard, not a runtime expectation.
+    const [w0, w1, w2] = await viem.getWalletClients();
+    if (w0 === undefined || w1 === undefined || w2 === undefined) {
+      throw new Error("Expected at least 3 wallet clients from the test network.");
+    }
+    const admin = w0;
+    const user = w1;
+    const other = w2;
     const usdt = await viem.deployContract("MockUSDT", []);
     return { viem, usdt, admin, user, other };
   }
