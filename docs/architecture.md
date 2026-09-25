@@ -66,9 +66,8 @@ flowchart TD
 ## Smart contracts (P0)
 
 Seven contracts in `@matura/contracts` (Solidity 0.8.28, OpenZeppelin 5.6.1),
-built against a frozen set of interfaces so they compose cleanly. Full design +
-threat model: `docs/plans/2026-09-25-feat-p0-smart-contracts-plan.md` and
-`docs/threat-model.md`.
+built against a frozen set of interfaces so they compose cleanly. Trust
+assumptions and mitigations: `docs/threat-model.md`.
 
 ```mermaid
 flowchart TD

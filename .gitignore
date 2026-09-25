@@ -42,6 +42,12 @@ playwright-report/
 test-results/
 .playwright/
 
+# local-only docs (planning scratch, iteration-specific runbook, generated gas report)
+docs/brainstorms/
+docs/plans/
+docs/deployment-runbook.md
+docs/gas-report.md
+
 # misc
 .DS_Store
 *.log
