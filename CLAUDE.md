@@ -25,9 +25,17 @@ pnpm --filter @matura/contracts typecheck           # hardhat compile && tsc --n
 pnpm --filter @matura/contracts contracts:export-abis   # regenerate @matura/chain ABIs
 ```
 
+Deploy/seed/verify (Hardhat Ignition + idempotent viem scripts; addresses → per-chain manifest,
+never hand-edited). Local: `hardhat node` in one terminal, then `pnpm --filter @matura/contracts
+demo:local` (deploy→seed→verify) in another; `demo:settle` (local-only e2e), `demo:reset`. Testnet:
+`deploy:bsc-testnet` then `seed:bsc-testnet` (uses the seed-only `bscTestnetSeed` network so the
+issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/README.md`.
+
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
-ABI-freshness gate. Toolchain gotchas (Node, tsc `unknown`, ABI/prettier gate):
-`docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`.
+ABI-freshness gate → manifest-freshness gate. Gotchas: toolchain (Node, tsc `unknown`, ABI/prettier
+gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/seed pipeline
+(event-scan block, `.js`→`.ts` script imports, `noUncheckedIndexedAccess`+viem)
+`docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`.
 
 ## Conventions
 
