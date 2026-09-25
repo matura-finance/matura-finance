@@ -1,12 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { parseUnits, type Address, type Hex } from "viem";
-import { deployProtocol, makeRoute } from "../helpers/fixtures.js";
+import { deployProtocol, route } from "../helpers/fixtures.js";
 import { CLAIM_STATE } from "../helpers/constants.js";
-
-function route(user: Address, claimId: Hex, vault: Address, faceAmount: bigint, now: bigint) {
-  return makeRoute(user, [{ claimId, vault, faceAmount }], now);
-}
 
 describe("Integration: obligor self-settlement", () => {
   it("permissionless SourceObligor matures + settles a fully-financed claim: vault made whole, obligor pays face, zero residual", async () => {

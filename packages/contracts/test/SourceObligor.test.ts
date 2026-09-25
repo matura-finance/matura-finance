@@ -1,12 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { getAddress, parseUnits, type Address, type Hex } from "viem";
-import { deployProtocol, makeRoute, type DeployedProtocol } from "./helpers/fixtures.js";
+import { deployProtocol, route, type DeployedProtocol } from "./helpers/fixtures.js";
 import { CLAIM_STATE } from "./helpers/constants.js";
-
-function route(user: Address, claimId: Hex, vault: Address, faceAmount: bigint, now: bigint) {
-  return makeRoute(user, [{ claimId, vault, faceAmount }], now);
-}
 
 /// Deploy a SourceObligor wired to the fixture's protocol and pre-fund it with MockUSDT.
 async function deployObligor(ctx: DeployedProtocol, funding: bigint) {

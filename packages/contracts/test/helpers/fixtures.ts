@@ -225,6 +225,18 @@ export function makeRoute(
   };
 }
 
+/// Convenience wrapper for the common single-leg ExecutionRoute (was duplicated verbatim across
+/// the route/settlement integration tests).
+export function route(
+  user: Address,
+  claimId: Hex,
+  vault: Address,
+  faceAmount: bigint,
+  now: bigint,
+): RouteInput {
+  return makeRoute(user, [{ claimId, vault, faceAmount }], now);
+}
+
 /// Deterministic bytes32 helper for claimId / externalIdHash / evidenceHash in tests.
 export function toBytes32(label: string): `0x${string}` {
   const hex = Buffer.from(label, "utf8").toString("hex").padEnd(64, "0").slice(0, 64);
