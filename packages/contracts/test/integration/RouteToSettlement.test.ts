@@ -1,18 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseUnits, getAddress, type Address, type Hex } from "viem";
-import { deployProtocol } from "../helpers/fixtures.js";
+import { parseUnits, type Address, type Hex } from "viem";
+import { deployProtocol, makeRoute } from "../helpers/fixtures.js";
 import { CLAIM_STATE } from "../helpers/constants.js";
 
 function route(user: Address, claimId: Hex, vault: Address, faceAmount: bigint, now: bigint) {
-  return {
-    user: getAddress(user),
-    targetAdvance: 1n,
-    maxTotalFace: parseUnits("1000000", 6),
-    deadline: now + 3_600n,
-    nonce: 0n,
-    legs: [{ claimId, vault: getAddress(vault), faceAmount, minimumAdvanceAmount: 0n }],
-  };
+  return makeRoute(user, [{ claimId, vault, faceAmount }], now);
 }
 
 describe("Integration: route → mature → settle", () => {

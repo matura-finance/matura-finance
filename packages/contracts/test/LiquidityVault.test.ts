@@ -3,12 +3,9 @@ import assert from "node:assert/strict";
 import { network } from "hardhat";
 import { parseUnits, getAddress } from "viem";
 import { ROLES, CLAIM_TYPE } from "./helpers/constants.js";
-import { demoMandate, toBytes32 } from "./helpers/fixtures.js";
+import { ceilDiv, demoMandate, toBytes32 } from "./helpers/fixtures.js";
 
 /// Pure mirror of MaturaPricing (discount rounds UP, advance = face - discount).
-function ceilDiv(a: bigint, b: bigint): bigint {
-  return (a + b - 1n) / b;
-}
 function computeQuote(
   face: bigint,
   daysToDue: bigint,

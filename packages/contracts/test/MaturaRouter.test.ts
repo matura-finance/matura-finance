@@ -1,43 +1,22 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { parseUnits, getAddress, type Address, type Hex } from "viem";
-import { deployProtocol, toBytes32 } from "./helpers/fixtures.js";
+import { parseUnits, parseEventLogs, type Hex } from "viem";
+import { deployProtocol, makeRoute as baseRoute, toBytes32 } from "./helpers/fixtures.js";
 import { ROLES, CLAIM_STATE } from "./helpers/constants.js";
 
 type Ctx = Awaited<ReturnType<typeof deployProtocol>>;
 
-async function legAdvancesTotal(ctx: Ctx): Promise<bigint> {
-  const logs = await ctx.publicClient.getContractEvents({
-    address: ctx.router.address,
+/// Sum RouteLegExecuted advances from the emitting tx's receipt (not a windowless log scan).
+async function legAdvancesTotal(ctx: Ctx, hash: Hex): Promise<bigint> {
+  const receipt = await ctx.publicClient.getTransactionReceipt({ hash });
+  const logs = parseEventLogs({
     abi: ctx.router.abi,
     eventName: "RouteLegExecuted",
+    logs: receipt.logs,
   });
   let total = 0n;
-  for (const log of logs) {
-    const a = log.args.advanceAmount;
-    if (a !== undefined) total += a;
-  }
+  for (const log of logs) total += log.args.advanceAmount;
   return total;
-}
-
-function baseRoute(
-  user: Address,
-  legs: { claimId: Hex; vault: Address; faceAmount: bigint; min?: bigint }[],
-  now: bigint,
-) {
-  return {
-    user: getAddress(user),
-    targetAdvance: 1n,
-    maxTotalFace: parseUnits("1000000", 6),
-    deadline: now + 3_600n,
-    nonce: 0n,
-    legs: legs.map((l) => ({
-      claimId: l.claimId,
-      vault: getAddress(l.vault),
-      faceAmount: l.faceAmount,
-      minimumAdvanceAmount: l.min ?? 0n,
-    })),
-  };
 }
 
 describe("MaturaRouter", () => {
@@ -58,10 +37,10 @@ describe("MaturaRouter", () => {
     const sig = await signRoute(route);
 
     const before = await usdt.read.balanceOf([accounts.user.account.address]);
-    await router.write.executeRoute([route, sig], { account: accounts.other.account }); // relayer submits
+    const hash = await router.write.executeRoute([route, sig], { account: accounts.other.account }); // relayer submits
     const after = await usdt.read.balanceOf([accounts.user.account.address]);
 
-    const advanced = await legAdvancesTotal(ctx);
+    const advanced = await legAdvancesTotal(ctx, hash);
     assert.ok(advanced > 0n);
     assert.equal(after - before, advanced);
     assert.equal((await claimRegistry.read.getClaim([claimId])).state, CLAIM_STATE.FUNDED);
@@ -85,11 +64,11 @@ describe("MaturaRouter", () => {
       now,
     );
     const before = await usdt.read.balanceOf([accounts.user.account.address]);
-    await router.write.executeRoute([route, await signRoute(route)], {
+    const hash = await router.write.executeRoute([route, await signRoute(route)], {
       account: accounts.user.account,
     });
     const after = await usdt.read.balanceOf([accounts.user.account.address]);
-    assert.equal(after - before, await legAdvancesTotal(ctx));
+    assert.equal(after - before, await legAdvancesTotal(ctx, hash));
   });
 
   it("supports partial funding (PARTIALLY_FUNDED)", async () => {

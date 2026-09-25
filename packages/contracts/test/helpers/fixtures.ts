@@ -1,5 +1,5 @@
 import { network } from "hardhat";
-import { getAddress, type Address, type Hex } from "viem";
+import { getAddress, parseUnits, type Address, type Hex } from "viem";
 import { ROLES } from "./constants.js";
 import {
   CLAIM_ATTESTATION_TYPES,
@@ -164,6 +164,42 @@ export async function deployProtocol() {
     mandate: demoMandate,
     createEligibleClaim,
     signRoute,
+  };
+}
+
+/// Ceil-division mirror of MaturaPricing's rounding (discount rounds UP).
+export function ceilDiv(a: bigint, b: bigint): bigint {
+  return (a + b - 1n) / b;
+}
+
+interface LegSpec {
+  claimId: Hex;
+  vault: Address;
+  faceAmount: bigint;
+  min?: bigint;
+}
+
+/// Build an ExecutionRoute with sensible defaults (targetAdvance 1, maxTotalFace 1M, +1h deadline,
+/// nonce 0). Override any field via `overrides`.
+export function makeRoute(
+  user: Address,
+  legs: LegSpec[],
+  now: bigint,
+  overrides: Partial<RouteInput> = {},
+): RouteInput {
+  return {
+    user: getAddress(user),
+    targetAdvance: 1n,
+    maxTotalFace: parseUnits("1000000", 6),
+    deadline: now + 3_600n,
+    nonce: 0n,
+    legs: legs.map((l) => ({
+      claimId: l.claimId,
+      vault: getAddress(l.vault),
+      faceAmount: l.faceAmount,
+      minimumAdvanceAmount: l.min ?? 0n,
+    })),
+    ...overrides,
   };
 }
 

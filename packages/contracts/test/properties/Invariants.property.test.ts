@@ -2,14 +2,10 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 import { parseUnits, getAddress } from "viem";
-import { deployProtocol } from "../helpers/fixtures.js";
+import { ceilDiv, deployProtocol } from "../helpers/fixtures.js";
 import { ROLES } from "../helpers/constants.js";
 
 const UNIT = parseUnits("1", 6);
-
-function ceilDiv(x: bigint, y: bigint): bigint {
-  return (x + y - 1n) / y;
-}
 
 describe("Property: invariants", () => {
   it("never over-assigns financedFaceValue beyond faceValue", async () => {
