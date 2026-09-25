@@ -207,6 +207,33 @@ describe("LiquidityVault", () => {
       assert.equal(await vault.read.faceByClaim([claimId]), face);
     });
 
+    it("writeOffClaim clears a defaulted claim's exposure (admin only)", async () => {
+      const { viem, vault, router, user, dueIn } = await deployVault();
+      const face = parseUnits("1000", 6);
+      const claimId = toBytes32("claim-wo");
+      await vault.write.fund(
+        [claimId, user.account.address, CLAIM_TYPE.PAYROLL, face, dueIn(30n)],
+        {
+          account: router.account,
+        },
+      );
+      assert.ok((await vault.read.outstandingPrincipal()) > 0n);
+
+      await viem.assertions.revertWithCustomError(
+        vault.write.writeOffClaim([claimId], { account: user.account }),
+        vault,
+        "AccessControlUnauthorizedAccount",
+      );
+      await vault.write.writeOffClaim([claimId]); // admin = default account
+      assert.equal(await vault.read.outstandingPrincipal(), 0n);
+      assert.equal(await vault.read.principalByClaim([claimId]), 0n);
+      await viem.assertions.revertWithCustomError(
+        vault.write.writeOffClaim([claimId]),
+        vault,
+        "NothingToWriteOff",
+      );
+    });
+
     it("reverts InsufficientLiquidity when the vault is underfunded", async () => {
       const { viem, vault, router, user, dueIn } = await deployVault(
         demoMandate,

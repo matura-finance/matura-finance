@@ -23,6 +23,7 @@ interface ILiquidityVault {
     event MandateUpdated(Mandate mandate);
     event IssuerAllowed(address indexed issuer, bool allowed);
     event LiquidityWithdrawn(address indexed to, uint256 amount);
+    event ClaimWrittenOff(bytes32 indexed claimId, uint256 faceAmount, uint256 principalCleared);
 
     error MandateRejected();
     error InsufficientLiquidity();
@@ -31,6 +32,7 @@ interface ILiquidityVault {
     error ReturnMismatch();
     error ZeroAddress();
     error InvalidMandate();
+    error NothingToWriteOff();
 
     function token() external view returns (address);
 
@@ -67,4 +69,7 @@ interface ILiquidityVault {
     function setMandate(Mandate calldata m) external; // DEFAULT_ADMIN_ROLE
     function setIssuerAllowed(address issuer, bool allowed) external; // DEFAULT_ADMIN_ROLE
     function withdraw(address to, uint256 amount) external; // DEFAULT_ADMIN_ROLE, <= availableLiquidity
+    /// @notice Admin recovery: clears a defaulted claim's exposure (principal + face) so the vault's
+    ///         cap headroom is not permanently consumed. Does NOT move tokens (the advance is a loss).
+    function writeOffClaim(bytes32 claimId) external; // DEFAULT_ADMIN_ROLE
 }

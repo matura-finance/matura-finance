@@ -219,6 +219,19 @@ contract LiquidityVault is ILiquidityVault, AccessControl, ReentrancyGuardTransi
         emit LiquidityWithdrawn(to, amount);
     }
 
+    /// @inheritdoc ILiquidityVault
+    /// @dev Admin recovery for a defaulted/never-settled claim: clears exposure so cap headroom is
+    ///      freed. Moves no tokens — the advance is realized as a loss. Reverts if nothing is owed.
+    function writeOffClaim(bytes32 claimId) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 face = faceByClaim[claimId];
+        uint256 principal = principalByClaim[claimId];
+        if (face == 0 && principal == 0) revert NothingToWriteOff();
+        _outstandingPrincipal -= principal;
+        delete principalByClaim[claimId];
+        delete faceByClaim[claimId];
+        emit ClaimWrittenOff(claimId, face, principal);
+    }
+
     /// @notice Replaces the active mandate.
     /// @dev DEFAULT_ADMIN_ROLE only. Emits the key pricing/cap fields for off-chain indexing.
     /// @param m The new mandate configuration.
