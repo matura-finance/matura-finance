@@ -36,7 +36,9 @@ interface ILiquidityVault {
 
     function token() external view returns (address);
 
-    /// @notice Public UI quote (view). Reverts on invalid inputs via MaturaPricing.
+    /// @notice PURE PRICING preview (view) — does NOT apply mandate gating (issuer allowlist, face
+    ///         bounds, supported-types, duration). A UI showing an executable quote must use
+    ///         `quoteAndCheck`, which the router enforces. Reverts on invalid pricing via MaturaPricing.
     function previewQuote(uint8 claimType, uint256 faceAmount, uint256 dueDate)
         external
         view

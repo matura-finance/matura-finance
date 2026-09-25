@@ -153,22 +153,26 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
     }
 
     /// @inheritdoc IClaimRegistry
+    /// @dev ROUTER_ROLE is a single-holder trust boundary: financedFaceValue here and the
+    ///      SettlementManager allocation ledger stay in sync only because the router updates both
+    ///      per leg. Never grant ROUTER_ROLE to a second writer.
     function reserveSlice(bytes32 claimId, uint256 faceAmount) external onlyRole(ROUTER_ROLE) {
         Claim storage c = _load(claimId);
         if (c.state != ClaimStates.ELIGIBLE && c.state != ClaimStates.PARTIALLY_FUNDED) revert InvalidClaimState();
         if (faceAmount == 0) revert ZeroFaceValue();
-        if (c.financedFaceValue + faceAmount > c.faceValue) revert OverAssignment();
+        uint256 newFinanced = c.financedFaceValue + faceAmount;
+        if (newFinanced > c.faceValue) revert OverAssignment();
         if (c.sliceCount >= MaturaConstants.MAX_SLICES_PER_CLAIM) revert MaxSlicesExceeded();
 
-        c.financedFaceValue += faceAmount;
+        c.financedFaceValue = newFinanced;
         c.sliceCount += 1;
-        uint8 newState = c.financedFaceValue == c.faceValue ? ClaimStates.FUNDED : ClaimStates.PARTIALLY_FUNDED;
+        uint8 newState = newFinanced == c.faceValue ? ClaimStates.FUNDED : ClaimStates.PARTIALLY_FUNDED;
         if (c.state != newState) {
             uint8 prev = c.state;
             c.state = newState;
             emit ClaimStateChanged(claimId, prev, newState);
         }
-        emit ClaimSliceReserved(claimId, faceAmount, c.financedFaceValue);
+        emit ClaimSliceReserved(claimId, faceAmount, newFinanced);
     }
 
     /// @inheritdoc IClaimRegistry

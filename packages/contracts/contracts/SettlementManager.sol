@@ -78,9 +78,10 @@ contract SettlementManager is ISettlementManager, AccessControl, ReentrancyGuard
         if (indexPlusOne != 0) {
             _allocations[claimId][indexPlusOne - 1].faceAmount += faceAmount;
         } else {
-            if (_allocations[claimId].length >= MaturaConstants.MAX_SLICES_PER_CLAIM) revert MaxSlicesExceeded();
+            uint256 len = _allocations[claimId].length; // distinct-vault count for this claim
+            if (len >= MaturaConstants.MAX_SLICES_PER_CLAIM) revert MaxSlicesExceeded();
             _allocations[claimId].push(Allocation({vault: vault, faceAmount: faceAmount}));
-            _allocIndexPlusOne[claimId][vault] = _allocations[claimId].length;
+            _allocIndexPlusOne[claimId][vault] = len + 1;
         }
 
         emit AllocationRegistered(claimId, executionId, vault, faceAmount);
