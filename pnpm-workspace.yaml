@@ -24,3 +24,4 @@ catalog:
   viem: 2.56.8 # exact — viem does not semver its TS types
   wagmi: ^2.14.0
   "@tanstack/react-query": ^5.62.0
+  fast-check: ^3.23.2 # property/fuzz testing for contracts
