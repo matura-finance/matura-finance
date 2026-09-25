@@ -168,6 +168,14 @@ contract LiquidityVault is ILiquidityVault, AccessControl, ReentrancyGuardTransi
         return _token.balanceOf(address(this));
     }
 
+    /// @inheritdoc ILiquidityVault
+    function fundableLiquidity() external view returns (uint256) {
+        uint256 balance = _token.balanceOf(address(this));
+        uint256 cap = _mandate.liquidityCap;
+        uint256 headroom = cap > _outstandingPrincipal ? cap - _outstandingPrincipal : 0;
+        return balance < headroom ? balance : headroom;
+    }
+
     /// @notice Returns the total advanced principal outstanding across all claims.
     /// @return The outstanding principal.
     function outstandingPrincipal() external view returns (uint256) {

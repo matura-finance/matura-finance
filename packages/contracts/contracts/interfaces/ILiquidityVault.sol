@@ -47,6 +47,9 @@ interface ILiquidityVault {
         returns (bool ok, uint256 advanceAmount, uint256 discountAmount);
 
     function availableLiquidity() external view returns (uint256);
+    /// @notice The amount actually fundable right now: min(token balance, liquidityCap headroom).
+    ///         The router pre-checks against this so a route can't pass validation then revert in fund.
+    function fundableLiquidity() external view returns (uint256);
     function outstandingPrincipal() external view returns (uint256);
     function liquidityCap() external view returns (uint256);
     function getMandate() external view returns (Mandate memory);

@@ -15,6 +15,7 @@ import {IVaultRegistry} from "./interfaces/IVaultRegistry.sol";
 import {IIssuerRegistry} from "./interfaces/IIssuerRegistry.sol";
 import {ISettlementManager} from "./interfaces/ISettlementManager.sol";
 import {MaturaConstants} from "./libraries/MaturaConstants.sol";
+import {ClaimStates} from "./libraries/ClaimEnums.sol";
 
 /// @title MaturaRouter
 /// @notice Verifies a user-signed EIP-712 ExecutionRoute, recomputes every vault quote on-chain,
@@ -115,6 +116,7 @@ contract MaturaRouter is IMaturaRouter, AccessControl, EIP712, Nonces, Reentranc
         uint256 n = route.legs.length;
         address[] memory seenVaults = new address[](n);
         uint256[] memory reserved = new uint256[](n);
+        uint256[] memory fundable = new uint256[](n); // cached fundableLiquidity per distinct vault
         uint256 seenCount;
 
         for (uint256 i = 0; i < n; ++i) {
@@ -123,7 +125,10 @@ contract MaturaRouter is IMaturaRouter, AccessControl, EIP712, Nonces, Reentranc
 
             if (c.beneficiary != route.user) revert BeneficiaryMismatch();
             if (c.token != ILiquidityVault(leg.vault).token()) revert TokenMismatch();
-            if (!claimRegistry.isFinanceable(leg.claimId)) revert ClaimNotFinanceable();
+            // Financeable derived from the already-fetched state (no second STATICCALL).
+            if (c.state != ClaimStates.ELIGIBLE && c.state != ClaimStates.PARTIALLY_FUNDED) {
+                revert ClaimNotFinanceable();
+            }
             if (!issuerRegistry.isActive(c.issuer)) revert IssuerInactive();
             if (!vaultRegistry.isActive(leg.vault)) revert VaultNotActive();
 
@@ -137,6 +142,8 @@ contract MaturaRouter is IMaturaRouter, AccessControl, EIP712, Nonces, Reentranc
             totalFace += leg.faceAmount;
             totalCost += discount;
 
+            // Accumulate reserved advance per distinct vault; cache its fundable liquidity (balance +
+            // cap headroom) once so two legs on one vault can't both pass against stale capacity.
             uint256 vi = type(uint256).max;
             for (uint256 k = 0; k < seenCount; ++k) {
                 if (seenVaults[k] == leg.vault) {
@@ -147,10 +154,11 @@ contract MaturaRouter is IMaturaRouter, AccessControl, EIP712, Nonces, Reentranc
             if (vi == type(uint256).max) {
                 vi = seenCount;
                 seenVaults[seenCount] = leg.vault;
+                fundable[seenCount] = ILiquidityVault(leg.vault).fundableLiquidity();
                 ++seenCount;
             }
             reserved[vi] += advance;
-            if (reserved[vi] > ILiquidityVault(leg.vault).availableLiquidity()) revert InsufficientLiquidity();
+            if (reserved[vi] > fundable[vi]) revert InsufficientLiquidity();
         }
     }
 
