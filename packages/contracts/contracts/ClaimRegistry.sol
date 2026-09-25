@@ -33,6 +33,8 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
     /// @dev Unordered attestation nonces keyed by signer: any unused nonce may be consumed, in any
     ///      order, so an unsubmitted low nonce cannot block higher ones (permissionless entrypoint).
     mapping(address signer => mapping(uint256 nonce => bool)) private _usedNonce;
+    /// @dev claimId → externalIdHash, so reject/revoke can free the invoice for re-attestation.
+    mapping(bytes32 claimId => bytes32 externalIdHash) private _claimExternalId;
 
     /// @param admin holder of DEFAULT_ADMIN_ROLE and CLAIM_REVIEWER_ROLE
     /// @param issuerRegistry_ authorization source for issuer signers
@@ -83,6 +85,7 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
         // Effects
         _usedNonce[signer][att.nonce] = true;
         _usedExternalId[att.externalIdHash] = true;
+        _claimExternalId[att.claimId] = att.externalIdHash;
         _exists[att.claimId] = true;
         _claims[att.claimId] = Claim({
             beneficiary: att.beneficiary,
@@ -112,6 +115,7 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
     function reject(bytes32 claimId) external onlyRole(CLAIM_REVIEWER_ROLE) {
         Claim storage c = _load(claimId);
         if (c.state != ClaimStates.ATTESTED) revert InvalidClaimState();
+        _freeExternalId(claimId);
         _setState(claimId, c, ClaimStates.REJECTED);
     }
 
@@ -121,6 +125,7 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
         if (msg.sender != c.issuer && !hasRole(CLAIM_REVIEWER_ROLE, msg.sender)) revert NotAuthorized();
         if (c.financedFaceValue != 0) revert ClaimAlreadyFunded();
         if (c.state != ClaimStates.ATTESTED && c.state != ClaimStates.ELIGIBLE) revert InvalidClaimState();
+        _freeExternalId(claimId);
         _setState(claimId, c, ClaimStates.REVOKED);
     }
 
@@ -182,6 +187,13 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
         if (!_exists[claimId]) return false;
         uint8 s = _claims[claimId].state;
         return s == ClaimStates.ELIGIBLE || s == ClaimStates.PARTIALLY_FUNDED;
+    }
+
+    /// @dev Frees the claim's externalIdHash so the underlying invoice can be re-attested after a
+    ///      reject/revoke. The terminal claim record (REJECTED/REVOKED) is preserved.
+    function _freeExternalId(bytes32 claimId) private {
+        delete _usedExternalId[_claimExternalId[claimId]];
+        delete _claimExternalId[claimId];
     }
 
     function _load(bytes32 claimId) private view returns (Claim storage c) {

@@ -326,4 +326,19 @@ describe("ClaimRegistry", () => {
     assert.equal(settled.state, CLAIM_STATE.PAID);
     assert.equal(settled.financedFaceValue, parseUnits("1000", 6));
   });
+
+  it("frees the externalIdHash for re-attestation after reject/revoke", async () => {
+    const { claimRegistry, makeAtt, sign } = await setup();
+    const a = makeAtt(); // externalIdHash "ext-1"
+    await claimRegistry.write.registerClaim([a, await sign(a)]);
+    await claimRegistry.write.reject([a.claimId]);
+
+    // same externalIdHash, new claimId + nonce → previously blocked, now allowed
+    const reattest = makeAtt({ claimId: toBytes32("claim-1b"), nonce: 1n });
+    await claimRegistry.write.registerClaim([reattest, await sign(reattest)]);
+    assert.equal(
+      (await claimRegistry.read.getClaim([reattest.claimId])).state,
+      CLAIM_STATE.ATTESTED,
+    );
+  });
 });
