@@ -66,6 +66,7 @@ interface IClaimRegistry {
     error ClaimNotFound();
     error NotMatured();
     error ZeroAddress();
+    error NonceAlreadyUsed();
 
     /// @notice Verify an issuer attestation and register the claim as ATTESTED (permissionless submit).
     function registerClaim(ClaimAttestation calldata att, bytes calldata signature) external;
@@ -96,4 +97,8 @@ interface IClaimRegistry {
 
     /// @notice True when the claim is ELIGIBLE or PARTIALLY_FUNDED (financeable).
     function isFinanceable(bytes32 claimId) external view returns (bool);
+
+    /// @notice True when `nonce` has already been consumed by `signer` (attestation nonces are
+    ///         unordered — the backend should pick any unused value).
+    function isNonceUsed(address signer, uint256 nonce) external view returns (bool);
 }

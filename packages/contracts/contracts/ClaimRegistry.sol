@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
 import {IClaimRegistry} from "./interfaces/IClaimRegistry.sol";
 import {IIssuerRegistry} from "./interfaces/IIssuerRegistry.sol";
@@ -16,7 +15,7 @@ import {MaturaConstants} from "./libraries/MaturaConstants.sol";
 ///         aggregate financed-face accounting, and exposes role-gated slice reserve/release.
 /// @dev Attestation nonces are keyed by the recovered signer (OZ Nonces). A signer backs only one
 ///      issuer (enforced in IssuerRegistry), so signer-keyed nonces cannot collide across issuers.
-contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712, Nonces {
+contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
     bytes32 public constant CLAIM_REVIEWER_ROLE = keccak256("CLAIM_REVIEWER_ROLE");
     bytes32 public constant ROUTER_ROLE = keccak256("ROUTER_ROLE");
     bytes32 public constant SETTLEMENT_ROLE = keccak256("SETTLEMENT_ROLE");
@@ -31,6 +30,9 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712, Nonces {
     mapping(bytes32 claimId => Claim) private _claims;
     mapping(bytes32 claimId => bool) private _exists;
     mapping(bytes32 externalIdHash => bool) private _usedExternalId;
+    /// @dev Unordered attestation nonces keyed by signer: any unused nonce may be consumed, in any
+    ///      order, so an unsubmitted low nonce cannot block higher ones (permissionless entrypoint).
+    mapping(address signer => mapping(uint256 nonce => bool)) private _usedNonce;
 
     /// @param admin holder of DEFAULT_ADMIN_ROLE and CLAIM_REVIEWER_ROLE
     /// @param issuerRegistry_ authorization source for issuer signers
@@ -76,8 +78,10 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712, Nonces {
         address signer = ECDSA.recover(_hashTypedDataV4(structHash), signature);
         if (!issuerRegistry.isAuthorizedSigner(att.issuer, signer, att.signerEpoch)) revert InvalidSignature();
 
+        if (_usedNonce[signer][att.nonce]) revert NonceAlreadyUsed();
+
         // Effects
-        _useCheckedNonce(signer, att.nonce);
+        _usedNonce[signer][att.nonce] = true;
         _usedExternalId[att.externalIdHash] = true;
         _exists[att.claimId] = true;
         _claims[att.claimId] = Claim({
@@ -166,6 +170,11 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712, Nonces {
     function getClaim(bytes32 claimId) external view returns (Claim memory) {
         if (!_exists[claimId]) revert ClaimNotFound();
         return _claims[claimId];
+    }
+
+    /// @inheritdoc IClaimRegistry
+    function isNonceUsed(address signer, uint256 nonce) external view returns (bool) {
+        return _usedNonce[signer][nonce];
     }
 
     /// @inheritdoc IClaimRegistry

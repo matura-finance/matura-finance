@@ -164,7 +164,7 @@ describe("ClaimRegistry", () => {
     await viem.assertions.revertWithCustomError(
       claimRegistry.write.registerClaim([replay, await sign(replay)]),
       claimRegistry,
-      "InvalidAccountNonce",
+      "NonceAlreadyUsed",
     );
   });
 
