@@ -6,9 +6,7 @@ import { readManifest } from "./lib/read-manifest.js";
 import { ROLES, CLAIM_STATE, CLAIM_TYPE } from "../config/constants.js";
 import { STABLE_MANDATE, FLEX_MANDATE, type VaultMandate } from "../config/vault-mandates.js";
 import { ALICE_CLAIMS, REQUEST_A, REQUEST_B, claimIdFor } from "../config/demo.js";
-
-const ALLOWED_CHAIN_IDS = [31337, 97] as const;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+import { ALLOWED_CHAIN_IDS, ZERO_ADDRESS } from "./lib/constants.js";
 
 /// Read-only verification of a seeded Matura chain. Exits non-zero on any failure. Confirms: both
 /// vault mandates, balances, the role wiring + reserve/release separation invariant (via

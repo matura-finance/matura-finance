@@ -14,11 +14,9 @@ import {
   externalIdFor,
 } from "../config/demo.js";
 import { STABLE_MANDATE, FLEX_MANDATE } from "../config/vault-mandates.js";
+import { ALLOWED_CHAIN_IDS, ZERO_ADDRESS, DAY_SECONDS } from "./lib/constants.js";
 
-const ALLOWED_CHAIN_IDS = [31337, 97] as const;
 const OBLIGOR_FUNDING = parseUnits("25000", 6); // covers the largest claim face (+ fee headroom)
-const DAY_SECONDS = 86_400n;
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /// Idempotently seed a deployed Matura chain: register the demo issuer, allowlist it on both
 /// vaults, fund the vaults + source obligors, and register Alice's three ELIGIBLE claims. Re-runs

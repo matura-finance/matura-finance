@@ -5,8 +5,7 @@ import { readManifest } from "./lib/read-manifest.js";
 import { EXECUTION_ROUTE_TYPES, routerDomain } from "../config/eip712.js";
 import { CLAIM_STATE } from "../config/constants.js";
 import { ACTORS, ALICE_CLAIMS, claimIdFor } from "../config/demo.js";
-
-const LOCAL_CHAIN_ID = 31337;
+import { LOCAL_CHAIN_ID, DAY_SECONDS } from "./lib/constants.js";
 
 /// LOCAL-ONLY demo: drive one seeded claim end-to-end through the obligor self-settlement path —
 /// route (fund) Alice's payroll claim on the Stable vault, warp past its dueDate, then have the
@@ -80,7 +79,8 @@ async function main(): Promise<void> {
   console.log(`Routed payroll claim -> state ${String(funded.state)} (FUNDED). tx ${routeHash}`);
 
   // 2. Warp past the dueDate so the claim can mature.
-  await networkHelpers.time.increase(Number(BigInt(payroll.dueInDays) * 86_400n) + 60);
+  // dueInDays is small (≤60), so this bigint→Number conversion is safe well within MAX_SAFE_INTEGER.
+  await networkHelpers.time.increase(Number(BigInt(payroll.dueInDays) * DAY_SECONDS) + 60);
 
   // 3. Obligor self-settles (permissionless): markMatured + settleClaim.
   const obligorBefore = await usdt.read.balanceOf([manifest.sources.payroll]);

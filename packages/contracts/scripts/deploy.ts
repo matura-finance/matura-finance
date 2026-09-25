@@ -7,8 +7,7 @@ import { computeAbiBuildId } from "./lib/abi-build-id.js";
 import { writeJsonAtomic } from "./lib/atomic-write.js";
 import { readManifest, manifestPath } from "./lib/read-manifest.js";
 import type { DeploymentManifestData } from "./lib/manifest-types.js";
-
-const ALLOWED_CHAIN_IDS = [31337, 97] as const;
+import { ALLOWED_CHAIN_IDS, BSC_TESTNET_CHAIN_ID } from "./lib/constants.js";
 
 /// Deploy (or idempotently re-apply) the Matura protocol via Ignition, assert the wiring, and
 /// write the validated deployment manifest. Run:
@@ -20,7 +19,7 @@ async function main(): Promise<void> {
   const publicClient = await viem.getPublicClient();
 
   const chainId = await assertChainId(publicClient, ALLOWED_CHAIN_IDS);
-  const deploymentId = chainId === 97 ? "matura-bsctestnet" : "matura-local";
+  const deploymentId = chainId === BSC_TESTNET_CHAIN_ID ? "matura-bsctestnet" : "matura-local";
   console.log(
     `Deploying MaturaProtocol to chainId ${String(chainId)} (deploymentId ${deploymentId})…`,
   );
