@@ -10,7 +10,8 @@
     "./clients": "./src/clients.ts",
     "./deployments": "./src/deployments.ts",
     "./addresses": "./src/addresses.ts",
-    "./abis": "./src/abis/index.ts"
+    "./abis": "./src/abis/index.ts",
+    "./contracts": "./src/contracts.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
