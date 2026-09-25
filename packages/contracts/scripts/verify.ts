@@ -171,7 +171,7 @@ async function main(): Promise<void> {
     (await usdt.read.balanceOf([manifest.namedVaults.flexVault])) >= FLEX_MANDATE.liquidityCap,
   );
   for (const [name, source] of Object.entries(manifest.sources)) {
-    check(`${name}Source funded`, (await usdt.read.balanceOf([source as Address])) > 0n);
+    check(`${name}Source funded`, (await usdt.read.balanceOf([source])) > 0n);
   }
 
   // 5. Alice's three claims exist, ELIGIBLE, with the configured params.
@@ -254,22 +254,28 @@ async function main(): Promise<void> {
         maxSingle < REQUEST_B.targetAdvance,
       );
 
-      // Request B: the named payroll+stream pair on Stable does reach it.
-      const [, advPayroll] = await stableVault.read.quoteAndCheck([
+      // Request B: the named payroll+stream pair on Stable is eligible, fits maxTotalFace, and
+      // together reaches targetAdvance (assert the `ok` flags + face budget, not just the advance).
+      const payrollFace = ALICE_CLAIMS[0].faceValue;
+      const streamFace = ALICE_CLAIMS[2].faceValue;
+      const [payrollOk, advPayroll] = await stableVault.read.quoteAndCheck([
         issuer,
         CLAIM_TYPE.PAYROLL,
-        ALICE_CLAIMS[0].faceValue,
+        payrollFace,
         payrollDue,
       ]);
-      const [, advStream] = await stableVault.read.quoteAndCheck([
+      const [streamOk, advStream] = await stableVault.read.quoteAndCheck([
         issuer,
         CLAIM_TYPE.STREAM,
-        ALICE_CLAIMS[2].faceValue,
+        streamFace,
         streamDue,
       ]);
       check(
-        "request B: payroll + stream pair on Stable >= targetAdvance",
-        advPayroll + advStream >= REQUEST_B.targetAdvance,
+        "request B: payroll + stream pair on Stable reaches targetAdvance within maxTotalFace",
+        payrollOk &&
+          streamOk &&
+          payrollFace + streamFace <= REQUEST_B.maxTotalFace &&
+          advPayroll + advStream >= REQUEST_B.targetAdvance,
       );
     }
   }
