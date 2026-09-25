@@ -28,9 +28,6 @@ interface ILiquidityVault {
     error InsufficientLiquidity();
     error LiquidityCapExceeded();
     error ClaimTypeUnsupported();
-    error IssuerNotAllowed();
-    error FaceOutOfRange();
-    error DurationTooLong();
     error ReturnMismatch();
     error ZeroAddress();
 
