@@ -1,0 +1,17 @@
+# Git hooks (installed via `pnpm install` → `lefthook install`).
+# The gitleaks step is guarded: it scans when gitleaks is installed, and skips
+# gracefully otherwise so commits are never hard-blocked by a missing tool.
+pre-commit:
+  parallel: true
+  commands:
+    gitleaks:
+      run: |
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks git --staged --redact --no-banner
+        else
+          echo "gitleaks not installed — skipping secret scan (brew install gitleaks)"
+        fi
+    format:
+      glob: "*.{ts,tsx,js,jsx,mjs,cjs,md,json,css,yaml,yml}"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true

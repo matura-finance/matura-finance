@@ -41,13 +41,13 @@ portion to Matura Vaults and returns the unassigned remainder to the user.
 
 ## Core concepts
 
-| Term | Meaning |
-| --- | --- |
-| **Matura Protocol** | The onchain contracts that verify, price, route, and settle claims. |
-| **Matura Account** | A user's portfolio of claims and financing history. |
-| **Matura Claims** | Verified future payments, represented onchain by hashes and state — never PII. |
-| **Matura Vaults** | Liquidity providers with distinct mandates and pricing policies. |
-| **Matura Router** | Validates signed, executable routes and atomically funds the user. |
+| Term                | Meaning                                                                        |
+| ------------------- | ------------------------------------------------------------------------------ |
+| **Matura Protocol** | The onchain contracts that verify, price, route, and settle claims.            |
+| **Matura Account**  | A user's portfolio of claims and financing history.                            |
+| **Matura Claims**   | Verified future payments, represented onchain by hashes and state — never PII. |
+| **Matura Vaults**   | Liquidity providers with distinct mandates and pricing policies.               |
+| **Matura Router**   | Validates signed, executable routes and atomically funds the user.             |
 
 A **claim** is a verified future payment. `claimId` is a `bytes32` derived from
 `chainId`, issuer, `externalId`, and nonce. Every claim has a single settlement
@@ -93,15 +93,15 @@ packages/
 
 ### Core contracts
 
-| Contract | Responsibility |
-| --- | --- |
-| `MockUSDT` | Faucet-enabled test ERC-20 (6 decimals). |
-| `IssuerRegistry` | Issuer and signer allowlist plus active status. |
-| `ClaimRegistry` | EIP-712 attestations, canonical claim state, financed amount. |
-| `LiquidityVault` | Demo capital, mandate, quote calculation, funding accounting. |
-| `MaturaRouter` | Validates signed/executable routes and atomically funds the user. |
-| `SettlementManager` | Accepts issuer payment; distributes vault allocation and user residual. |
-| `MockFreelanceEscrow`, `MockStreamAdapter` | Source simulators for demo claim origination. |
+| Contract                                   | Responsibility                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| `MockUSDT`                                 | Faucet-enabled test ERC-20 (6 decimals).                                |
+| `IssuerRegistry`                           | Issuer and signer allowlist plus active status.                         |
+| `ClaimRegistry`                            | EIP-712 attestations, canonical claim state, financed amount.           |
+| `LiquidityVault`                           | Demo capital, mandate, quote calculation, funding accounting.           |
+| `MaturaRouter`                             | Validates signed/executable routes and atomically funds the user.       |
+| `SettlementManager`                        | Accepts issuer payment; distributes vault allocation and user residual. |
+| `MockFreelanceEscrow`, `MockStreamAdapter` | Source simulators for demo claim origination.                           |
 
 ### Claim states
 
@@ -133,18 +133,18 @@ silently revoked. The implemented transition set is kept minimal and explicit.
 
 **Alice's portfolio**
 
-| Claim | Face value | Due | Source |
-| --- | --- | --- | --- |
-| Payroll | 1,000 mUSDT | 10 days | Low-risk issuer |
-| Freelance escrow | 600 mUSDT | 14 days | Medium risk |
-| Stream | 400 mUSDT | 30 days | Onchain source |
+| Claim            | Face value  | Due     | Source          |
+| ---------------- | ----------- | ------- | --------------- |
+| Payroll          | 1,000 mUSDT | 10 days | Low-risk issuer |
+| Freelance escrow | 600 mUSDT   | 14 days | Medium risk     |
+| Stream           | 400 mUSDT   | 30 days | Onchain source  |
 
 **Vaults**
 
-| Vault | Eligible claims | Pricing | Mandate |
-| --- | --- | --- | --- |
-| Stable Vault | Payroll, stream | Low discount | Stricter max duration and issuer rules |
-| Flex Vault | All eligible types | Higher discount | Broader mandate |
+| Vault        | Eligible claims    | Pricing         | Mandate                                |
+| ------------ | ------------------ | --------------- | -------------------------------------- |
+| Stable Vault | Payroll, stream    | Low discount    | Stricter max duration and issuer rules |
+| Flex Vault   | All eligible types | Higher discount | Broader mandate                        |
 
 - **Request A** is small and uses only a partial payroll slice.
 - **Request B** is larger and combines at least two claim slices.
@@ -169,10 +169,34 @@ integration. This prototype does not transfer any real receivable.
 
 ## Development
 
-> Scaffolding is in progress. Setup and run instructions will land with the
-> workspace tooling.
+**Prerequisites:** Node **24 LTS** (Hardhat 3 does not support Node 25+) and
+pnpm 10. The version is pinned in `.nvmrc` / `engines`.
 
 ```bash
-pnpm install
-pnpm dev
+nvm use            # -> Node 24 (see .nvmrc)
+pnpm install       # installs the workspace; sets up git hooks
+cp .env.example .env   # fill in per-app values as needed
 ```
+
+Run an app:
+
+```bash
+pnpm --filter @matura/app dev       # product app  -> http://localhost:3002
+pnpm --filter @matura/landing dev   # marketing     -> http://localhost:3001
+pnpm --filter @matura/api dev       # API           -> http://localhost:3000
+```
+
+Workspace checks (all pass on the foundation):
+
+```bash
+pnpm build           # turbo: shared (tsup), api (nest), both Next apps
+pnpm lint            # ESLint 9, type-aware, no-any enforced
+pnpm typecheck       # tsc --noEmit across packages/apps
+pnpm test            # vitest (shared/chain/ui) + jest (api)
+pnpm test:e2e        # api health e2e (supertest)
+pnpm contracts:compile && pnpm contracts:test   # Hardhat 3 (needs Node 24)
+```
+
+> Layout, package boundaries, and technology rationale: see
+> [`docs/architecture.md`](docs/architecture.md) and
+> [`docs/decisions.md`](docs/decisions.md).

@@ -1,0 +1,30 @@
+{
+  "name": "@matura/chain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./chains": "./src/chains.ts",
+    "./units": "./src/units.ts",
+    "./clients": "./src/clients.ts",
+    "./deployments": "./src/deployments.ts",
+    "./addresses": "./src/addresses.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "viem": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@matura/eslint-config": "workspace:*",
+    "@matura/typescript-config": "workspace:*",
+    "eslint": "^9.39.1",
+    "typescript": "catalog:",
+    "vitest": "^3.2.0"
+  }
+}

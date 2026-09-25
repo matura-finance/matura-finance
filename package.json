@@ -1,0 +1,31 @@
+{
+  "name": "matura-finance",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.29.2",
+  "engines": {
+    "node": ">=22.13 <25",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "db:generate": "turbo run db:generate",
+    "db:migrate": "turbo run db:migrate",
+    "contracts:compile": "turbo run contracts:compile",
+    "contracts:test": "turbo run contracts:test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,mjs,cjs,md,json,css,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mjs,cjs,md,json,css,yaml,yml}\"",
+    "prepare": "lefthook install || true"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.9",
+    "prettier": "^3.6.2",
+    "lefthook": "^1.11.0",
+    "typescript": "catalog:"
+  }
+}

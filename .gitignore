@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# env / secrets — never commit real values
+.env
+.env.*
+!.env.example
+apps/*/.env
+apps/*/.env.*
+!apps/*/.env.example
+packages/*/.env
+packages/*/.env.*
+!packages/*/.env.example
+
+# hardhat keystore (if ever project-local)
+.hardhat/
+
+# build outputs
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# turbo
+.turbo/
+
+# prisma generated client
+apps/api/src/generated/
+
+# hardhat artifacts
+packages/contracts/artifacts/
+packages/contracts/cache/
+packages/contracts/types/
+packages/contracts/typechain-types/
+
+# tests
+coverage/
+playwright-report/
+test-results/
+.playwright/
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*

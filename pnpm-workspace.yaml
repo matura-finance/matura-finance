@@ -1,0 +1,26 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# pnpm 10 disables lifecycle build scripts by default — allowlist the packages
+# that legitimately need them (native builds / codegen).
+onlyBuiltDependencies:
+  - esbuild
+  - "@prisma/client"
+  - "@prisma/engines"
+  - prisma
+  - "@nomicfoundation/edr"
+  - lefthook
+  - sharp
+
+# Single source of truth for shared dependency versions.
+catalog:
+  react: 19.2.0
+  react-dom: 19.2.0
+  "@types/react": ^19.2.0
+  "@types/react-dom": ^19.2.0
+  typescript: ^5.9.3
+  zod: ^4.1.12
+  viem: 2.56.8 # exact — viem does not semver its TS types
+  wagmi: ^2.14.0
+  "@tanstack/react-query": ^5.62.0

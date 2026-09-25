@@ -1,0 +1,13 @@
+node_modules
+dist
+.next
+.turbo
+out
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+apps/api/src/generated
+packages/contracts/artifacts
+packages/contracts/cache
+packages/contracts/types

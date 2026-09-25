@@ -1,0 +1,9 @@
+# gitleaks config — extends the built-in ruleset.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow the committed env template (placeholder values only)."
+paths = [
+  '''\.env\.example$''',
+]

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
+  "globalEnv": ["NODE_ENV"],
+  "globalPassThroughEnv": ["CI"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "env": [
+        "NODE_ENV",
+        "NEXT_PUBLIC_CHAIN_ID",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_LANDING_URL",
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_MOCK_USDT_ADDRESS",
+        "NEXT_PUBLIC_ISSUER_REGISTRY_ADDRESS",
+        "NEXT_PUBLIC_CLAIM_REGISTRY_ADDRESS",
+        "NEXT_PUBLIC_ROUTER_ADDRESS",
+        "NEXT_PUBLIC_SETTLEMENT_MANAGER_ADDRESS"
+      ],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "test:e2e": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "db:generate": {
+      "cache": false
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "contracts:compile": {
+      "inputs": ["contracts/**", "hardhat.config.*"],
+      "outputs": ["artifacts/**", "cache/**", "types/**"]
+    },
+    "contracts:test": {
+      "dependsOn": ["contracts:compile"]
+    }
+  }
+}

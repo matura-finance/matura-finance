@@ -1,0 +1,9 @@
+@import "@matura/ui/globals.css";
+
+/*
+ * Tailwind v4 must scan the shared UI package sources so that utility classes
+ * used inside @matura/ui components are generated in this app's stylesheet.
+ * This file lives at apps/app/src/app/globals.css, so packages/ui/src is four
+ * directory levels up.
+ */
+@source "../../../../packages/ui/src";

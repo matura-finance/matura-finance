@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------------------
+ * Brand @theme — Matura design tokens (single source of truth).
+ * Exposed as Tailwind utilities (e.g. bg-liquid-mint, rounded-card, p-gutter).
+ * ------------------------------------------------------------------------- */
+@theme {
+  --color-midnight: #111827;
+  --color-liquid-mint: #42e8b4;
+  --color-mist: #f4f7f6;
+  --color-deep-night: #080d17;
+
+  --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-ui: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 0.75rem;
+  --radius-pill: 9999px;
+
+  --spacing-gutter: 1.25rem;
+  --spacing-section: 4rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Semantic token layer (shadcn-style). Light theme defaults on :root,
+ * dark overrides under .dark. These map to Tailwind color utilities via the
+ * @theme inline block below (e.g. bg-background, text-foreground, bg-primary).
+ * ------------------------------------------------------------------------- */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.21 0.03 264);
+  --primary: var(--color-liquid-mint);
+  --primary-foreground: var(--color-deep-night);
+  --secondary: oklch(0.97 0.005 264);
+  --secondary-foreground: oklch(0.21 0.03 264);
+  --muted: oklch(0.97 0.005 264);
+  --muted-foreground: oklch(0.55 0.02 264);
+  --accent: oklch(0.97 0.005 264);
+  --accent-foreground: oklch(0.21 0.03 264);
+  --border: oklch(0.92 0.006 264);
+  --input: oklch(0.92 0.006 264);
+  --ring: var(--color-liquid-mint);
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: var(--color-deep-night);
+  --foreground: oklch(0.97 0.005 264);
+  --primary: var(--color-liquid-mint);
+  --primary-foreground: var(--color-deep-night);
+  --secondary: oklch(0.27 0.02 264);
+  --secondary-foreground: oklch(0.97 0.005 264);
+  --muted: oklch(0.27 0.02 264);
+  --muted-foreground: oklch(0.7 0.02 264);
+  --accent: oklch(0.27 0.02 264);
+  --accent-foreground: oklch(0.97 0.005 264);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: var(--color-liquid-mint);
+}
+
+/* ---------------------------------------------------------------------------
+ * Bridge semantic tokens into Tailwind's utility namespace so utilities like
+ * `bg-background`, `text-foreground`, `border-border`, `bg-primary` resolve.
+ * ------------------------------------------------------------------------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-ui);
+  }
+}

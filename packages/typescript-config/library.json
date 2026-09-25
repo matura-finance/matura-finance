@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Library (NodeNext)",
+  "extends": "./base.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": true,
+    "lib": ["ES2022"]
+  }
+}

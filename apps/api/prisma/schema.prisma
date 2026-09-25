@@ -1,0 +1,135 @@
+// Matura API — event-log PROJECTIONS of on-chain state.
+//
+// Every projected row carries `blockNumber` + `logIndex` and a natural chain key
+// so an idempotent, reorg-safe indexer can upsert on replay instead of
+// duplicating. Monetary fields are String base-units (exact on-chain match, no
+// float risk); addresses are stored lowercase (checksum-validated at the edge).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ClaimType {
+  PAYROLL
+  FREELANCE_ESCROW
+  STREAM
+}
+
+enum ClaimState {
+  ATTESTED
+  ELIGIBLE
+  PARTIALLY_FUNDED
+  FUNDED
+  MATURED
+  PAID
+  DELAYED
+  DISPUTED
+  DEFAULTED
+  REJECTED
+  REVOKED
+}
+
+enum RouteStatus {
+  PENDING
+  EXECUTED
+  FAILED
+}
+
+model UserWallet {
+  id        String   @id @default(cuid())
+  address   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model IssuerProjection {
+  id              String  @id @default(cuid())
+  chainIssuerId   String // "chainId:address"
+  address         String
+  signer          String
+  name            String
+  active          Boolean @default(true)
+  lastSyncedBlock BigInt  @default(0)
+
+  @@unique([chainIssuerId])
+  @@index([address])
+}
+
+model ClaimProjection {
+  claimId           String     @id
+  beneficiary       String
+  issuer            String
+  claimType         ClaimType
+  token             String
+  faceValue         String // base-units string
+  financedFaceValue String // base-units string
+  dueAt             DateTime
+  state             ClaimState
+  txHash            String
+  blockNumber       BigInt
+  logIndex          Int
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  legs RouteLegProjection[]
+
+  @@unique([txHash, logIndex])
+  @@index([beneficiary])
+  @@index([issuer])
+  @@index([state, dueAt])
+  @@index([beneficiary, state])
+  @@index([issuer, state])
+}
+
+model RouteExecution {
+  executionId       String      @id
+  user              String
+  targetAdvance     String
+  totalAdvance      String
+  totalFaceAssigned String
+  totalCost         String
+  status            RouteStatus
+  txHash            String
+  blockNumber       BigInt
+  logIndex          Int
+  createdAt         DateTime    @default(now())
+
+  legs RouteLegProjection[]
+
+  @@unique([txHash, logIndex])
+  @@index([user])
+}
+
+model RouteLegProjection {
+  id             String @id @default(cuid())
+  executionId    String
+  claimId        String
+  vault          String
+  faceAmount     String
+  advanceAmount  String
+  discountAmount String
+  blockNumber    BigInt
+  logIndex       Int
+
+  execution RouteExecution  @relation(fields: [executionId], references: [executionId], onDelete: Cascade)
+  claim     ClaimProjection @relation(fields: [claimId], references: [claimId], onDelete: Restrict)
+
+  @@unique([executionId, claimId])
+  @@index([executionId])
+  @@index([claimId])
+}
+
+model ChainCursor {
+  consumerName           String
+  chainId                Int
+  lastProcessedBlock     BigInt
+  lastProcessedBlockHash String
+
+  @@id([consumerName, chainId])
+}

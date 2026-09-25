@@ -1,0 +1,9 @@
+{
+  "extends": "@matura/typescript-config/nestjs.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "./dist"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "src/generated", "test"]
+}
