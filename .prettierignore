@@ -11,3 +11,4 @@ apps/api/src/generated
 packages/contracts/artifacts
 packages/contracts/cache
 packages/contracts/types
+packages/chain/src/abis

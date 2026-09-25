@@ -5,7 +5,6 @@ import { ConfigService } from "@nestjs/config";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import express from "express";
 import helmet from "helmet";
 import { cleanupOpenApiDoc } from "nestjs-zod";
 
@@ -16,9 +15,14 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
-  // Security headers + strict request body limit.
-  app.use(helmet());
-  app.use(express.json({ limit: "100kb" }));
+  // Swagger/docs are dev-only; fail closed on a missing/unknown NODE_ENV.
+  const nodeEnv = config.get("NODE_ENV", { infer: true });
+  const isProduction = nodeEnv === "production";
+
+  // Security headers + strict request body limit. Outside production the default
+  // Content-Security-Policy is relaxed so the dev-only Swagger UI can render.
+  app.use(helmet(isProduction ? undefined : { contentSecurityPolicy: false }));
+  app.useBodyParser("json", { limit: "100kb" });
 
   // CORS allowlist parsed from env — trimmed, non-empty, and never a wildcard.
   const corsOrigins = config
@@ -31,9 +35,8 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix("api");
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
 
-  // Swagger only outside production (fails closed on a missing/unknown NODE_ENV).
-  const nodeEnv = config.get("NODE_ENV", { infer: true });
-  if (nodeEnv !== "production") {
+  // Swagger only outside production.
+  if (!isProduction) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle("Matura API")
       .setDescription("Matura finance API")

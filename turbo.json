@@ -12,11 +12,7 @@
         "NEXT_PUBLIC_API_URL",
         "NEXT_PUBLIC_LANDING_URL",
         "NEXT_PUBLIC_APP_URL",
-        "NEXT_PUBLIC_MOCK_USDT_ADDRESS",
-        "NEXT_PUBLIC_ISSUER_REGISTRY_ADDRESS",
-        "NEXT_PUBLIC_CLAIM_REGISTRY_ADDRESS",
-        "NEXT_PUBLIC_ROUTER_ADDRESS",
-        "NEXT_PUBLIC_SETTLEMENT_MANAGER_ADDRESS"
+        "NEXT_PUBLIC_RPC_URL"
       ],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },

@@ -1,0 +1,80 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+/// @title ILiquidityVault
+/// @notice Admin-funded isolated capital pool with a mandate + deterministic integer-bps pricing.
+///         Only MaturaRouter (ROUTER_ROLE) may fund; only SettlementManager (SETTLEMENT_ROLE) may
+///         return principal. The vault is intentionally decoupled from ClaimRegistry — the router
+///         supplies claim pricing inputs (claimType, dueDate) it read from the authoritative registry.
+interface ILiquidityVault {
+    /// @dev Field order packs the config scalars into one slot (uint8 + uint16 + uint16 + uint32 =
+    ///      9 bytes); money stays uint256; premiums are their own slot. `maxDurationDays` is uint32
+    ///      (millennia). ~4 slots instead of 6.
+    struct Mandate {
+        uint8 supportedTypesBitmap; // bit i = ClaimTypes ordinal i
+        uint16 baseDiscountBps;
+        uint16 durationBpsPerDay;
+        uint32 maxDurationDays;
+        uint256 minFace;
+        uint256 maxFace;
+        uint256 liquidityCap;
+        uint16[3] claimTypePremiumBps; // indexed by ClaimTypes ordinal
+    }
+
+    event VaultFunded(bytes32 indexed claimId, address indexed to, uint256 faceAmount, uint256 advanceAmount);
+    event SettlementReturned(bytes32 indexed claimId, uint256 faceAmount, uint256 principalCleared);
+    event MandateUpdated(Mandate mandate);
+    event IssuerAllowed(address indexed issuer, bool allowed);
+    event LiquidityWithdrawn(address indexed to, uint256 amount);
+    event ClaimWrittenOff(bytes32 indexed claimId, uint256 faceAmount, uint256 principalCleared);
+
+    error MandateRejected();
+    error InsufficientLiquidity();
+    error LiquidityCapExceeded();
+    error ClaimTypeUnsupported();
+    error ReturnMismatch();
+    error ZeroAddress();
+    error InvalidMandate();
+    error NothingToWriteOff();
+
+    function token() external view returns (address);
+
+    /// @notice PURE PRICING preview (view) — does NOT apply mandate gating (issuer allowlist, face
+    ///         bounds, supported-types, duration). A UI showing an executable quote must use
+    ///         `quoteAndCheck`, which the router enforces. Reverts on invalid pricing via MaturaPricing.
+    function previewQuote(uint8 claimType, uint256 faceAmount, uint256 dueDate)
+        external
+        view
+        returns (uint256 advanceAmount, uint256 discountAmount);
+
+    /// @notice Router hot-path: one STATICCALL doing mandate check + quote together.
+    ///         `ok` is false when the mandate rejects; advance/discount are the recomputed quote.
+    function quoteAndCheck(address issuer, uint8 claimType, uint256 faceAmount, uint256 dueDate)
+        external
+        view
+        returns (bool ok, uint256 advanceAmount, uint256 discountAmount);
+
+    function availableLiquidity() external view returns (uint256);
+    /// @notice The amount actually fundable right now: min(token balance, liquidityCap headroom).
+    ///         The router pre-checks against this so a route can't pass validation then revert in fund.
+    function fundableLiquidity() external view returns (uint256);
+    function outstandingPrincipal() external view returns (uint256);
+    function liquidityCap() external view returns (uint256);
+    function getMandate() external view returns (Mandate memory);
+
+    /// @notice Advance funds for a slice to `to`; recomputes the quote internally (ROUTER_ROLE).
+    function fund(bytes32 claimId, address to, uint8 claimType, uint256 faceAmount, uint256 dueDate)
+        external
+        returns (uint256 advanceAmount);
+
+    /// @notice Called exactly once per (claim, vault) with the vault's TOTAL financed face for the
+    ///         claim; clears exposure. Reverts ReturnMismatch on a wrong amount (SETTLEMENT_ROLE).
+    function onSettlementReturn(bytes32 claimId, uint256 faceAmount) external;
+
+    function setMandate(Mandate calldata m) external; // DEFAULT_ADMIN_ROLE
+    function setIssuerAllowed(address issuer, bool allowed) external; // DEFAULT_ADMIN_ROLE
+    function withdraw(address to, uint256 amount) external; // DEFAULT_ADMIN_ROLE, <= availableLiquidity
+    /// @notice Admin recovery: clears a defaulted claim's exposure (principal + face) so the vault's
+    ///         cap headroom is not permanently consumed. Does NOT move tokens (the advance is a loss).
+    function writeOffClaim(bytes32 claimId) external; // DEFAULT_ADMIN_ROLE
+}

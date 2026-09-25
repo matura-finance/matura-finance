@@ -42,6 +42,10 @@ playwright-report/
 test-results/
 .playwright/
 
+# local-only docs: deployment runbook (holds live addresses) + code-review report
+docs/deployment-runbook.md
+docs/code-review.md
+
 # misc
 .DS_Store
 *.log

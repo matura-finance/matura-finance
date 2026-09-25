@@ -5,6 +5,8 @@
   "scripts": {
     "contracts:compile": "hardhat compile",
     "contracts:test": "hardhat test",
+    "contracts:export-abis": "hardhat compile && node scripts/export-abis.ts",
+    "typecheck": "hardhat compile && tsc --noEmit",
     "clean": "hardhat clean"
   },
   "devDependencies": {
@@ -20,6 +22,7 @@
     "@nomicfoundation/hardhat-verify": "^3.0.0",
     "@openzeppelin/contracts": "5.6.1",
     "viem": "catalog:",
+    "fast-check": "catalog:",
     "typescript": "~5.8.3",
     "@types/node": "^22.10.0"
   }

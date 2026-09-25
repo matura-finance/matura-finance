@@ -1,0 +1,64 @@
+# Threat Model — Matura P0 Contracts
+
+Scope: the seven P0 contracts (`MockUSDT`, `IssuerRegistry`, `ClaimRegistry`,
+`LiquidityVault`, `VaultRegistry`, `MaturaRouter`, `SettlementManager`) on BSC
+Testnet. This is a demo/hackathon MVP — no real funds, no mainnet.
+
+## Assets
+
+- **Vault capital** — admin-seeded MockUSDT held by each `LiquidityVault`.
+- **User advances** — funds moved to the user on `executeRoute`.
+- **Issuer attestation key** — the off-chain signer whose EIP-712 signature mints
+  claims (`ISSUER_PRIVATE_KEY`; the most sensitive key).
+- **Role/admin keys** — `DEFAULT_ADMIN_ROLE` and the ops roles.
+- **Claim integrity** — the binding between an on-chain claim and the real invoice
+  (`externalIdHash`, `evidenceHash`) and the financed-face accounting.
+
+## Trust assumptions
+
+- The admin (`DEFAULT_ADMIN_ROLE`) is honest. On testnet it is a single deployer
+  key (accepted demo risk); production should use a multisig + timelock and OZ
+  `AccessControlDefaultAdminRules`.
+- Issuer signer keys are custodied off-chain by the registered issuer.
+- **MockUSDT is a standard, non-rebasing, non-fee-on-transfer 6-decimal ERC-20**,
+  and is the single settlement token for every claim and vault. Exact-pull
+  settlement and `financedFaceValue` accounting depend on this.
+- The chain supports EIP-1153 transient storage (BSC does) — required by
+  `ReentrancyGuardTransient`. A non-1153 redeploy must switch to classic
+  `ReentrancyGuard`.
+
+## Threats and mitigations
+
+| Threat                                                      | Mitigation                                                                                                                                                                         |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signature replay (same/other chain or contract)             | Distinct EIP-712 domains per verifier (`MaturaClaimRegistry` / `MaturaRouter`), each folding in `chainId` + `verifyingContract`; OZ `_hashTypedDataV4` (never a frozen separator). |
+| Attestation / route replay                                  | OZ `Nonces._useCheckedNonce` — per-signer for attestations, per-user for routes; consumed as an effect before interactions, so a reverted tx never burns a nonce.                  |
+| Signature malleability                                      | OZ `ECDSA.recover` (low-`s`, `v∈{27,28}`, EIP-2098 rejected); identity is the recovered address, never the signature bytes.                                                        |
+| Compromised/rotated issuer signer still mints               | `signerEpoch` bound in the attestation; `rotateSigner` bumps the epoch; `isAuthorizedSigner` accepts only the current signer at the current epoch.                                 |
+| Shared-signer nonce collision                               | A signer may back only one issuer (`SignerAlreadyBound`), so signer-keyed nonces cannot collide across issuers.                                                                    |
+| Double-financing one invoice                                | Unique `claimId` and unique `externalIdHash` enforced at registration; `financedFaceValue + requested ≤ faceValue` enforced atomically in `reserveSlice`.                          |
+| Over-assignment across routes                               | `reserveSlice` checks-then-effects the cap in one call; `MAX_SLICES_PER_CLAIM` bounds fan-out. Property-tested.                                                                    |
+| Revocation of a funded claim                                | `revoke` requires `financedFaceValue == 0` (`ClaimAlreadyFunded`); funding state is monotonic.                                                                                     |
+| Reentrancy on value paths                                   | `ReentrancyGuardTransient` on `executeRoute` / `settleClaim`; strict CEI; `SafeERC20`.                                                                                             |
+| Trusting backend amounts                                    | Router recomputes every vault quote on-chain (`quoteAndCheck`) and re-checks all totals; never accepts a caller-supplied advance.                                                  |
+| Value leakage via rounding                                  | `Math.mulDiv` with `Ceil` on discount/fee (protocol/vault never undercharges); residual is the exact remainder. Boundary-tested.                                                   |
+| Settlement lockup (same vault, same claim, multiple routes) | `registerAllocation` aggregates per `(claimId, vault)`; settlement does one transfer + one `onSettlementReturn` per vault.                                                         |
+| Silent allocation drift                                     | `settleClaim` asserts `Σ allocation.faceAmount == financedFaceValue` (`ConservationViolation`) from the actual amounts moved.                                                      |
+| Residual miscompute                                         | `settleClaim` snapshots `faceValue`/`financedFaceValue` before any mutation; `releaseSlice` preserves `financedFaceValue`.                                                         |
+| Double settlement                                           | `_settled` guard checked first (`AlreadySettled`).                                                                                                                                 |
+| Gas griefing / unbounded loops                              | `MAX_SLICES_PER_CLAIM` and `MAX_LEGS` bound every loop; router duplicate-claim check is a bounded O(n²) memory scan.                                                               |
+| Privilege confusion                                         | Role separation — reserve (`ROUTER_ROLE`) vs release (`SETTLEMENT_ROLE`); no address holds both; per-function `onlyRole`.                                                          |
+| Paused settlement traps funds                               | `SettlementManager` is not pausable; only `MaturaRouter` and `LiquidityVault` funding are.                                                                                         |
+| Post-deploy vault creates unsettleable claims               | New vaults must be wired atomically: grant `ROUTER_ROLE`+`SETTLEMENT_ROLE` then `registerVault` (the Ignition module and the `wireVault` flow do this in order).                   |
+| Removing a vault strands settlements                        | Vaults are never deleted; `active=false` only blocks new routing. Settlement pays the stored allocation vault regardless of registry status.                                       |
+| Locked vault capital                                        | Admin `withdraw` bounded by `availableLiquidity`.                                                                                                                                  |
+| Non-settlement token slips in                               | `registerClaim` requires `att.token == settlementToken`.                                                                                                                           |
+| Front-running the route submission                          | Payout recipient is `route.user` bound in the signed struct, never `msg.sender`; a relayer can submit but cannot redirect funds.                                                   |
+| Admin key compromise                                        | Role separation limits blast radius; production: multisig + timelock + DefaultAdminRules (future work).                                                                            |
+
+## Out of scope for P0
+
+Non-payment / default loss socialization; on-chain producers for `DISPUTED` /
+`DEFAULTED` (reserved ordinals); public LP deposits; fee-from-spread economics
+(P0 uses an issuer fee surcharge); upgradeable proxies; price oracles (pricing is
+deterministic integer bps — no oracle attack surface); multi-token settlement.

@@ -27,7 +27,7 @@ flowchart TD
   A --> CH
   A --> SH
   API --> SH
-  C -. "exports ABIs (later, generated)" .-> CH
+  C -- "exports ABIs (generated → ./abis)" --> CH
 
   TSC -. extended by .-> L & A & API & UI & SH & CH
   ESL -. extended by .-> L & A & API & UI & SH & CH
@@ -62,6 +62,64 @@ flowchart TD
   use Unix seconds. Addresses are lowercase for DB lookup, case-preserved for display.
 - Cross-domain links use `NEXT_PUBLIC_LANDING_URL` / `NEXT_PUBLIC_APP_URL`.
 - No private keys in bundles, logs, committed files, or API responses.
+
+## Smart contracts (P0)
+
+Seven contracts in `@matura/contracts` (Solidity 0.8.28, OpenZeppelin 5.6.1),
+built against a frozen set of interfaces so they compose cleanly. Trust
+assumptions and mitigations: `docs/threat-model.md`.
+
+```mermaid
+flowchart TD
+  USDT["MockUSDT<br/>ERC-20, 6dp, faucet"]
+  IR["IssuerRegistry<br/>signer allowlist + epoch"]
+  CR["ClaimRegistry<br/>EIP-712 attest, state, financed-face"]
+  VR["VaultRegistry<br/>enumerable vaults"]
+  LV["LiquidityVault ×N<br/>mandate, pricing, capital"]
+  MR["MaturaRouter<br/>EIP-712 route, recompute, fund"]
+  SM["SettlementManager<br/>maturity-gated waterfall"]
+
+  CR -->|isActiveSigner / isActive| IR
+  MR -->|reserveSlice ROUTER_ROLE| CR
+  MR -->|quoteAndCheck / fund ROUTER_ROLE| LV
+  MR -->|isActive| VR
+  MR -->|registerAllocation ROUTER_ROLE| SM
+  SM -->|releaseSlice SETTLEMENT_ROLE| CR
+  SM -->|onSettlementReturn SETTLEMENT_ROLE| LV
+```
+
+**Flow.** An allowlisted issuer signs an EIP-712 `ClaimAttestation`
+(`ClaimRegistry.registerClaim` → `ATTESTED`); a reviewer marks it `ELIGIBLE`. A
+user signs an EIP-712 `ExecutionRoute`; `MaturaRouter.executeRoute` recomputes each
+vault quote on-chain, reserves slices, and funds the user atomically
+(`PARTIALLY_FUNDED`/`FUNDED`), registering allocations in `SettlementManager`. At
+maturity anyone marks the claim `MATURED`; the issuer (or any payer) settles by
+paying `faceValue (+ optional fee surcharge)`, which distributes financed face to
+each vault, the residual to the beneficiary, the fee to the treasury, and marks the
+claim `PAID` under a strict conservation check.
+
+**Roles (OZ AccessControl).** `DEFAULT_ADMIN_ROLE` (deployer/multisig),
+`ISSUER_ADMIN_ROLE`, `CLAIM_REVIEWER_ROLE`, `ROUTER_ROLE` (→ router),
+`SETTLEMENT_ROLE` (→ settlement), `PAUSER_ROLE`. The reserve (router) vs release
+(settlement) split is a hard invariant — no address holds both.
+
+**Enum ordinals are law.** Solidity `ClaimTypes`/`ClaimStates` ordinals mirror
+`@matura/shared` `CLAIM_TYPES`/`CLAIM_STATES`; parity tests
+(`packages/contracts/test/EnumParity.test.ts` reads the Solidity source,
+`apps/api/src/enum-parity.spec.ts` checks Zod ⇄ Prisma) keep the layers in sync.
+
+**Single settlement token (P0).** `ClaimRegistry`, `SettlementManager`, and
+`MaturaRouter` are each constructed with one MockUSDT address, and `AddressBook`
+carries one token slot — the deployed topology is single-token even though
+`Claim.token`/`VaultSummary.token` are per-entity. Multi-token is a deliberate
+future migration (per-token router/settlement or a token dimension in the
+manifest), not a config tweak.
+
+**Artifacts.** `pnpm --filter @matura/contracts contracts:export-abis` regenerates
+`@matura/chain/src/abis/*.ts` (`as const`) from compiled artifacts — never
+hand-copied. Deployed addresses live in `@matura/chain/src/deployments.ts`,
+populated from Ignition output; `AddressBook` carries a `vaultRegistry` slot and the
+app enumerates individual vaults on-chain via `VaultRegistry.getVaults()`.
 
 ## Toolchain
 

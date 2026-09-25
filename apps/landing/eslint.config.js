@@ -23,6 +23,13 @@ export default [
               message: "landing is statically optimizable and needs no query client",
             },
           ],
+          patterns: [
+            {
+              group: ["@matura/chain/*", "viem", "viem/*", "wagmi", "wagmi/*", "@tanstack/*"],
+              message:
+                "landing must stay wallet-free: no chain/wallet/query tooling, including subpath imports",
+            },
+          ],
         },
       ],
       "no-restricted-syntax": [
