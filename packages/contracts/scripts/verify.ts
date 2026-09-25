@@ -104,7 +104,9 @@ async function main(): Promise<void> {
     );
   }
 
-  // 3. Mandates match the typed config exactly.
+  // 3. Mandates match the typed config exactly. Derive the on-chain shape from viem's inferred
+  // getMandate() return (no hand-written shadow interface that could silently drift — P2-6).
+  type MandateView = Awaited<ReturnType<typeof stableVault.read.getMandate>>;
   const compareMandate = (name: string, onChain: MandateView, want: VaultMandate): void => {
     check(
       `${name} mandate matches config`,
@@ -241,17 +243,6 @@ async function main(): Promise<void> {
     );
   }
   console.log("\nAll verification checks passed.");
-}
-
-interface MandateView {
-  supportedTypesBitmap: number;
-  baseDiscountBps: number;
-  durationBpsPerDay: number;
-  maxDurationDays: number;
-  minFace: bigint;
-  maxFace: bigint;
-  liquidityCap: bigint;
-  claimTypePremiumBps: readonly number[];
 }
 
 main().catch((error: unknown) => {
