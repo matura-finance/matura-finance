@@ -5,7 +5,7 @@ Regenerate with `pnpm --filter @matura/contracts contracts:test`.
 
 | Operation             | Gas used |
 | --------------------- | -------: |
-| registerClaim         |   232575 |
-| executeRoute (1 leg)  |   369158 |
-| executeRoute (2 legs) |   534526 |
-| settleClaim (1 vault) |   126553 |
+| registerClaim         |   227480 |
+| executeRoute (1 leg)  |   360606 |
+| executeRoute (2 legs) |   518816 |
+| settleClaim (1 vault) |   123420 |

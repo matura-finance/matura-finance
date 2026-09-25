@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { network } from "hardhat";
-import { getAddress, zeroAddress, keccak256, toHex, type Address } from "viem";
+import { getAddress, zeroAddress, keccak256, toHex } from "viem";
 import { ROLES } from "./helpers/constants.js";
 
 const METADATA_HASH = keccak256(toHex("issuer-metadata-v1"));
@@ -237,9 +237,9 @@ describe("IssuerRegistry", () => {
 
   it("isAuthorizedSigner: true for current signer+epoch, false for old signer/epoch and when inactive", async () => {
     const { registry, issuer, signer, newSigner } = await deployRegistry();
-    const issuerAddr = issuer.account.address as Address;
-    const signerAddr = signer.account.address as Address;
-    const newSignerAddr = newSigner.account.address as Address;
+    const issuerAddr = issuer.account.address;
+    const signerAddr = signer.account.address;
+    const newSignerAddr = newSigner.account.address;
 
     await registry.write.registerIssuer([issuerAddr, signerAddr, METADATA_HASH]);
 

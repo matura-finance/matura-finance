@@ -94,8 +94,15 @@ describe("Gas report", () => {
       "| Operation | Gas used |\n| --- | ---: |\n" +
       rows.map(([name, gas]) => `| ${name} | ${gas.toString()} |`).join("\n") +
       "\n";
-    const outPath = join(dirname(fileURLToPath(import.meta.url)), "../../../../docs/gas-report.md");
-    writeFileSync(outPath, body);
+    // Only rewrite the tracked report when explicitly requested, so `contracts:test` doesn't dirty
+    // the working tree on every run: `WRITE_GAS_REPORT=1 pnpm --filter @matura/contracts contracts:test`.
+    if (process.env.WRITE_GAS_REPORT) {
+      const outPath = join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../../docs/gas-report.md",
+      );
+      writeFileSync(outPath, body);
+    }
 
     // Loose upper bounds so the report cannot silently regress.
     for (const [name, gas, ceiling] of rows) {

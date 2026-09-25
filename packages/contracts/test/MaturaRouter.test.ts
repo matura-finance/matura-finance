@@ -43,17 +43,8 @@ function baseRoute(
 describe("MaturaRouter", () => {
   it("funds a single-leg route atomically (relayer submits, funds go to the signer)", async () => {
     const ctx = await deployProtocol();
-    const {
-      viem,
-      router,
-      vault,
-      usdt,
-      claimRegistry,
-      accounts,
-      now,
-      createEligibleClaim,
-      signRoute,
-    } = ctx;
+    const { router, vault, usdt, claimRegistry, accounts, now, createEligibleClaim, signRoute } =
+      ctx;
     const { claimId, faceValue } = await createEligibleClaim({
       label: "c1",
       faceValue: parseUnits("1000", 6),
@@ -77,7 +68,6 @@ describe("MaturaRouter", () => {
     const allocs = await ctx.settlement.read.getAllocations([claimId]);
     assert.equal(allocs.length, 1);
     assert.equal(allocs[0].faceAmount, faceValue);
-    void viem;
   });
 
   it("funds a two-leg multi-claim route atomically", async () => {

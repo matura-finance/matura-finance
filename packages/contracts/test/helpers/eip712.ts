@@ -1,4 +1,4 @@
-import type { Address, TypedDataDomain } from "viem";
+import type { Address, TypedDataDomain, TypedData } from "viem";
 import { CLAIM_REGISTRY_DOMAIN_NAME, ROUTER_DOMAIN_NAME, DOMAIN_VERSION } from "./constants.js";
 
 /// EIP-712 typed-data definitions. Field order + types mirror the Solidity typehashes exactly.
@@ -19,7 +19,7 @@ export const CLAIM_ATTESTATION_TYPES = {
     { name: "nonce", type: "uint256" },
     { name: "deadline", type: "uint256" },
   ],
-} as const;
+} as const satisfies TypedData;
 
 const ROUTE_LEG_TYPE = [
   { name: "claimId", type: "bytes32" },
@@ -38,7 +38,7 @@ export const EXECUTION_ROUTE_TYPES = {
     { name: "legs", type: "RouteLeg[]" },
   ],
   RouteLeg: ROUTE_LEG_TYPE,
-} as const;
+} as const satisfies TypedData;
 
 export function claimRegistryDomain(chainId: number, verifyingContract: Address): TypedDataDomain {
   return { name: CLAIM_REGISTRY_DOMAIN_NAME, version: DOMAIN_VERSION, chainId, verifyingContract };
