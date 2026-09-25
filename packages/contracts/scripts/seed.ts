@@ -2,6 +2,7 @@ import { network } from "hardhat";
 import { getAddress, keccak256, toHex, parseUnits, type Address, type Hex } from "viem";
 import { assertChainId } from "./lib/network-guard.js";
 import { readManifest, manifestAddresses, isManifestDeployed } from "./lib/read-manifest.js";
+import { isRevertNamed } from "./lib/revert.js";
 import { CLAIM_ATTESTATION_TYPES, claimRegistryDomain } from "../config/eip712.js";
 import { CLAIM_STATE } from "../config/constants.js";
 import {
@@ -136,11 +137,12 @@ async function main(): Promise<void> {
 
   for (const [index, claim] of ALICE_CLAIMS.entries()) {
     const claimId = claimIdFor(claim.label);
-    // getClaim reverts ClaimNotFound for an unregistered claim → treat a throw as "absent".
-    const existing = await claimRegistry.read
-      .getClaim([claimId])
-      .then((c) => c)
-      .catch(() => undefined);
+    // getClaim reverts ClaimNotFound for an unregistered claim → treat only THAT as "absent";
+    // any other error (RPC/decode/unrelated revert) propagates instead of being swallowed.
+    const existing = await claimRegistry.read.getClaim([claimId]).catch((error: unknown) => {
+      if (isRevertNamed(error, "ClaimNotFound")) return undefined;
+      throw error;
+    });
     if (existing !== undefined) {
       // Conflict-equality excludes dueDate (it is recomputed from `now` each run).
       const mismatch =

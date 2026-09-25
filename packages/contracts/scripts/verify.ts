@@ -7,6 +7,7 @@ import { STABLE_MANDATE, FLEX_MANDATE, type VaultMandate } from "../config/vault
 import { ALICE_CLAIMS, REQUEST_A, REQUEST_B, claimIdFor } from "../config/demo.js";
 import { ALLOWED_CHAIN_IDS } from "./lib/constants.js";
 import { readManifest, manifestAddresses, isManifestDeployed } from "./lib/read-manifest.js";
+import { isRevertNamed } from "./lib/revert.js";
 
 /// Read-only verification of a seeded Matura chain. Exits non-zero on any failure. Confirms: both
 /// vault mandates, balances, the role wiring + reserve/release separation invariant (via
@@ -178,10 +179,10 @@ async function main(): Promise<void> {
   const dueDates = new Map<string, bigint>();
   for (const claim of ALICE_CLAIMS) {
     const claimId = claimIdFor(claim.label);
-    const c = await claimRegistry.read
-      .getClaim([claimId])
-      .then((v) => v)
-      .catch(() => undefined);
+    const c = await claimRegistry.read.getClaim([claimId]).catch((error: unknown) => {
+      if (isRevertNamed(error, "ClaimNotFound")) return undefined;
+      throw error;
+    });
     if (c === undefined) {
       check(`claim ${claim.label} exists`, false);
       continue;
