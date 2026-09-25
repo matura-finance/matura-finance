@@ -36,6 +36,10 @@ packages/contracts/cache/
 packages/contracts/types/
 packages/contracts/typechain-types/
 
+# Ignition local deployment journal (ephemeral; demo:reset clears it). The testnet journal
+# (matura-bsctestnet) is the resume key and may be committed/backed up — see docs/deployment-runbook.md.
+packages/contracts/ignition/deployments/matura-local/
+
 # tests
 coverage/
 playwright-report/
