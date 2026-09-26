@@ -12,6 +12,7 @@ function makeService(secret: string): AuthJwtService {
     get: (key: keyof Env): unknown => {
       if (key === "JWT_SECRET") return secret;
       if (key === "JWT_TTL_SECONDS") return 900;
+      if (key === "SIWE_DOMAIN") return "example.com";
       return undefined;
     },
   } as unknown as ConfigService<Env, true>;

@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiCreatedResponse, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 
 import { AuthService } from "./auth.service";
@@ -14,6 +14,7 @@ export class AuthController {
   /** GET /api/v1/auth/nonce — mints a single-use SIWE nonce. */
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOkResponse({ type: NonceResponseDto })
   @Get("nonce")
   issueNonce(): Promise<NonceResponseDto> {
     return this.auth.issueNonce();
@@ -22,6 +23,7 @@ export class AuthController {
   /** POST /api/v1/auth/verify — verifies a signed SIWE message and mints a session token. */
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiCreatedResponse({ type: SessionResponseDto })
   @Post("verify")
   verify(@Body() body: VerifyRequestDto): Promise<SessionResponseDto> {
     return this.auth.verify(body.message, body.signature);

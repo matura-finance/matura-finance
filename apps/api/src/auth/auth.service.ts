@@ -30,8 +30,17 @@ export class AuthService {
     this.nonceTtlSeconds = config.get("SIWE_NONCE_TTL_SECONDS", { infer: true });
   }
 
-  /** Issues a fresh single-use nonce and persists it with its expiry. */
-  async issueNonce(): Promise<{ nonce: string }> {
+  /**
+   * Issues a fresh single-use nonce and persists it with its expiry, returning the fields a
+   * client needs to assemble a verifiable SIWE message. Opportunistically prunes stale
+   * (expired or already-used) rows so the table stays bounded without a scheduler.
+   */
+  async issueNonce(): Promise<{ nonce: string; domain: string; chainId: number }> {
+    // Non-fatal cleanup: best-effort prune of stale rows before minting a fresh nonce.
+    await this.prisma.authNonce.deleteMany({
+      where: { OR: [{ expiresAt: { lt: new Date() } }, { used: true }] },
+    });
+
     const nonce = generateSiweNonce();
     await this.prisma.authNonce.create({
       data: {
@@ -41,7 +50,7 @@ export class AuthService {
         expiresAt: new Date(Date.now() + this.nonceTtlSeconds * 1000),
       },
     });
-    return { nonce };
+    return { nonce, domain: this.domain, chainId: this.chainId };
   }
 
   /** Verifies a signed SIWE message and returns a session token, or throws 401. */
@@ -56,13 +65,20 @@ export class AuthService {
     });
     if (count !== 1) throw new UnauthorizedException("invalid or expired nonce");
 
-    const valid = await this.chain.client.verifySiweMessage({
-      message,
-      signature: signature as `0x${string}`,
-      domain: this.domain,
-      nonce: fields.nonce,
-      time: new Date(),
-    });
+    // The signature is DTO-validated as 0x-hex, so the narrowing is truthful. A malformed
+    // payload that slips past viem's parsing must still surface as 401, not a 500.
+    let valid: boolean;
+    try {
+      valid = await this.chain.client.verifySiweMessage({
+        message,
+        signature: signature as `0x${string}`,
+        domain: this.domain,
+        nonce: fields.nonce,
+        time: new Date(),
+      });
+    } catch {
+      throw new UnauthorizedException("invalid signature");
+    }
     if (!valid) throw new UnauthorizedException("invalid signature");
 
     // viem's SIWE verify does NOT check chainId — assert it independently.

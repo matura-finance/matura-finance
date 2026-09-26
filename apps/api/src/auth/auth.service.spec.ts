@@ -22,17 +22,21 @@ const SIGNATURE = `0x${"11".repeat(65)}`;
 
 interface Mocks {
   service: AuthService;
+  create: jest.Mock;
+  deleteMany: jest.Mock;
   updateMany: jest.Mock;
   verifySiweMessage: jest.Mock;
   sign: jest.Mock;
 }
 
 function makeService(): Mocks {
+  const create = jest.fn();
+  const deleteMany = jest.fn();
   const updateMany = jest.fn();
   const verifySiweMessage = jest.fn();
   const sign = jest.fn();
 
-  const prisma = { authNonce: { create: jest.fn(), updateMany } } as unknown as PrismaService;
+  const prisma = { authNonce: { create, deleteMany, updateMany } } as unknown as PrismaService;
   const chain = { chainId: CHAIN_ID, client: { verifySiweMessage } } as unknown as ChainService;
   const config = {
     get: (key: keyof Env): unknown => {
@@ -44,8 +48,31 @@ function makeService(): Mocks {
   } as unknown as ConfigService<Env, true>;
   const jwt = { sign } as unknown as AuthJwtService;
 
-  return { service: new AuthService(prisma, chain, config, jwt), updateMany, verifySiweMessage, sign };
+  return {
+    service: new AuthService(prisma, chain, config, jwt),
+    create,
+    deleteMany,
+    updateMany,
+    verifySiweMessage,
+    sign,
+  };
 }
+
+describe("AuthService.issueNonce", () => {
+  it("returns the nonce plus domain/chainId and prunes stale rows", async () => {
+    const { service, create, deleteMany } = makeService();
+    deleteMany.mockResolvedValue({ count: 0 });
+    create.mockResolvedValue(undefined);
+
+    await expect(service.issueNonce()).resolves.toEqual({
+      nonce: "nonce-123",
+      domain: "example.com",
+      chainId: CHAIN_ID,
+    });
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("AuthService.verify", () => {
   beforeEach(() => {
@@ -66,6 +93,14 @@ describe("AuthService.verify", () => {
     updateMany.mockResolvedValue({ count: 1 });
     verifySiweMessage.mockResolvedValue(true);
     parseMock.mockReturnValue({ nonce: "nonce-123", chainId: 1, address: ADDRESS });
+
+    await expect(service.verify(MESSAGE, SIGNATURE)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it("maps a viem verify throw to 401 instead of surfacing a 500", async () => {
+    const { service, updateMany, verifySiweMessage } = makeService();
+    updateMany.mockResolvedValue({ count: 1 });
+    verifySiweMessage.mockRejectedValue(new Error("malformed signature"));
 
     await expect(service.verify(MESSAGE, SIGNATURE)).rejects.toBeInstanceOf(UnauthorizedException);
   });

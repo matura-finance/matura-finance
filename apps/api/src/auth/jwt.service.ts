@@ -16,10 +16,12 @@ const PayloadSchema = z.object({ sub: z.string(), chainId: z.number().int() });
 export class AuthJwtService {
   private readonly key: Uint8Array;
   private readonly ttlSeconds: number;
+  private readonly domain: string;
 
   constructor(config: ConfigService<Env, true>) {
     const secret = config.get("JWT_SECRET", { infer: true });
     this.ttlSeconds = config.get("JWT_TTL_SECONDS", { infer: true });
+    this.domain = config.get("SIWE_DOMAIN", { infer: true });
     this.key = new TextEncoder().encode(secret);
   }
 
@@ -29,16 +31,22 @@ export class AuthJwtService {
     const token = await new SignJWT({ chainId })
       .setProtectedHeader({ alg: "HS256" })
       .setSubject(wallet)
+      .setIssuer(this.domain)
+      .setAudience(this.domain)
       .setIssuedAt()
       .setExpirationTime(Math.floor(expiresAt.getTime() / 1000))
       .sign(this.key);
     return { token, expiresAt: expiresAt.toISOString() };
   }
 
-  /** Verifies a token (alg pinned) and returns its bound wallet + chainId, or throws 401. */
+  /** Verifies a token (alg + issuer/audience pinned) and returns its bound wallet + chainId, or throws 401. */
   async verify(token: string): Promise<{ wallet: string; chainId: number }> {
     try {
-      const { payload } = await jwtVerify(token, this.key, { algorithms: ["HS256"] });
+      const { payload } = await jwtVerify(token, this.key, {
+        algorithms: ["HS256"],
+        issuer: this.domain,
+        audience: this.domain,
+      });
       const parsed = PayloadSchema.parse({ sub: payload.sub, chainId: payload.chainId });
       return { wallet: parsed.sub, chainId: parsed.chainId };
     } catch {

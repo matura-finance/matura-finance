@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Reflector } from "@nestjs/core";
 
+import type { Env } from "../config/env.validation";
 import { IS_PUBLIC_KEY } from "./public.decorator";
 import { AuthJwtService } from "./jwt.service";
 import type { WalletRequest } from "./wallet.decorator";
@@ -18,10 +20,15 @@ interface GuardedRequest extends WalletRequest {
  */
 @Injectable()
 export class WalletAuthGuard implements CanActivate {
+  private readonly chainId: number;
+
   constructor(
     private readonly reflector: Reflector,
     private readonly jwt: AuthJwtService,
-  ) {}
+    config: ConfigService<Env, true>,
+  ) {
+    this.chainId = config.get("CHAIN_ID", { infer: true });
+  }
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -34,7 +41,10 @@ export class WalletAuthGuard implements CanActivate {
     const token = extractBearer(request.headers.authorization);
     if (token === null) throw new UnauthorizedException("missing bearer token");
 
-    const { wallet } = await this.jwt.verify(token);
+    const { wallet, chainId } = await this.jwt.verify(token);
+    // Re-assert the token's bound chain: a shared JWT_SECRET across deploys (e.g. 31337/97)
+    // must not let a token minted on one chain authenticate on another.
+    if (chainId !== this.chainId) throw new UnauthorizedException("wrong chain");
     request.wallet = wallet.toLowerCase();
     return true;
   }
