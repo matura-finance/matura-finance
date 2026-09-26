@@ -1,8 +1,8 @@
 # Architecture
 
 Matura is a pnpm + Turborepo monorepo. This document records the package
-boundaries and why they exist. It describes the **foundation** — interfaces and
-shells only; business contracts, routing, and settlement logic land in later work.
+boundaries and why they exist. Contracts, the API + best-execution router, and both
+frontends are now implemented; per-area design + gotchas live in the linked docs.
 
 ## Component map
 
