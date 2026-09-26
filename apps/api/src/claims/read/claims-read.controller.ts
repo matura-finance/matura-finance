@@ -2,8 +2,10 @@ import { Controller, Get, Param } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 
 import { ClaimsReadService } from "./claims-read.service";
+import { Public } from "../../auth/public.decorator";
 import { ClaimDetailDto } from "../../common/dto";
 
+@Public()
 @ApiTags("claims")
 @Controller({ path: "claims", version: "1" })
 export class ClaimsReadController {

@@ -1,6 +1,9 @@
 import { validateEnv } from "./env.validation";
 
-const base = { DATABASE_URL: "postgresql://u:p@localhost:5432/db?schema=public" };
+const base = {
+  DATABASE_URL: "postgresql://u:p@localhost:5432/db?schema=public",
+  JWT_SECRET: "0123456789abcdef0123456789abcdef",
+};
 
 describe("validateEnv", () => {
   it("applies defaults for optional keys", () => {
@@ -38,5 +41,37 @@ describe("validateEnv", () => {
 
   it("accepts an empty ISSUER_PRIVATE_KEY", () => {
     expect(validateEnv({ ...base, ISSUER_PRIVATE_KEY: "" }).ISSUER_PRIVATE_KEY).toBe("");
+  });
+
+  it("throws when JWT_SECRET is too short", () => {
+    expect(() => validateEnv({ ...base, JWT_SECRET: "short" })).toThrow(
+      /Invalid environment variables/,
+    );
+  });
+
+  it("parses DEMO_ISSUER_SIGNING_ENABLED='false' as false (not truthy-coerced)", () => {
+    expect(validateEnv({ ...base, DEMO_ISSUER_SIGNING_ENABLED: "false" }).DEMO_ISSUER_SIGNING_ENABLED).toBe(
+      false,
+    );
+  });
+
+  it("rejects demo issuer signing in production (fail-closed)", () => {
+    expect(() =>
+      validateEnv({
+        ...base,
+        NODE_ENV: "production",
+        DEMO_ISSUER_SIGNING_ENABLED: "true",
+        ISSUER_PRIVATE_KEY: `0x${"a".repeat(64)}`,
+      }),
+    ).toThrow(/Invalid environment variables/);
+  });
+
+  it("allows demo issuer signing in development with a key", () => {
+    const env = validateEnv({
+      ...base,
+      DEMO_ISSUER_SIGNING_ENABLED: "true",
+      ISSUER_PRIVATE_KEY: `0x${"a".repeat(64)}`,
+    });
+    expect(env.DEMO_ISSUER_SIGNING_ENABLED).toBe(true);
   });
 });

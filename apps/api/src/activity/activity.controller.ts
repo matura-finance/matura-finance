@@ -2,8 +2,10 @@ import { Controller, Get, Param, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 
 import { ActivityService } from "./activity.service";
+import { Public } from "../auth/public.decorator";
 import { ActivityPageDto, ActivityQueryDto } from "../common/dto";
 
+@Public()
 @ApiTags("activity")
 @Controller({ path: "activity", version: "1" })
 export class ActivityController {

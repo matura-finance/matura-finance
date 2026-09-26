@@ -2,8 +2,10 @@ import { Controller, Get, Param } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 
 import { AccountService } from "./account.service";
+import { Public } from "../auth/public.decorator";
 import { PortfolioDto } from "../common/dto";
 
+@Public()
 @ApiTags("account")
 @Controller({ path: "account", version: "1" })
 export class AccountController {
