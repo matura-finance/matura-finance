@@ -1,8 +1,10 @@
+import type { Hex } from "viem";
+
 /** Common on-chain log identity carried by every parsed event. */
 export interface EventMeta {
   blockNumber: bigint;
   logIndex: number;
-  txHash: string;
+  txHash: Hex;
 }
 
 /** Decoded, projection-ready event — a discriminated union keyed by `kind`. */
@@ -46,16 +48,13 @@ export type ParsedEvent = EventMeta &
         userResidual: bigint;
         protocolFee: bigint;
       }
-    | { kind: "IssuerRegistered"; issuer: string; signer: string }
-    | { kind: "IssuerStatusChanged"; issuer: string; active: boolean }
-    | { kind: "IssuerSignerRotated"; issuer: string; newSigner: string; newEpoch: bigint }
   );
 
 /** Minimal shape of a viem log's on-chain identity (nullable only for pending logs). */
 export interface RawLogMeta {
   blockNumber: bigint | null;
   logIndex: number | null;
-  transactionHash: string | null;
+  transactionHash: Hex | null;
 }
 
 /** Extract a non-null `EventMeta` from a mined log, or null if the log is still pending. */

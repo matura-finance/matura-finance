@@ -48,19 +48,6 @@ model UserWallet {
   updatedAt DateTime @updatedAt
 }
 
-model IssuerProjection {
-  id              String  @id @default(cuid())
-  chainIssuerId   String // "chainId:address"
-  address         String
-  signer          String
-  name            String
-  active          Boolean @default(true)
-  lastSyncedBlock BigInt  @default(0)
-
-  @@unique([chainIssuerId])
-  @@index([address])
-}
-
 model ClaimProjection {
   claimId           String     @id
   beneficiary       String
@@ -92,7 +79,9 @@ model ClaimProjection {
 model RouteExecution {
   executionId       String      @id
   user              String
-  targetAdvance     String
+  // Nullable: recovered by decoding the executeRoute calldata; null when the tx wasn't a
+  // direct executeRoute call (e.g. via an aggregator) so it's never a misleading real "0".
+  targetAdvance     String?
   totalAdvance      String
   totalFaceAssigned String
   totalCost         String

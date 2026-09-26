@@ -53,7 +53,7 @@ export const ExecutionLegSchema = z.object({
 export const ExecutionSchema = z.object({
   executionId: z.string(),
   user: z.string(),
-  targetAdvance: z.string(),
+  targetAdvance: z.string().nullable(),
   totalAdvance: z.string(),
   totalFaceAssigned: z.string(),
   totalCost: z.string(),

@@ -1,3 +1,5 @@
+import { Logger } from "@nestjs/common";
+
 import { applyEvent } from "../src/indexer/indexer.service";
 import type { ParsedEvent } from "../src/indexer/parse";
 import { startTestDb, type TestDb } from "./db/postgres-testcontainer";
@@ -8,7 +10,6 @@ import { startTestDb, type TestDb } from "./db/postgres-testcontainer";
 const CHAIN_ID = 31337;
 const CLAIM_ID = `0x${"11".repeat(32)}`;
 const WALLET = "0xabc0000000000000000000000000000000000001";
-const NO_TARGETS = new Map<string, string>();
 
 function registered(block: bigint, logIndex: number): ParsedEvent {
   return {
@@ -55,7 +56,13 @@ describe("indexer projection (integration)", () => {
 
   async function apply(events: ParsedEvent[]): Promise<void> {
     await db.prisma.$transaction(async (tx) => {
-      for (const event of events) await applyEvent(tx, event, NO_TARGETS, CHAIN_ID);
+      const ctx = {
+        targetAdvances: new Map<string, string>(),
+        beneficiaries: new Map<string, string>(),
+        chainId: CHAIN_ID,
+        logger: new Logger("indexer-int-spec"),
+      };
+      for (const event of events) await applyEvent(tx, event, ctx);
     });
   }
 

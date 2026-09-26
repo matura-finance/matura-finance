@@ -25,12 +25,3 @@ export const RouteLegExecutedEvent = parseAbiItem(
 export const ClaimSettledEvent = parseAbiItem(
   "event ClaimSettled(bytes32 indexed claimId, uint256 amountReceived, uint256 vaultDistribution, uint256 userResidual, uint256 protocolFee)",
 );
-export const IssuerRegisteredEvent = parseAbiItem(
-  "event IssuerRegistered(address indexed issuer, address indexed signer, bytes32 metadataHash)",
-);
-export const IssuerStatusChangedEvent = parseAbiItem(
-  "event IssuerStatusChanged(address indexed issuer, bool active)",
-);
-export const IssuerSignerRotatedEvent = parseAbiItem(
-  "event IssuerSignerRotated(address indexed issuer, address oldSigner, address newSigner, uint256 newEpoch)",
-);

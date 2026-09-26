@@ -5,7 +5,7 @@ import { NestFactory } from "@nestjs/core";
 
 import { AdminCliModule } from "./admin-cli.module";
 import { ChainService } from "../chain/chain.service";
-import { INDEXER_CONSUMER } from "../cursor/cursor.service";
+import { INDEXER_LOCK_KEY, resetProjections } from "../indexer/reset";
 import { PrismaService } from "../prisma/prisma.service";
 
 /**
@@ -30,17 +30,10 @@ async function main(): Promise<void> {
       }
     }
 
-    await prisma.$transaction([
-      prisma.routeLegProjection.deleteMany({}),
-      prisma.settlementProjection.deleteMany({}),
-      prisma.routeExecution.deleteMany({}),
-      prisma.claimProjection.deleteMany({}),
-      prisma.activityEvent.deleteMany({}),
-      prisma.issuerProjection.deleteMany({}),
-      prisma.chainCursor.deleteMany({
-        where: { consumerName: INDEXER_CONSUMER, chainId: chain.chainId },
-      }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${INDEXER_LOCK_KEY})`;
+      await resetProjections(tx, chain.chainId);
+    });
     Logger.log(
       "Reindex reset complete — restart the worker to reindex from the deployment block",
       "Reindex",
