@@ -19,8 +19,14 @@ function sumBaseUnits(values: string[]): string {
   return values.reduce((acc, v) => acc + BigInt(v), 0n).toString();
 }
 
+// Only these states contribute financeable value; only non-terminal claims have an
+// expected future payment.
+const ELIGIBLE_STATES = new Set(["ELIGIBLE", "PARTIALLY_FUNDED"]);
+const TERMINAL_STATES = new Set(["PAID", "DEFAULTED", "REVOKED", "REJECTED"]);
+
 function availableToRoute(claim: ClaimWire): string {
-  return (BigInt(claim.faceValue) - BigInt(claim.financedFaceValue)).toString();
+  const remaining = BigInt(claim.faceValue) - BigInt(claim.financedFaceValue);
+  return (remaining > 0n ? remaining : 0n).toString();
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -58,8 +64,11 @@ export function AccountView() {
 
   const totalVerified = sumBaseUnits(claims.map((c) => c.faceValue));
   const financed = sumBaseUnits(claims.map((c) => c.financedFaceValue));
-  const eligible = sumBaseUnits(claims.map(availableToRoute));
+  const eligible = sumBaseUnits(
+    claims.filter((c) => ELIGIBLE_STATES.has(c.state)).map(availableToRoute),
+  );
   const nextDue = claims
+    .filter((c) => !TERMINAL_STATES.has(c.state))
     .map((c) => c.dueAt)
     .sort((a, b) => Date.parse(a) - Date.parse(b))
     .at(0);

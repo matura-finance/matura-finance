@@ -16,7 +16,8 @@ import { NotDeployed, RpcUnavailable } from "../states";
 function utilization(v: VaultSummaryWire): string {
   const cap = BigInt(v.liquidityCap);
   if (cap === 0n) return "0%";
-  const used = cap - BigInt(v.fundableLiquidity);
+  const raw = cap - BigInt(v.fundableLiquidity);
+  const used = raw > 0n ? raw : 0n; // fundable can briefly exceed cap; never show negative
   return `${(Number((used * 10_000n) / cap) / 100).toFixed(1)}%`;
 }
 
