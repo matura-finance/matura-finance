@@ -23,6 +23,12 @@ pnpm --filter @matura/contracts contracts:compile   # hardhat compile
 pnpm --filter @matura/contracts contracts:test      # unit + integration + fuzz + gas
 pnpm --filter @matura/contracts typecheck           # hardhat compile && tsc --noEmit
 pnpm --filter @matura/contracts contracts:export-abis   # regenerate @matura/chain ABIs
+pnpm --filter @matura/chain build                   # tsup dual CJS/ESM build (CJS apps/api consumes it)
+pnpm --filter @matura/api dev                        # nest start --watch (HTTP API)
+pnpm --filter @matura/api worker:dev                 # indexer worker (separate process)
+pnpm --filter @matura/api db:migrate                 # prisma migrate dev (needs Postgres)
+pnpm --filter @matura/api test:int                   # Testcontainers integration tests (needs Docker)
+pnpm --filter @matura/api reindex                    # CLI: wipe projections + reindex from deploymentBlock
 ```
 
 Deploy/seed/verify (Hardhat Ignition + idempotent viem scripts; addresses → per-chain manifest,
@@ -31,11 +37,22 @@ demo:local` (deploy→seed→verify) in another; `demo:settle` (local-only e2e),
 `deploy:bsc-testnet` then `seed:bsc-testnet` (uses the seed-only `bscTestnetSeed` network so the
 issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/README.md`.
 
+**`apps/api`** — orchestration + read-model service. A separate-process **indexer worker**
+(`worker.ts`; `finalized`-tag polling, block-hash-mismatch → full-wipe+reindex, idempotent upserts
+
+- cursor in one advisory-locked tx) projects on-chain events into Postgres/Prisma. The HTTP API
+  serves **read endpoints** (projection + chain read-through) and non-custodial **write-preparation**
+  endpoints (unsigned calldata / EIP-712 typed data — never holds a user key), behind **SIWE** auth
+  (viem, JWT, fail-closed global guard + `@Public()`). Money = base-unit **strings**; addresses
+  lowercase; BigInt never leaks at the JSON boundary. Prisma migrations are committed + reproducible.
+
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
 ABI-freshness gate → manifest-freshness gate. Gotchas: toolchain (Node, tsc `unknown`, ABI/prettier
 gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/seed pipeline
 (event-scan block, `.js`→`.ts` script imports, `noUncheckedIndexedAccess`+viem)
-`docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`.
+`docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`; **apps/api toolchain**
+(CJS↔ESM chain consumption, `prisma-client` types, strict viem, `z.stringbool`, DB-less migrations)
+`docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`.
 
 ## Conventions
 
@@ -58,8 +75,13 @@ gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/se
   `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md`.
 - **Boundaries:** `apps/landing` stays wallet-free (lint-guarded, incl. subpath imports);
   `@matura/shared` is framework-free Zod; `@matura/contracts` is self-contained (no `@matura/*` deps).
+  `@matura/chain` ships a **tsup dual CJS/ESM build** (`dist`) so the CommonJS `apps/api` can
+  consume it; **EIP-712 typed-data** (attestation/route types + domains) lives in `@matura/chain`
+  (viem-native), with `@matura/contracts` keeping its own copy behind a typehash parity test.
 
 ## Local-only docs (gitignored)
 
-`docs/deployment-runbook.md` (live addresses, update per deploy) and `docs/code-review.md`.
-Planning docs (`docs/brainstorms/`, `docs/plans/`) and `docs/gas-report.md` are tracked.
+`docs/deployment-runbook.md` (live addresses, update per deploy), `docs/code-review.md`, and
+`docs/reviews/` (per-PR review docs). Planning docs (`docs/brainstorms/`, `docs/plans/`),
+`docs/gas-report.md`, and **`docs/deployment.md`** (living whole-stack E2E deploy guide — update
+each iteration) are tracked.

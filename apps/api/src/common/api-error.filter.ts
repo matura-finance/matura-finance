@@ -46,10 +46,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
   private resolve(exception: unknown): ResolvedError {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
+      // A coded error (thrown via ../common/http-errors) carries a stable domain `code` in its
+      // object response so clients can branch on the specific reason, not just the HTTP status.
+      const domain = extractCoded(exception.getResponse());
       return {
         status,
-        code: this.codeForStatus(status),
-        message: exception.message,
+        code: domain.code ?? this.codeForStatus(status),
+        message: domain.message ?? exception.message,
       };
     }
 
@@ -81,4 +84,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         return status >= HttpStatus.INTERNAL_SERVER_ERROR ? "INTERNAL_SERVER_ERROR" : "ERROR";
     }
   }
+}
+
+/** Pull a domain `{ code, message }` from an HttpException's object response, if present. */
+function extractCoded(res: string | object): { code?: string; message?: string } {
+  if (typeof res !== "object") return {};
+  const obj = res as Record<string, unknown>;
+  return {
+    code: typeof obj.code === "string" ? obj.code : undefined,
+    message: typeof obj.message === "string" ? obj.message : undefined,
+  };
 }

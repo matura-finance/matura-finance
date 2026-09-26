@@ -19,3 +19,15 @@ export {
 export { createPublicClientFor, createWalletClientFor } from "./clients.js";
 
 export { SETTLEMENT_DECIMALS, toBaseUnits, fromBaseUnits } from "./units.js";
+
+export { contractAbis, vaultAbi, sourceAbi } from "./contracts.js";
+
+export {
+  CLAIM_REGISTRY_DOMAIN_NAME,
+  ROUTER_DOMAIN_NAME,
+  DOMAIN_VERSION,
+  CLAIM_ATTESTATION_TYPES,
+  EXECUTION_ROUTE_TYPES,
+  claimRegistryDomain,
+  routerDomain,
+} from "./eip712.js";

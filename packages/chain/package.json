@@ -3,17 +3,62 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./chains": "./src/chains.ts",
-    "./units": "./src/units.ts",
-    "./clients": "./src/clients.ts",
-    "./deployments": "./src/deployments.ts",
-    "./addresses": "./src/addresses.ts",
-    "./abis": "./src/abis/index.ts",
-    "./contracts": "./src/contracts.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./chains": {
+      "types": "./dist/chains.d.ts",
+      "import": "./dist/chains.mjs",
+      "require": "./dist/chains.cjs"
+    },
+    "./units": {
+      "types": "./dist/units.d.ts",
+      "import": "./dist/units.mjs",
+      "require": "./dist/units.cjs"
+    },
+    "./clients": {
+      "types": "./dist/clients.d.ts",
+      "import": "./dist/clients.mjs",
+      "require": "./dist/clients.cjs"
+    },
+    "./deployments": {
+      "types": "./dist/deployments.d.ts",
+      "import": "./dist/deployments.mjs",
+      "require": "./dist/deployments.cjs"
+    },
+    "./addresses": {
+      "types": "./dist/addresses.d.ts",
+      "import": "./dist/addresses.mjs",
+      "require": "./dist/addresses.cjs"
+    },
+    "./abis": {
+      "types": "./dist/abis.d.ts",
+      "import": "./dist/abis.mjs",
+      "require": "./dist/abis.cjs"
+    },
+    "./contracts": {
+      "types": "./dist/contracts.d.ts",
+      "import": "./dist/contracts.mjs",
+      "require": "./dist/contracts.cjs"
+    },
+    "./eip712": {
+      "types": "./dist/eip712.d.ts",
+      "import": "./dist/eip712.mjs",
+      "require": "./dist/eip712.cjs"
+    }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",
@@ -27,6 +72,7 @@
     "@matura/eslint-config": "workspace:*",
     "@matura/typescript-config": "workspace:*",
     "eslint": "^9.39.1",
+    "tsup": "^8.5.0",
     "typescript": "catalog:",
     "vitest": "^3.2.0"
   }

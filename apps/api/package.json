@@ -11,10 +11,16 @@
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "test:int": "jest --config ./test/jest-integration.json",
+    "worker": "node dist/worker.js",
+    "worker:dev": "nest start --watch --entryFile worker",
+    "reindex": "node dist/admin/reindex.cli.js"
   },
   "dependencies": {
+    "@matura/chain": "workspace:*",
     "@matura/shared": "workspace:*",
+    "@nest-lab/throttler-storage-redis": "^1.1.0",
     "@nestjs/common": "^11.1.6",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.6",
@@ -23,9 +29,12 @@
     "@nestjs/throttler": "^6.4.0",
     "@prisma/client": "^6.19.0",
     "helmet": "^8.0.0",
+    "ioredis": "^5.4.1",
+    "jose": "^5.9.6",
     "nestjs-zod": "^5.5.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "viem": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -34,6 +43,7 @@
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.6",
+    "@testcontainers/postgresql": "^11.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.0",
@@ -43,6 +53,7 @@
     "prisma": "^6.19.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "testcontainers": "^11.0.0",
     "ts-jest": "^29.2.0",
     "ts-node": "^10.9.2",
     "typescript": "catalog:"

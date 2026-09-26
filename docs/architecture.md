@@ -43,7 +43,7 @@ flowchart TD
 | `@matura/contracts`         | Hardhat 3 (Solidity + viem + `node:test`). Empty at foundation; compiles zero contracts.                              | Hardhat                    | (chain, later) |
 | `@matura/typescript-config` | Shared strict `tsconfig` bases (base / library / nextjs / nestjs).                                                    | —                          | all            |
 | `@matura/eslint-config`     | ESLint 9 flat config, type-aware (`strictTypeChecked`) for real no-`any`.                                             | —                          | all            |
-| `apps/api`                  | NestJS REST API, Prisma/PostgreSQL projections, `/api/v1` + health, Swagger (dev).                                    | nest (CJS)                 | —              |
+| `apps/api`                  | Orchestration + read-model: viem indexer worker → Prisma/PostgreSQL projections; read + non-custodial prepare endpoints; SIWE auth; `/api/v1` + health; Swagger (dev). | nest (CJS) | `@matura/{chain,shared}` |
 | `apps/app`                  | Next.js 15 product app; wallet/network infra (wagmi + viem) lives **only** here.                                      | next                       | —              |
 | `apps/landing`              | Next.js 15 marketing site; statically optimizable, wallet-free.                                                       | next                       | —              |
 
