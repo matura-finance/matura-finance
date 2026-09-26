@@ -25,7 +25,18 @@ export function toAddress(value: string): Address {
 }
 
 /** Narrow a `0x`-prefixed bytes32 string (claimId / executionId) to viem `Hex`.
- *  Template literal produces `0x${string}` — no cast needed. */
+ *  Template literal produces `0x${string}` — no cast needed. Throws if not 32 bytes,
+ *  so a malformed id fails here rather than deep inside viem. */
 export function toHex32(value: string): Hex {
+  const body = value.startsWith("0x") ? value.slice(2) : value;
+  if (!/^[0-9a-fA-F]{64}$/.test(body)) {
+    throw new Error(`Expected a 32-byte hex value, got "${value}"`);
+  }
+  return `0x${body}`;
+}
+
+/** Normalize arbitrary-length hex calldata to `0x`-prefixed `Hex` (no length assertion —
+ *  use this for transaction `data`, not for bytes32 ids). */
+export function toHexData(value: string): Hex {
   return `0x${value.startsWith("0x") ? value.slice(2) : value}`;
 }

@@ -17,7 +17,7 @@ import { useAccount, useConfig, useSendTransaction, useWriteContract } from "wag
 import { useSession } from "../../lib/auth/session-provider";
 import { postClaimRegistrationPrepare, postSettlementPrepare } from "../../lib/api/endpoints";
 import type { PrepareStep } from "../../lib/api/schemas";
-import { toAddress, toHex32 } from "../../lib/chain/bridge";
+import { toAddress, toHex32, toHexData } from "../../lib/chain/bridge";
 import { classifyTxError, TX_ERROR_COPY } from "../../lib/chain/errors";
 import { parseAmountToBaseUnits } from "../../lib/chain/format";
 import { Disconnected, NotDeployed, WrongChain } from "../states";
@@ -48,13 +48,23 @@ export function IssuerView() {
   const [delayId, setDelayId] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
+  // Defense-in-depth: only ever submit to the issuer/settlement contracts from the manifest.
+  const allowedTargets = (): Set<string> => {
+    const d = getDeployment(bscTestnet.id);
+    return new Set([d.claimRegistry, d.settlementManager, d.mockUsdt].map((a) => a.toLowerCase()));
+  };
+
   async function runSteps(steps: PrepareStep[], msg: string): Promise<void> {
     setStatus({ kind: "running", msg });
     try {
+      const allowed = allowedTargets();
       for (const step of steps) {
+        if (!allowed.has(step.to.toLowerCase())) {
+          throw new Error("Refusing to submit a transaction to an unexpected contract");
+        }
         const hash = await sendTransactionAsync({
           to: toAddress(step.to),
-          data: step.data === undefined ? undefined : toHex32(step.data),
+          data: step.data === undefined ? undefined : toHexData(step.data),
           value: BigInt(step.value),
         });
         await waitForTransactionReceipt(config, { hash });

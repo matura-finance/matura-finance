@@ -2,7 +2,7 @@
 
 import { maturaRouterAbi } from "@matura/chain/abis";
 import { bscTestnet } from "@matura/chain/chains";
-import { isDeployed } from "@matura/chain/deployments";
+import { getDeployment, isDeployed } from "@matura/chain/deployments";
 import { EXECUTION_ROUTE_TYPES } from "@matura/chain/eip712";
 import type { NonExecutableResult } from "@matura/shared";
 import { Button } from "@matura/ui/components/button";
@@ -113,6 +113,15 @@ export function RequestView() {
       const prepared = await prepare.mutateAsync(data.routeId);
       const step = prepared.steps.at(0);
       if (step === undefined) throw new Error("Empty prepare response");
+      // Defense-in-depth: never sign/submit to a contract other than the on-chain manifest
+      // router, even if the API response says otherwise.
+      const target = toAddress(step.verifyingContract ?? step.to);
+      if (target !== toAddress(getDeployment(bscTestnet.id).router)) {
+        setPrepareError(
+          "This route targets an unexpected contract and was not signed. Refresh to try again.",
+        );
+        return;
+      }
       const { domain, message, executionId: id } = prepareRoute(step);
       setExecutionId(id);
       await tx.run(async () => {
