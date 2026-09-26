@@ -26,7 +26,7 @@ export function Screen({ eyebrow, title, description, children }: ScreenProps) {
         <Container>
           <Stack gap="xl" className="py-section">
             <Stack gap="md" className="max-w-2xl">
-              <Badge variant="outline" className="w-fit border-primary text-primary">
+              <Badge variant="outline" className="w-fit border-border text-foreground">
                 {eyebrow}
               </Badge>
               <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
