@@ -32,15 +32,23 @@ Full product happy path (needs the seeded stack up):
 E2E_STACK=1 pnpm --filter @matura/e2e test:e2e
 ```
 
-**Follow-up required for the product project:** inject a mock EIP-1193 provider into the
-page (e.g. `page.addInitScript` announcing an EIP-6963 provider backed by the seeded
-beneficiary key), so connect + SIWE + EIP-712 signing run deterministically without a wallet
-popup. We deliberately do NOT ship a wagmi `mock` connector inside the app — importing
-`wagmi/connectors` drags the Coinbase Base-account connector (and its broken `@x402/evm`
-transitive dep) into the production bundle. Keeping the mock at the Playwright layer keeps the
-shipped app lean and wallet-injection test-only. The injected account **must equal the seeded
-claim beneficiary** or optimize returns `NOT_OWNED_BY_WALLET`, and the indexer worker must be
-running or `GET /executions/:id` stays 404 and the happy path never completes.
+Signing is handled by the **`support/mock-wallet`** fixture: a Node-side viem signer
+(`privateKeyToAccount` + wallet/public clients) exposed to the page via `exposeFunction`, and a
+thin in-page **EIP-6963 provider** (`addInitScript`) that delegates every `request` to it and
+announces itself as "Matura E2E Wallet". The app's default wagmi discovery lists it as a
+connector — with **no wallet code shipped in the app** (we deliberately avoid a wagmi `mock`
+connector, whose `wagmi/connectors` barrel drags the Coinbase Base-account connector and its
+broken `@x402/evm` transitive dep into the production bundle).
+
+Configure via env (all optional):
+
+| Var               | Default                 | Notes                                                                                           |
+| ----------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| `E2E_PRIVATE_KEY` | Hardhat #0              | **Its address must be the seeded claim beneficiary** or optimize returns `NOT_OWNED_BY_WALLET`. |
+| `E2E_CHAIN_ID`    | `97`                    | The app's only chain; your local node must serve this id.                                       |
+| `E2E_RPC_URL`     | `http://127.0.0.1:8545` | Local node RPC for signing/sending.                                                             |
+
+The indexer worker must be running or `GET /executions/:id` stays 404 and the happy path never completes.
 
 ## Bundle-leak gate (no browser)
 

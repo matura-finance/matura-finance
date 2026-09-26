@@ -13,6 +13,7 @@
     "@matura/typescript-config": "workspace:*",
     "@playwright/test": "^1.49.0",
     "@types/node": "^22.10.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "viem": "catalog:"
   }
 }

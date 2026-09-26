@@ -1,23 +1,19 @@
-import { expect, test } from "@playwright/test";
+import { expect, MOCK_WALLET_NAME, test } from "../support/mock-wallet";
 
 /**
  * Product happy paths (app.matura.xyz). GATED behind `E2E_STACK=1` — requires a seeded
- * local hardhat node + the local API + a running indexer worker, AND a mock EIP-1193
- * provider injected into the page (via `page.addInitScript` announcing an EIP-6963
- * provider backed by the seeded beneficiary key) so connect + signing are deterministic
- * and popup-free. That injection is a documented follow-up — see README. The connected
- * account must be the seeded claim beneficiary or optimize returns NOT_OWNED_BY_WALLET.
+ * local hardhat node + the local API + a running indexer worker. Signing is handled by the
+ * `mock-wallet` fixture: a Node-side viem signer exposed to an in-page EIP-6963 provider,
+ * so connect + SIWE + EIP-712 run deterministically and popup-free with NO wallet code in
+ * the app bundle. The signer key's address MUST be the seeded claim beneficiary (set
+ * `E2E_PRIVATE_KEY`) or optimize returns NOT_OWNED_BY_WALLET.
  *
- * Run (once the injection + stack are in place): `E2E_STACK=1 pnpm --filter @matura/e2e test:e2e`
+ * Run: `E2E_STACK=1 pnpm --filter @matura/e2e test:e2e`
  */
 
 async function connectAndSignIn(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "Connect wallet" }).click();
-  // The mock connector shows up in the EIP-6963 list.
-  await page
-    .getByRole("button", { name: /Mock|E2E/i })
-    .first()
-    .click();
+  await page.getByRole("button", { name: MOCK_WALLET_NAME }).click();
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 

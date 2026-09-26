@@ -6,8 +6,8 @@ import { defineConfig, devices } from "@playwright/test";
  * The **landing** project always runs — the marketing site is static and needs no
  * chain/API. The **product** project runs only when `E2E_STACK=1` is set, because the
  * product happy-path requires a seeded local hardhat node + the local API + a running
- * indexer worker, plus a mock EIP-1193 provider injected for deterministic, popup-free
- * signing (a follow-up — see README). See README for the full run recipe.
+ * indexer worker. Signing is handled by the `support/mock-wallet` fixture (a Node-side viem
+ * signer exposed to an in-page EIP-6963 provider) — no wallet code ships in the app. See README.
  */
 const LANDING_URL = process.env.E2E_LANDING_URL ?? "http://localhost:3001";
 const APP_URL = process.env.E2E_APP_URL ?? "http://localhost:3002";
