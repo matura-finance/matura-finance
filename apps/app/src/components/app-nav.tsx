@@ -1,35 +1,32 @@
-import { buttonVariants } from "@matura/ui/components/button";
+import { Badge } from "@matura/ui/components/badge";
 import { Container } from "@matura/ui/components/container";
-import { Stack } from "@matura/ui/components/stack";
 import Link from "next/link";
 
-import { WalletStatus } from "./wallet-status";
+import { WalletControl } from "./wallet/wallet-control";
 
 const NAV_LINKS = [
   { href: "/account", label: "Account" },
-  { href: "/request", label: "Request" },
+  { href: "/request", label: "Get liquidity" },
   { href: "/activity", label: "Activity" },
-  { href: "/issuer", label: "Issuer" },
   { href: "/vaults", label: "Vaults" },
 ] as const;
 
-const LANDING_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "https://matura.xyz";
-
 /**
- * Top navigation across the five product routes. Server component — no wallet
- * hooks here; the client-only connection indicator is delegated to
- * <WalletStatus />.
+ * Product shell header. Primary product routes on the left; the Issuer simulator is
+ * visibly separated as a demo/admin surface (amber). A persistent "BNB Chain Testnet"
+ * badge and the wallet control sit on the right. Server component — the wallet-aware
+ * pieces are delegated to the client-only <WalletControl />.
  */
 export function AppNav() {
   return (
     <header className="border-b border-border bg-background/80 backdrop-blur">
       <Container>
-        <Stack direction="horizontal" gap="lg" className="h-16 items-center justify-between">
-          <Stack direction="horizontal" gap="lg" className="items-center">
+        <div className="flex h-16 flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/" className="font-heading text-lg font-semibold text-foreground">
               Matura
             </Link>
-            <Stack direction="horizontal" gap="md" className="items-center">
+            <nav aria-label="Product" className="flex flex-wrap items-center gap-4">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
@@ -39,16 +36,23 @@ export function AppNav() {
                   {link.label}
                 </Link>
               ))}
-            </Stack>
-          </Stack>
+              <span aria-hidden className="h-4 w-px bg-border" />
+              <Link
+                href="/issuer"
+                className="text-sm font-medium text-warning transition-opacity hover:opacity-80"
+              >
+                Issuer
+              </Link>
+            </nav>
+          </div>
 
-          <Stack direction="horizontal" gap="md" className="items-center">
-            <WalletStatus />
-            <a href={LANDING_URL} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-              Back to matura.xyz
-            </a>
-          </Stack>
-        </Stack>
+          <div className="flex items-center gap-3">
+            <Badge variant="warning" aria-label="Environment: BNB Chain Testnet">
+              BNB Chain Testnet
+            </Badge>
+            <WalletControl />
+          </div>
+        </div>
       </Container>
     </header>
   );

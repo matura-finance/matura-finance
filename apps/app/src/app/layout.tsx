@@ -1,3 +1,4 @@
+import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
@@ -25,7 +26,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const initialState = cookieToInitialState(getConfig(), (await headers()).get("cookie"));
 
   return (
-    <html lang="en" className={`${GeistSans.variable} ${manrope.variable}`}>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${manrope.variable}`}>
       <body className="font-ui antialiased">
         <Providers initialState={initialState}>{children}</Providers>
       </body>
