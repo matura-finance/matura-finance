@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  UnprocessableEntityException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { EXECUTION_ROUTE_TYPES, routerDomain } from "@matura/chain";
 import { type Hex, hashTypedData } from "viem";
 import type { z } from "zod";
@@ -10,6 +6,7 @@ import type { z } from "zod";
 import { ChainService } from "../../chain/chain.service";
 import { ContractsService } from "../../chain/contracts.service";
 import { parseUint256 } from "../../common/amount.util";
+import { conflict, unprocessable } from "../../common/http-errors";
 import { toHexAddress, validateBytes32 } from "../../common/evm.util";
 import {
   buildPrepareResponse,
@@ -48,14 +45,14 @@ export class ExecutionsPrepareService {
     const user = toHexAddress(wallet);
     const targetAdvance = parseUint256(body.targetAdvance, "targetAdvance");
     if (targetAdvance === 0n) {
-      throw new UnprocessableEntityException("targetAdvance must be non-zero");
+      throw unprocessable("ZERO_TARGET_ADVANCE", "targetAdvance must be non-zero");
     }
 
     // 1. Parse + validate leg inputs synchronously (dedup, bytes32, amounts) — no RPC.
     const seen = new Set<string>();
     const legInputs: PreparedLeg[] = body.legs.map((legInput) => {
       const claimId = validateBytes32(legInput.claimId, "claimId");
-      if (seen.has(claimId)) throw new ConflictException(`Duplicate claim in route: ${claimId}`);
+      if (seen.has(claimId)) throw conflict("DUPLICATE_CLAIM_IN_ROUTE", `Duplicate claim in route: ${claimId}`);
       seen.add(claimId);
       return {
         claimId,
@@ -76,12 +73,18 @@ export class ExecutionsPrepareService {
       }),
     );
     const validated = enriched.map(({ leg, claim, financeable }) => {
-      if (claim === null) throw new ConflictException(`Claim not found on chain: ${leg.claimId}`);
+      if (claim === null) throw conflict("CLAIM_NOT_FOUND", `Claim not found on chain: ${leg.claimId}`);
       if (!financeable) {
-        throw new ConflictException(`Claim not financeable (must be ELIGIBLE/PARTIALLY_FUNDED): ${leg.claimId}`);
+        throw conflict(
+          "CLAIM_NOT_FINANCEABLE",
+          `Claim not financeable (must be ELIGIBLE/PARTIALLY_FUNDED): ${leg.claimId}`,
+        );
       }
       if (claim.beneficiary.toLowerCase() !== user) {
-        throw new ConflictException(`Claim ${leg.claimId} beneficiary does not match the authenticated wallet`);
+        throw conflict(
+          "BENEFICIARY_MISMATCH",
+          `Claim ${leg.claimId} beneficiary does not match the authenticated wallet`,
+        );
       }
       return { leg, claim };
     });
@@ -99,9 +102,11 @@ export class ExecutionsPrepareService {
     let totalAdvance = 0n;
     let totalFace = 0n;
     for (const { leg, quote } of quoted) {
-      if (!quote.ok) throw new UnprocessableEntityException(`Vault ${leg.vault} rejected claim ${leg.claimId} (mandate)`);
+      if (!quote.ok) {
+        throw unprocessable("MANDATE_REJECTED", `Vault ${leg.vault} rejected claim ${leg.claimId} (mandate)`);
+      }
       if (quote.advanceAmount < leg.minimumAdvanceAmount) {
-        throw new UnprocessableEntityException(`Advance below minimum for claim ${leg.claimId}`);
+        throw unprocessable("ADVANCE_BELOW_MINIMUM", `Advance below minimum for claim ${leg.claimId}`);
       }
       legs.push(leg);
       perVaultAdvance.set(leg.vault, (perVaultAdvance.get(leg.vault) ?? 0n) + quote.advanceAmount);
@@ -121,15 +126,15 @@ export class ExecutionsPrepareService {
       this.contracts.routerNonce(user),
     ]);
     for (const { vault, advance, fundable } of liquidityChecks) {
-      if (advance > fundable) throw new UnprocessableEntityException(`Insufficient vault liquidity for ${vault}`);
+      if (advance > fundable) throw unprocessable("INSUFFICIENT_LIQUIDITY", `Insufficient vault liquidity for ${vault}`);
     }
 
     if (totalAdvance < targetAdvance) {
-      throw new UnprocessableEntityException("targetAdvance not met by the assembled route");
+      throw unprocessable("TARGET_ADVANCE_NOT_MET", "targetAdvance not met by the assembled route");
     }
     const maxTotalFace = body.maxTotalFace === undefined ? totalFace : parseUint256(body.maxTotalFace, "maxTotalFace");
     if (totalFace > maxTotalFace) {
-      throw new UnprocessableEntityException("route total face exceeds maxTotalFace");
+      throw unprocessable("MAX_FACE_EXCEEDED", "route total face exceeds maxTotalFace");
     }
 
     const deadline = BigInt(Math.floor(Date.now() / 1000) + (body.deadlineSeconds ?? DEFAULT_DEADLINE_SECONDS));
@@ -162,6 +167,7 @@ export class ExecutionsPrepareService {
       value: "0",
       verifyingContract: router,
       typedData: { domain, types: EXECUTION_ROUTE_TYPES, primaryType: "ExecutionRoute", message: serializeMessage(message) },
+      submitFunction: "executeRoute",
       nonce: nonce.toString(),
       expiry: deadline.toString(),
     };

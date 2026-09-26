@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { contractAbis } from "@matura/chain";
 import { CLAIM_STATES } from "@matura/shared";
 import { encodeFunctionData } from "viem";
@@ -6,6 +6,7 @@ import { encodeFunctionData } from "viem";
 import { ChainService } from "../../chain/chain.service";
 import { ContractsService } from "../../chain/contracts.service";
 import { ceilFee } from "../../common/amount.util";
+import { conflict, notFound } from "../../common/http-errors";
 import { validateBytes32 } from "../../common/evm.util";
 import { buildPrepareResponse, type PrepareResponse, type PrepareStep } from "../../common/prepare.dto";
 import { CursorService } from "../../cursor/cursor.service";
@@ -31,13 +32,13 @@ export class SettlementsPrepareService {
     const claimId = validateBytes32(rawClaimId, "claimId");
     const claim = await this.chain.getClaim(claimId);
     if (claim === null) {
-      throw new NotFoundException(`Claim not found: ${claimId}`);
+      throw notFound("CLAIM_NOT_FOUND", `Claim not found: ${claimId}`);
     }
     if (claim.state !== STATE_MATURED && claim.state !== STATE_DELAYED) {
-      throw new ConflictException("Claim is not settleable (must be MATURED or DELAYED)");
+      throw conflict("NOT_MATURED", "Claim is not settleable (must be MATURED or DELAYED)");
     }
     if (await this.contracts.isSettled(claimId)) {
-      throw new ConflictException("Claim is already settled");
+      throw conflict("ALREADY_SETTLED", "Claim is already settled");
     }
 
     const feeBps = await this.contracts.feeBps();

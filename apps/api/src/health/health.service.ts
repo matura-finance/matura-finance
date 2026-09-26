@@ -48,8 +48,9 @@ export class HealthService {
 
   /** Probe the DB, RPC, and indexer cursor; overall "ok" only when all three are up. */
   async readiness(): Promise<ReadinessReport> {
-    const db = await this.checkDb();
-    const { check: rpc, frontierNumber } = await this.checkRpc();
+    // db + rpc are independent → run them concurrently; cursor depends on the rpc frontier.
+    const [db, rpcResult] = await Promise.all([this.checkDb(), this.checkRpc()]);
+    const { check: rpc, frontierNumber } = rpcResult;
     const cursor = await this.checkCursor(frontierNumber);
 
     const status = db.status === "up" && rpc.status === "up" && cursor.status === "up" ? "ok" : "degraded";

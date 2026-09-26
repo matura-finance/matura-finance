@@ -81,6 +81,7 @@ export class IssuersService {
         primaryType: "ClaimAttestation",
         message: serializeAttestation(message),
       },
+      submitFunction: "registerClaim",
       nonce: message.nonce.toString(),
       expiry: message.deadline.toString(),
     };

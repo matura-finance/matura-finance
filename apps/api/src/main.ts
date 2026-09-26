@@ -13,6 +13,8 @@ import type { Env } from "./config/env.validation";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Trust one reverse proxy so the IP-keyed throttler sees the real client IP.
+  app.set("trust proxy", 1);
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
   // Swagger/docs are dev-only; fail closed on a missing/unknown NODE_ENV.
@@ -41,6 +43,7 @@ async function bootstrap(): Promise<void> {
       .setTitle("Matura API")
       .setDescription("Matura finance API")
       .setVersion("1.0")
+      .addBearerAuth()
       .build();
     const document = SwaggerModule.createDocument(app, swaggerConfig, {
       ignoreGlobalPrefix: true,

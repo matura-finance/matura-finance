@@ -1,5 +1,5 @@
 import { Body, Controller, Post } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
 
 import { QuotePreviewDto, QuotesResponseDto } from "./quotes.dto";
 import { QuotesService } from "./quotes.service";
@@ -12,6 +12,7 @@ export class QuotesController {
 
   /** POST /api/v1/quotes/preview — vault quotes for a hypothetical claim (public). */
   @Public()
+  @ApiOkResponse({ type: QuotesResponseDto })
   @Post("preview")
   preview(@Body() body: QuotePreviewDto): Promise<QuotesResponseDto> {
     return this.quotes.preview(body);

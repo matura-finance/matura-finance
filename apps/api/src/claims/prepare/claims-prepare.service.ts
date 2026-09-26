@@ -1,8 +1,4 @@
-import {
-  ConflictException,
-  Injectable,
-  UnprocessableEntityException,
-} from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { claimRegistryDomain, contractAbis } from "@matura/chain";
 import { encodeFunctionData } from "viem";
 import type { z } from "zod";
@@ -16,6 +12,7 @@ import {
   type PrepareResponse,
   type PrepareStep,
 } from "../../common/prepare.dto";
+import { conflict, unprocessable } from "../../common/http-errors";
 import { CursorService } from "../../cursor/cursor.service";
 import { IssuersService } from "../../issuers/issuers.service";
 
@@ -39,13 +36,14 @@ export class ClaimsPrepareService {
     body: z.infer<typeof AttestationPrepareSchema>,
   ): Promise<PrepareResponse> {
     if (!this.contracts.canDemoSign) {
-      throw new UnprocessableEntityException(
+      throw unprocessable(
+        "DEMO_SIGNING_REQUIRED",
         "registration/prepare requires demo signing; use /issuer/attestations/prepare and submit externally",
       );
     }
     const claimId = validateBytes32(body.claimId, "claimId");
     if ((await this.chain.getClaim(claimId)) !== null) {
-      throw new ConflictException(`Claim already exists on chain: ${claimId}`);
+      throw conflict("CLAIM_ALREADY_EXISTS", `Claim already exists on chain: ${claimId}`);
     }
 
     const issuer = toHexAddress(wallet);

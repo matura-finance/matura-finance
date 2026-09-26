@@ -14,9 +14,17 @@ export const PrepareStepSchema = z.object({
   data: z.string().optional(),
   value: z.string().default("0"),
   verifyingContract: z.string().optional(),
-  typedData: z.unknown().optional(),
+  typedData: z
+    .unknown()
+    .optional()
+    .describe("EIP-712 typed data { domain, types, primaryType, message } to sign"),
   expiry: z.string().optional(),
   nonce: z.string().optional(),
+  /** The contract function to submit (message + signature) after signing a `typed-data` step. */
+  submitFunction: z
+    .string()
+    .optional()
+    .describe("Contract function to call with the signed message + signature (e.g. executeRoute)"),
   /** Present only when the isolated demo issuer signer signed the typed data (dev only). */
   signature: z.string().optional(),
 });
@@ -25,7 +33,9 @@ export const PrepareResponseSchema = z.object({
   chainId: z.number(),
   steps: z.array(PrepareStepSchema),
   summary: z.string(),
-  finalizedThrough: z.string(),
+  finalizedThrough: z
+    .string()
+    .describe("Decimal block number the read projection is complete through"),
 });
 export class PrepareResponseDto extends createZodDto(PrepareResponseSchema) {}
 
