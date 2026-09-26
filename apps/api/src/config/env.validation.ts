@@ -14,6 +14,22 @@ export const EnvSchema = z.object({
     .string()
     .regex(/^$|^0x[0-9a-fA-F]{64}$/)
     .default(""),
+
+  // Chain — the API/indexer read authoritative state from this chain + RPC.
+  // Contract addresses are NEVER in env; they come from @matura/chain manifests.
+  CHAIN_ID: z.coerce.number().int().positive().default(31337),
+  RPC_URL: z.url().default("http://127.0.0.1:8545"),
+
+  // Indexer — frontier is the `finalized` block tag when CONFIRMATIONS=0,
+  // else (head - CONFIRMATIONS) for RPCs without the tag.
+  INDEXER_CONFIRMATIONS: z.coerce.number().int().min(0).default(0),
+  INDEXER_MAX_BLOCK_RANGE: z.coerce.number().int().positive().default(1000),
+  INDEXER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(4000),
+
+  // Health readiness — cursor is stale if it hasn't advanced within STALE_MS or
+  // trails the finalized head by more than MAX_LAG_BLOCKS.
+  CURSOR_STALE_MS: z.coerce.number().int().positive().default(30_000),
+  CURSOR_MAX_LAG_BLOCKS: z.coerce.number().int().positive().default(200),
 });
 
 /** Validated, coerced environment. */

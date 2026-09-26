@@ -77,7 +77,8 @@ model ClaimProjection {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
-  legs RouteLegProjection[]
+  legs       RouteLegProjection[]
+  settlement SettlementProjection?
 
   @@unique([txHash, logIndex])
   @@index([beneficiary])
@@ -85,6 +86,7 @@ model ClaimProjection {
   @@index([state, dueAt])
   @@index([beneficiary, state])
   @@index([issuer, state])
+  @@index([beneficiary, blockNumber, logIndex])
 }
 
 model RouteExecution {
@@ -104,6 +106,7 @@ model RouteExecution {
 
   @@unique([txHash, logIndex])
   @@index([user])
+  @@index([user, blockNumber, logIndex])
 }
 
 model RouteLegProjection {
@@ -118,7 +121,7 @@ model RouteLegProjection {
   logIndex       Int
 
   execution RouteExecution  @relation(fields: [executionId], references: [executionId], onDelete: Cascade)
-  claim     ClaimProjection @relation(fields: [claimId], references: [claimId], onDelete: Restrict)
+  claim     ClaimProjection @relation(fields: [claimId], references: [claimId], onDelete: Cascade)
 
   @@unique([executionId, claimId])
   @@index([executionId])
@@ -130,6 +133,60 @@ model ChainCursor {
   chainId                Int
   lastProcessedBlock     BigInt
   lastProcessedBlockHash String
+  updatedAt              DateTime @updatedAt
 
   @@id([consumerName, chainId])
+}
+
+// Settlement receipt. The four amounts exist ONLY in the `ClaimSettled` event
+// (SettlementManager has no receipt getter), so they must be projected here.
+// `beneficiary` is denormalized from the claim so portfolio/activity reads don't cross-join.
+model SettlementProjection {
+  claimId           String   @id
+  beneficiary       String
+  amountReceived    String
+  vaultDistribution String
+  userResidual      String
+  protocolFee       String
+  txHash            String
+  blockNumber       BigInt
+  logIndex          Int
+  createdAt         DateTime @default(now())
+
+  claim ClaimProjection @relation(fields: [claimId], references: [claimId], onDelete: Cascade)
+
+  @@unique([txHash, logIndex])
+  @@index([beneficiary])
+}
+
+// Append-only activity feed. One immutable row per relevant log (never mutated),
+// so keyset pagination on (blockNumber, logIndex) is stable — unlike the mutable
+// aggregate projections. `wallet` is the beneficiary/user the event belongs to.
+model ActivityEvent {
+  id          String   @id @default(cuid())
+  wallet      String
+  kind        String
+  claimId     String?
+  executionId String?
+  payload     Json
+  txHash      String
+  blockNumber BigInt
+  logIndex    Int
+  createdAt   DateTime @default(now())
+
+  @@unique([txHash, logIndex, wallet])
+  @@index([wallet, blockNumber, logIndex])
+}
+
+// Single-use SIWE nonce. Consumed atomically:
+// UPDATE ... WHERE nonce=$1 AND used=false AND expiresAt>now() RETURNING.
+model AuthNonce {
+  nonce     String   @id
+  domain    String
+  chainId   Int
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
 }
