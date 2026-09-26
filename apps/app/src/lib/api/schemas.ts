@@ -54,21 +54,6 @@ export const PortfolioResponse = z.object({
 });
 export type PortfolioResponse = z.infer<typeof PortfolioResponse>;
 
-export const SettlementWire = z.object({
-  claimId: Bytes32,
-  amountReceived: Money,
-  vaultDistribution: Money,
-  userResidual: Money,
-  protocolFee: Money,
-});
-export type SettlementWire = z.infer<typeof SettlementWire>;
-
-export const ClaimDetailResponse = ClaimWire.extend({
-  settlement: SettlementWire.nullable(),
-  finalizedThrough: z.string(),
-});
-export type ClaimDetailResponse = z.infer<typeof ClaimDetailResponse>;
-
 // ── Routes: optimize + prepare ────────────────────────────────────────────────
 export const OptimizeRequest = z.object({
   claimIds: z.array(Bytes32).min(1).max(20),
@@ -180,7 +165,6 @@ export type ActivityEvent = z.infer<typeof ActivityEvent>;
 export const ActivityPage = z.object({
   wallet: Address,
   items: z.array(ActivityEvent),
-  nextCursor: z.string().nullable(),
   finalizedThrough: z.string(),
 });
 export type ActivityPage = z.infer<typeof ActivityPage>;
@@ -197,17 +181,3 @@ export const AttestationPrepareRequest = z.object({
   evidenceHash: Bytes32.optional(),
 });
 export type AttestationPrepareRequest = z.infer<typeof AttestationPrepareRequest>;
-
-// ── Quotes preview ────────────────────────────────────────────────────────────
-export const QuoteWire = z.object({
-  vault: Address,
-  ok: z.boolean(),
-  advanceAmount: Money,
-  discountAmount: Money,
-});
-
-export const QuotesResponse = z.object({
-  quotes: z.array(QuoteWire),
-  finalizedThrough: z.string(),
-});
-export type QuotesResponse = z.infer<typeof QuotesResponse>;

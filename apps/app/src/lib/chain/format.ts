@@ -45,9 +45,3 @@ export function txExplorerUrl(txHash: string): string | null {
   const base = EXPLORER_BASE[env.chainId];
   return base ? `${base}/tx/${txHash}` : null;
 }
-
-/** Explorer URL for an address, or null when the active chain has no explorer. */
-export function addressExplorerUrl(address: string): string | null {
-  const base = EXPLORER_BASE[env.chainId];
-  return base ? `${base}/address/${address}` : null;
-}

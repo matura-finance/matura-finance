@@ -8,7 +8,6 @@ import { useSession } from "../auth/session-provider";
 import { ApiError } from "./client";
 import {
   getActivity,
-  getClaim,
   getExecution,
   getPortfolio,
   getVaults,
@@ -20,7 +19,6 @@ import type { ExecutionResponse, OptimizeRequest } from "./schemas";
 /** Hierarchical query keys — scoped by chain + address so switching account refetches. */
 export const queryKeys = {
   portfolio: (wallet: string) => ["portfolio", env.chainId, wallet] as const,
-  claim: (claimId: string) => ["claim", env.chainId, claimId] as const,
   vaults: () => ["vaults", env.chainId] as const,
   activity: (wallet: string) => ["activity", env.chainId, wallet] as const,
   execution: (executionId: string) => ["execution", env.chainId, executionId] as const,
@@ -37,14 +35,6 @@ export function useAccountPortfolio(wallet: string | undefined) {
   });
 }
 
-export function useClaim(claimId: string | undefined) {
-  return useQuery({
-    queryKey: queryKeys.claim(claimId ?? ""),
-    enabled: claimId !== undefined,
-    queryFn: ({ signal }) => getClaim(claimId ?? "", signal),
-  });
-}
-
 export function useVaults() {
   return useQuery({
     queryKey: queryKeys.vaults(),
@@ -55,9 +45,11 @@ export function useVaults() {
 
 export function useActivity(wallet: string | undefined, limit = 25) {
   return useQuery({
-    queryKey: queryKeys.activity(wallet ?? ""),
+    // `limit` is part of the key so changing it produces a distinct cache entry; invalidation
+    // by the `activity(wallet)` prefix still matches all limits.
+    queryKey: [...queryKeys.activity(wallet ?? ""), limit],
     enabled: wallet !== undefined,
-    queryFn: ({ signal }) => getActivity(wallet ?? "", null, limit, signal),
+    queryFn: ({ signal }) => getActivity(wallet ?? "", limit, signal),
   });
 }
 
