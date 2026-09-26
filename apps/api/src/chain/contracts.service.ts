@@ -44,10 +44,6 @@ export class ContractsService implements OnModuleInit {
     return this.demoSigner !== null;
   }
 
-  get demoSignerAddress(): Hex | null {
-    return this.demoSigner?.address ?? null;
-  }
-
   /** Demo-sign a ClaimAttestation with the isolated server key. Throws if demo signing is off. */
   async signClaimAttestation(domain: TypedDataDomain, message: ClaimAttestationMessage): Promise<Hex> {
     if (this.demoSigner === null) {

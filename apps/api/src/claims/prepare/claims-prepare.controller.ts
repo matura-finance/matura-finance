@@ -4,7 +4,7 @@ import { Throttle } from "@nestjs/throttler";
 
 import { ClaimsPrepareService } from "./claims-prepare.service";
 import { Wallet } from "../../auth/wallet.decorator";
-import { PrepareResponseDto, RegistrationPrepareDto } from "../../common/prepare.dto";
+import { AttestationPrepareDto, PrepareResponseDto } from "../../common/prepare.dto";
 
 @ApiTags("claims")
 @Controller({ path: "claims", version: "1" })
@@ -16,7 +16,7 @@ export class ClaimsPrepareController {
   @Post("registration/prepare")
   prepareRegistration(
     @Wallet() wallet: string,
-    @Body() body: RegistrationPrepareDto,
+    @Body() body: AttestationPrepareDto,
   ): Promise<PrepareResponseDto> {
     return this.claims.prepareRegistration(wallet, body);
   }

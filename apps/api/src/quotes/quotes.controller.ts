@@ -1,9 +1,9 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 
+import { QuotePreviewDto, QuotesResponseDto } from "./quotes.dto";
 import { QuotesService } from "./quotes.service";
 import { Public } from "../auth/public.decorator";
-import { QuotePreviewDto, QuotesResponseDto } from "../common/prepare.dto";
 
 @ApiTags("quotes")
 @Controller({ path: "quotes", version: "1" })

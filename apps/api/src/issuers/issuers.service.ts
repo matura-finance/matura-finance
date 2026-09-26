@@ -14,8 +14,12 @@ import {
   serializeAttestation,
 } from "../common/attestation";
 import { toHexAddress, validateBytes32 } from "../common/evm.util";
-import type { AttestationPrepareSchema } from "../common/prepare.dto";
-import { buildPrepareResponse, type PrepareResponse, type PrepareStep } from "../common/prepare.dto";
+import {
+  type AttestationPrepareSchema,
+  buildPrepareResponse,
+  type PrepareResponse,
+  type PrepareStep,
+} from "../common/prepare.dto";
 import { CursorService } from "../cursor/cursor.service";
 
 const ATTESTATION_DEADLINE_SECONDS = 3600;

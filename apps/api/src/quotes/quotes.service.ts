@@ -4,7 +4,7 @@ import type { z } from "zod";
 
 import { ContractsService } from "../chain/contracts.service";
 import { isoToUnix, parseUint256 } from "../common/amount.util";
-import type { QuotePreviewSchema, QuotesResponseSchema } from "../common/prepare.dto";
+import type { QuotePreviewSchema, QuotesResponseSchema } from "./quotes.dto";
 import { toHexAddress } from "../common/evm.util";
 import { CursorService } from "../cursor/cursor.service";
 

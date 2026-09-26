@@ -12,6 +12,7 @@ import { ChainModule } from "./chain/chain.module";
 import { ClaimsPrepareModule } from "./claims/prepare/claims-prepare.module";
 import { ClaimsReadModule } from "./claims/read/claims-read.module";
 import { AllExceptionsFilter } from "./common/api-error.filter";
+import { CursorModule } from "./cursor/cursor.module";
 import { validateEnv } from "./config/env.validation";
 import { ExecutionsPrepareModule } from "./executions/prepare/executions-prepare.module";
 import { ExecutionsReadModule } from "./executions/read/executions-read.module";
@@ -28,6 +29,7 @@ import { VaultsModule } from "./vaults/vaults.module";
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     PrismaModule,
     ChainModule,
+    CursorModule,
     AuthModule,
     HealthModule,
     AccountModule,

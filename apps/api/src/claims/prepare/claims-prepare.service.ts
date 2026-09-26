@@ -11,10 +11,10 @@ import { ChainService } from "../../chain/chain.service";
 import { ContractsService } from "../../chain/contracts.service";
 import { toHexAddress, validateBytes32 } from "../../common/evm.util";
 import {
+  type AttestationPrepareSchema,
   buildPrepareResponse,
   type PrepareResponse,
   type PrepareStep,
-  type RegistrationPrepareSchema,
 } from "../../common/prepare.dto";
 import { CursorService } from "../../cursor/cursor.service";
 import { IssuersService } from "../../issuers/issuers.service";
@@ -36,7 +36,7 @@ export class ClaimsPrepareService {
    */
   async prepareRegistration(
     wallet: string,
-    body: z.infer<typeof RegistrationPrepareSchema>,
+    body: z.infer<typeof AttestationPrepareSchema>,
   ): Promise<PrepareResponse> {
     if (!this.contracts.canDemoSign) {
       throw new UnprocessableEntityException(

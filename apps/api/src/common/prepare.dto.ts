@@ -32,32 +32,10 @@ export class PrepareResponseDto extends createZodDto(PrepareResponseSchema) {}
 export type PrepareStep = z.infer<typeof PrepareStepSchema>;
 export type PrepareResponse = z.infer<typeof PrepareResponseSchema>;
 
-const HexSchema = z.string().regex(/^0x[0-9a-fA-F]*$/, "expected 0x-hex");
 const AddressSchema = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "expected an address");
 const Bytes32Schema = z.string().regex(/^0x[0-9a-fA-F]{64}$/, "expected bytes32");
 
 // ---- Request DTOs ----
-
-export const QuotePreviewSchema = z.object({
-  issuer: AddressSchema,
-  claimType: ClaimType,
-  faceValue: Uint256StringSchema,
-  dueAt: z.iso.datetime(),
-});
-export class QuotePreviewDto extends createZodDto(QuotePreviewSchema) {}
-
-export const QuotesResponseSchema = z.object({
-  quotes: z.array(
-    z.object({
-      vault: z.string(),
-      ok: z.boolean(),
-      advanceAmount: z.string(),
-      discountAmount: z.string(),
-    }),
-  ),
-  finalizedThrough: z.string(),
-});
-export class QuotesResponseDto extends createZodDto(QuotesResponseSchema) {}
 
 export const AttestationPrepareSchema = z.object({
   claimId: Bytes32Schema,
@@ -70,11 +48,6 @@ export const AttestationPrepareSchema = z.object({
   evidenceHash: Bytes32Schema.optional(),
 });
 export class AttestationPrepareDto extends createZodDto(AttestationPrepareSchema) {}
-
-export const RegistrationPrepareSchema = AttestationPrepareSchema.extend({
-  signature: HexSchema.optional(),
-});
-export class RegistrationPrepareDto extends createZodDto(RegistrationPrepareSchema) {}
 
 export const ExecutionLegInputSchema = z.object({
   claimId: Bytes32Schema,
