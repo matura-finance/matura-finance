@@ -30,6 +30,7 @@
     "@matura/eslint-config": "workspace:*",
     "@matura/typescript-config": "workspace:*",
     "eslint": "^9.39.1",
+    "fast-check": "catalog:",
     "tsup": "^8.5.0",
     "typescript": "catalog:",
     "vitest": "^3.2.0"

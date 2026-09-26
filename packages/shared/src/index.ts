@@ -30,5 +30,34 @@ export { RouteLeg, ExecutionRoute } from "./route.js";
 export { SettlementReceipt } from "./settlement.js";
 export { Claim } from "./claim.js";
 
+// Deterministic best-execution router (pure optimizer + I/O schemas).
+export {
+  RouteCandidate,
+  RejectionReason,
+  REASON_PRECEDENCE,
+  RejectedAlternative,
+  rank,
+  Explanation,
+  ExplanationStep,
+  OptimizeInput,
+  OptimizeResult,
+  RouteResult,
+  RouteResultCore,
+  NonExecutableResult,
+  RouteIntentPayload,
+  parseOptimizeInput,
+  MAX_ROUTE_LEGS,
+  EXACT_SEARCH_MAX_CLAIMS,
+  ceilDiv,
+  advanceForFace,
+  discountForFace,
+  minFaceForAdvance,
+  maxFaceForAdvanceCap,
+  effectiveDiscountBps,
+  compareRateBps,
+  BPS_DENOMINATOR,
+  optimizeRoute,
+} from "./routing/index.js";
+
 // API error envelope.
 export { ApiError, ApiErrorResponse } from "./errors.js";
