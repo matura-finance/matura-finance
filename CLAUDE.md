@@ -39,11 +39,12 @@ issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/
 
 **`apps/api`** — orchestration + read-model service. A separate-process **indexer worker**
 (`worker.ts`; `finalized`-tag polling, block-hash-mismatch → full-wipe+reindex, idempotent upserts
-+ cursor in one advisory-locked tx) projects on-chain events into Postgres/Prisma. The HTTP API
-serves **read endpoints** (projection + chain read-through) and non-custodial **write-preparation**
-endpoints (unsigned calldata / EIP-712 typed data — never holds a user key), behind **SIWE** auth
-(viem, JWT, fail-closed global guard + `@Public()`). Money = base-unit **strings**; addresses
-lowercase; BigInt never leaks at the JSON boundary. Prisma migrations are committed + reproducible.
+
+- cursor in one advisory-locked tx) projects on-chain events into Postgres/Prisma. The HTTP API
+  serves **read endpoints** (projection + chain read-through) and non-custodial **write-preparation**
+  endpoints (unsigned calldata / EIP-712 typed data — never holds a user key), behind **SIWE** auth
+  (viem, JWT, fail-closed global guard + `@Public()`). Money = base-unit **strings**; addresses
+  lowercase; BigInt never leaks at the JSON boundary. Prisma migrations are committed + reproducible.
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
 ABI-freshness gate → manifest-freshness gate. Gotchas: toolchain (Node, tsc `unknown`, ABI/prettier
@@ -81,5 +82,6 @@ gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/se
 ## Local-only docs (gitignored)
 
 `docs/deployment-runbook.md` (live addresses, update per deploy), `docs/code-review.md`, and
-`docs/reviews/` (per-PR review docs). Planning docs (`docs/brainstorms/`, `docs/plans/`) and
-`docs/gas-report.md` are tracked.
+`docs/reviews/` (per-PR review docs). Planning docs (`docs/brainstorms/`, `docs/plans/`),
+`docs/gas-report.md`, and **`docs/deployment.md`** (living whole-stack E2E deploy guide — update
+each iteration) are tracked.
