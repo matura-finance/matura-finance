@@ -34,6 +34,8 @@ export interface ChainAddresses {
 export interface BlockRef {
   number: bigint;
   hash: Hex;
+  /** Block timestamp (Unix seconds) — used for duration/quote math without a second fetch. */
+  timestamp: bigint;
 }
 
 /** On-chain claim as returned by `ClaimRegistry.getClaim`. */
@@ -89,7 +91,8 @@ export class ChainService implements OnModuleInit {
     };
     this.clientRef = createPublicClientFor(chain, rpcUrl, { batch: true });
 
-    const deployed = manifest.addresses.claimRegistry !== "0x0000000000000000000000000000000000000000";
+    const deployed =
+      manifest.addresses.claimRegistry !== "0x0000000000000000000000000000000000000000";
     this.logger.log(
       `Chain ${String(chainId)} @ ${rpcUrl} (deployment block ${String(this.deploymentBlockRef)}, ` +
         `${deployed ? "deployed" : "NOT deployed — zero manifest"})`,
@@ -119,7 +122,11 @@ export class ChainService implements OnModuleInit {
    * for RPCs without the tag. `useCache` serves a short-TTL value for health/probe paths.
    */
   async getFrontierBlock(useCache = false): Promise<BlockRef> {
-    if (useCache && this.frontierCache !== null && Date.now() - this.frontierCache.at < FRONTIER_CACHE_TTL_MS) {
+    if (
+      useCache &&
+      this.frontierCache !== null &&
+      Date.now() - this.frontierCache.at < FRONTIER_CACHE_TTL_MS
+    ) {
       return this.frontierCache.block;
     }
     const client = this.client;
@@ -130,7 +137,7 @@ export class ChainService implements OnModuleInit {
       block = await this.getRequiredBlock(target);
     } else {
       const raw = await client.getBlock({ blockTag: "finalized" });
-      block = { number: raw.number, hash: raw.hash };
+      block = { number: raw.number, hash: raw.hash, timestamp: raw.timestamp };
     }
     this.frontierCache = { block, at: Date.now() };
     return block;
@@ -145,14 +152,18 @@ export class ChainService implements OnModuleInit {
     }
   }
 
-  /** Read-through: the on-chain claim, or null if it doesn't exist (e.g. `ClaimNotFound`). */
-  async getClaim(claimId: Hex): Promise<OnChainClaim | null> {
+  /**
+   * Read-through: the on-chain claim, or null if it doesn't exist (e.g. `ClaimNotFound`).
+   * Pass `blockNumber` to pin the read to a specific block (deterministic snapshot reads).
+   */
+  async getClaim(claimId: Hex, blockNumber?: bigint): Promise<OnChainClaim | null> {
     try {
       const claim = await this.client.readContract({
         address: this.addresses.claimRegistry,
         abi: contractAbis.claimRegistry,
         functionName: "getClaim",
         args: [claimId],
+        blockNumber,
       });
       return {
         beneficiary: claim.beneficiary,
@@ -175,7 +186,7 @@ export class ChainService implements OnModuleInit {
 
   private async getRequiredBlock(blockNumber: bigint): Promise<BlockRef> {
     const raw = await this.client.getBlock({ blockNumber });
-    return { number: raw.number, hash: raw.hash };
+    return { number: raw.number, hash: raw.hash, timestamp: raw.timestamp };
   }
 }
 

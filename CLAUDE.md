@@ -43,8 +43,14 @@ issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/
 - cursor in one advisory-locked tx) projects on-chain events into Postgres/Prisma. The HTTP API
   serves **read endpoints** (projection + chain read-through) and non-custodial **write-preparation**
   endpoints (unsigned calldata / EIP-712 typed data — never holds a user key), behind **SIWE** auth
-  (viem, JWT, fail-closed global guard + `@Public()`). Money = base-unit **strings**; addresses
-  lowercase; BigInt never leaks at the JSON boundary. Prisma migrations are committed + reproducible.
+  (viem, JWT, fail-closed global guard + `@Public()`; rate-limited **per wallet**). Money = base-unit
+  **strings**; addresses lowercase; BigInt never leaks at the JSON boundary. Prisma migrations are
+  committed + reproducible. The **deterministic best-execution router** (`routes/optimize` +
+  `routes/:routeId/prepare-execution`) selects the cheapest verifiable route via a pure integer
+  optimizer in `@matura/shared` (bounded exact search + greedy fallback), persists a **single-use**
+  `RouteIntent`, and re-validates each leg against a pinned block through one shared off-chain
+  `_validateLegs` mirror (`common/leg-mirror.ts`) before emitting the signable `ExecutionRoute`.
+  Design + gotchas: `docs/routing.md`.
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
 ABI-freshness gate → manifest-freshness gate. Gotchas: toolchain (Node, tsc `unknown`, ABI/prettier
@@ -52,7 +58,10 @@ gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/se
 (event-scan block, `.js`→`.ts` script imports, `noUncheckedIndexedAccess`+viem)
 `docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`; **apps/api toolchain**
 (CJS↔ESM chain consumption, `prisma-client` types, strict viem, `z.stringbool`, DB-less migrations)
-`docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`.
+`docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`; **best-execution router**
+(one shared off-chain `_validateLegs` mirror, `PinnedReads` determinism, single-use intents pruned
+expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
+`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`.
 
 ## Conventions
 
