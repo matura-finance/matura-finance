@@ -72,8 +72,13 @@ export function IssuerView() {
 
   async function createClaim(): Promise<void> {
     if (token === null || address === undefined) return;
+    const days = Number(dueDays);
+    if (!Number.isInteger(days) || days <= 0) {
+      setStatus({ kind: "error", msg: "Enter a whole number of days until maturity." });
+      return;
+    }
     const claimId = keccak256(stringToHex(`matura-demo:${crypto.randomUUID()}`));
-    const dueAt = new Date(Date.now() + Number(dueDays) * 86_400_000).toISOString();
+    const dueAt = new Date(Date.now() + days * 86_400_000).toISOString();
     try {
       const prepared = await postClaimRegistrationPrepare(
         {
@@ -185,7 +190,10 @@ export function IssuerView() {
                   }}
                 />
               </Field>
-              <Button disabled={busy} onClick={() => void createClaim()}>
+              <Button
+                disabled={busy || face.trim() === "" || dueDays.trim() === ""}
+                onClick={() => void createClaim()}
+              >
                 Create
               </Button>
             </CardContent>
