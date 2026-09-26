@@ -1,7 +1,5 @@
 "use client";
 
-import { bscTestnet } from "@matura/chain/chains";
-import { getNamedVaults, isDeployed } from "@matura/chain/deployments";
 import type { RejectedAlternative, RouteResult } from "@matura/shared";
 import { AllocationBar } from "@matura/ui/components/allocation-bar";
 import { Badge } from "@matura/ui/components/badge";
@@ -11,22 +9,10 @@ import { useMemo } from "react";
 
 import type { FilteredOut } from "../../lib/api/schemas";
 import { formatBps, formatUsdt, shortenAddress } from "../../lib/chain/format";
+import { useVaultLabel } from "../../lib/chain/vault-label";
 import { REASON_COPY, sortByPrecedence } from "../../lib/reasons";
 
 const VAULT_COLORS = ["--color-vault-1", "--color-vault-2", "--color-vault-3", "--color-vault-4"];
-
-function useVaultLabel() {
-  return useMemo(() => {
-    const named = isDeployed(bscTestnet.id) ? getNamedVaults(bscTestnet.id) : null;
-    return (address: string): string => {
-      if (named === null) return shortenAddress(address);
-      const lower = address.toLowerCase();
-      if (named.stableVault.toLowerCase() === lower) return "Stable Vault";
-      if (named.flexVault.toLowerCase() === lower) return "Flex Vault";
-      return shortenAddress(address);
-    };
-  }, []);
-}
 
 /** width% of a base-unit value against a base-unit whole — BigInt geometry, not float money. */
 function widthPct(value: bigint, whole: bigint): number {

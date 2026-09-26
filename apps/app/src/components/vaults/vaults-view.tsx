@@ -1,24 +1,16 @@
 "use client";
 
 import { bscTestnet } from "@matura/chain/chains";
-import { getNamedVaults, isDeployed } from "@matura/chain/deployments";
+import { isDeployed } from "@matura/chain/deployments";
 import { Badge } from "@matura/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@matura/ui/components/card";
 import { Skeleton } from "@matura/ui/components/skeleton";
 
 import { useVaults } from "../../lib/api/hooks";
 import { formatBps, formatUsdt, shortenAddress } from "../../lib/chain/format";
+import { useVaultLabel } from "../../lib/chain/vault-label";
 import type { VaultSummaryWire } from "../../lib/api/schemas";
 import { NotDeployed, RpcUnavailable } from "../states";
-
-function vaultLabel(address: string): string {
-  if (!isDeployed(bscTestnet.id)) return `Vault ${shortenAddress(address)}`;
-  const named = getNamedVaults(bscTestnet.id);
-  const lower = address.toLowerCase();
-  if (named.stableVault.toLowerCase() === lower) return "Stable Vault";
-  if (named.flexVault.toLowerCase() === lower) return "Flex Vault";
-  return `Vault ${shortenAddress(address)}`;
-}
 
 /** Utilization as a percentage string, computed with BigInt (never float money). */
 function utilization(v: VaultSummaryWire): string {
@@ -30,6 +22,7 @@ function utilization(v: VaultSummaryWire): string {
 
 export function VaultsView() {
   const query = useVaults();
+  const vaultLabel = useVaultLabel();
 
   if (!isDeployed(bscTestnet.id)) return <NotDeployed />;
   if (query.isPending) return <Skeleton className="h-56 w-full" />;
