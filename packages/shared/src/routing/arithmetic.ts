@@ -27,11 +27,6 @@ export function advanceForFace(face: bigint, bps: number): bigint {
   return face - discount;
 }
 
-/** Discount for a given face: `face - advance` (always ≥ 0). */
-export function discountForFace(face: bigint, bps: number): bigint {
-  return face - advanceForFace(face, bps);
-}
-
 /**
  * Smallest face in `[0, faceCap]` whose advance is at least `targetAdvance`, or
  * `null` if even `faceCap` cannot reach it. Binary search over the monotonic
@@ -81,14 +76,4 @@ export function maxFaceForAdvanceCap(advanceCap: bigint, bps: number, faceCap: b
 export function effectiveDiscountBps(totalCost: bigint, totalFaceAssigned: bigint): number {
   if (totalFaceAssigned === 0n) return 0;
   return Number((totalCost * BPS_DENOMINATOR) / totalFaceAssigned);
-}
-
-/**
- * Compare two size-independent rates `a` and `b` given as bps integers. Trivial
- * here (rates are integers), but kept as the single rate-comparison primitive so
- * a future fractional rate can switch to cross-multiplication without touching
- * call sites. Returns a `number` (never a `bigint`) for use in `Array.sort`.
- */
-export function compareRateBps(a: number, b: number): number {
-  return a - b;
 }

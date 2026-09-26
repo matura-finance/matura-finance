@@ -30,13 +30,14 @@ export { RouteLeg, ExecutionRoute } from "./route.js";
 export { SettlementReceipt } from "./settlement.js";
 export { Claim } from "./claim.js";
 
-// Deterministic best-execution router (pure optimizer + I/O schemas).
+// Deterministic best-execution router (pure optimizer + I/O schemas). The
+// arithmetic primitives are internal to the routing module and intentionally
+// not part of the public surface.
 export {
   RouteCandidate,
   RejectionReason,
   REASON_PRECEDENCE,
   RejectedAlternative,
-  rank,
   Explanation,
   ExplanationStep,
   OptimizeInput,
@@ -48,14 +49,6 @@ export {
   parseOptimizeInput,
   MAX_ROUTE_LEGS,
   EXACT_SEARCH_MAX_CLAIMS,
-  ceilDiv,
-  advanceForFace,
-  discountForFace,
-  minFaceForAdvance,
-  maxFaceForAdvanceCap,
-  effectiveDiscountBps,
-  compareRateBps,
-  BPS_DENOMINATOR,
   optimizeRoute,
 } from "./routing/index.js";
 

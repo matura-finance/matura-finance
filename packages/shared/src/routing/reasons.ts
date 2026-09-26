@@ -3,10 +3,10 @@ import { ClaimId } from "../ids.js";
 import { NormalizedAddress } from "../address.js";
 
 /**
- * Ordered, single source of truth for rejection reasons. When several reasons
- * apply to one candidate, the earliest in this array wins (see {@link rank}), so
- * the reported reason is deterministic. Hard-constraint reasons (mandate / chain
- * state) precede economic ones (dominated / cap).
+ * Ordered, single source of truth for rejection reasons, and the source for the
+ * `RejectionReason` enum. Ordered hard-constraint reasons (mandate / chain state)
+ * first, economic ones (dominated / cap) last, so a caller that ever needs to
+ * pick among several applicable reasons can prefer the earliest.
  */
 export const REASON_PRECEDENCE = [
   "NOT_OWNED_BY_WALLET",
@@ -35,14 +35,6 @@ export const RejectionReason = z.enum(REASON_PRECEDENCE);
 
 /** The rejection-reason union, inferred from the ordered source-of-truth array. */
 export type RejectionReason = z.infer<typeof RejectionReason>;
-
-/**
- * Precedence rank of a reason (lower = higher priority). Derived from
- * `REASON_PRECEDENCE` so the enum and the ordering can never drift.
- */
-export function rank(reason: RejectionReason): number {
-  return REASON_PRECEDENCE.indexOf(reason);
-}
 
 /** A machine-readable rejected alternative: an eligible-but-unused candidate. */
 export const RejectedAlternative = z
