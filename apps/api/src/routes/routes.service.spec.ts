@@ -1,3 +1,5 @@
+import { type Hex } from "viem";
+
 import { RoutesService } from "./routes.service";
 import type { ChainService } from "../chain/chain.service";
 import type { ContractsService, PinnedReads, VaultMandate } from "../chain/contracts.service";
@@ -5,12 +7,13 @@ import type { CursorService } from "../cursor/cursor.service";
 import type { RouteIntentService } from "./route-intent.service";
 import type { OnChainClaim } from "../chain/chain.service";
 
-const WALLET = `0x${"a".repeat(40)}`;
-const ROUTER = `0x${"f".repeat(40)}`;
-const ISSUER = `0x${"b".repeat(40)}`;
-const TOKEN = `0x${"c".repeat(40)}`;
-const VAULT = `0x${"d".repeat(40)}`;
-const CLAIM = `0x${"1".repeat(64)}`;
+const hex = (fill: string): Hex => `0x${fill}`;
+const WALLET = hex("a".repeat(40));
+const ROUTER = hex("f".repeat(40));
+const ISSUER = hex("b".repeat(40));
+const TOKEN = hex("c".repeat(40));
+const VAULT = hex("d".repeat(40));
+const CLAIM = hex("1".repeat(64));
 const TS = 1_780_000_000n;
 
 const mandate: VaultMandate = {
@@ -64,7 +67,7 @@ function makeService(
   const chain = {
     chainId: 31337,
     addresses: { router: ROUTER },
-    getFrontierBlock: () => Promise.resolve({ number: 10n, hash: `0x${"0".repeat(64)}` }),
+    getFrontierBlock: () => Promise.resolve({ number: 10n, hash: hex("0".repeat(64)) }),
     client: { getBlock: () => Promise.resolve({ timestamp: TS }) },
   } as unknown as ChainService;
   const contracts = { pinnedAt: () => pinned } as unknown as ContractsService;

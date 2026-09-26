@@ -1,12 +1,15 @@
+import { type Hex } from "viem";
+
 import { collectCandidates } from "./quote-collector";
 import type { PinnedReads, VaultMandate, VaultQuote } from "../chain/contracts.service";
 import type { OnChainClaim } from "../chain/chain.service";
 
-const WALLET = `0x${"a".repeat(40)}`;
-const ISSUER = `0x${"b".repeat(40)}`;
-const TOKEN = `0x${"c".repeat(40)}`;
-const VAULT = `0x${"d".repeat(40)}`;
-const CLAIM = `0x${"1".repeat(64)}`;
+const hex = (fill: string): Hex => `0x${fill}`;
+const WALLET = hex("a".repeat(40));
+const ISSUER = hex("b".repeat(40));
+const TOKEN = hex("c".repeat(40));
+const VAULT = hex("d".repeat(40));
+const CLAIM = hex("1".repeat(64));
 const TS = 1_780_000_000n;
 
 const mandate: VaultMandate = {
@@ -69,7 +72,7 @@ describe("collectCandidates", () => {
   });
 
   it("rejects a claim not owned by the wallet", async () => {
-    const other = `0x${"e".repeat(40)}`;
+    const other = hex("e".repeat(40));
     const { candidates, rejected } = await collectCandidates(
       fakeReads(claim({ beneficiary: other })),
       TS,
