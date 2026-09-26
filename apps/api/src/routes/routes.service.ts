@@ -1,7 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import { type Hex } from "viem";
 import type { z } from "zod";
-import { optimizeRoute, parseOptimizeInput, RouteIntentPayload } from "@matura/shared";
+import {
+  optimizeRoute,
+  OptimizeResult,
+  parseOptimizeInput,
+  RouteIntentPayload,
+} from "@matura/shared";
 
 import { ChainService } from "../chain/chain.service";
 import { ContractsService } from "../chain/contracts.service";
@@ -64,18 +69,30 @@ export class RoutesService {
     const claimIds = dedupe(body.claimIds.map((id) => validateBytes32(id, "claimId")));
 
     if (await reads.routerPaused()) {
+      const pausedResult = OptimizeResult.parse({
+        executable: false,
+        reasonCode: "ROUTER_PAUSED",
+        shortfallAdvance: body.targetAdvance,
+        maxAchievableAdvance: "0",
+        rejected: [],
+        explanation: {
+          strategy: "bounded-exact",
+          steps: [],
+          candidatesConsidered: 0,
+          targetAdvance: body.targetAdvance,
+          achievedAdvance: "0",
+        },
+      });
       return {
         chainId: this.chain.chainId,
         blockNumber: frontier.number.toString(),
         finalizedThrough,
         routeId: null,
         expiresAt: null,
-        result: optimizeRoute(
-          parseOptimizeInput({ targetAdvance: body.targetAdvance, candidates: [] }),
-        ),
+        result: pausedResult,
         filteredOut: claimIds.map((claimId) => ({
           claimId,
-          vault: claimId,
+          vault: null,
           reason: "ROUTER_PAUSED" as const,
         })),
       };
@@ -217,8 +234,12 @@ export class RoutesService {
 
       const nonce = await reads.routerNonce(user);
       const nowSec = Math.floor(Date.now() / 1000);
-      const userDeadline =
-        Math.floor(intent.createdAt.getTime() / 1000) + intent.routeDeadlineSeconds;
+      // Derive the optimize time from the app-clock `expiresAt` (= optimizeTime + TTL) so the
+      // deadline math stays on ONE clock; `createdAt` is DB-clock and would skew against nowSec.
+      const optimizeTimeSec = Math.floor(
+        (intent.expiresAt.getTime() - ROUTE_INTENT_TTL_SECONDS * 1000) / 1000,
+      );
+      const userDeadline = optimizeTimeSec + intent.routeDeadlineSeconds;
       const deadline = BigInt(Math.min(userDeadline, nowSec + EXECUTION_DEADLINE_SECONDS));
       if (deadline <= BigInt(nowSec + MIN_DEADLINE_MARGIN_SECONDS)) {
         throw unprocessable(

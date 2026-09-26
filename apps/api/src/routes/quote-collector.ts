@@ -25,7 +25,8 @@ export interface CollectedCandidate {
 
 export interface CollectedRejection {
   claimId: string;
-  vault: string;
+  /** null for a claim-level rejection (no specific vault applies). */
+  vault: string | null;
   reason: RejectionReason;
 }
 
@@ -91,7 +92,7 @@ export async function collectCandidates(
     claimIds.map(async (claimId) => {
       const claim = await reads.getClaim(claimId);
       const rejectAll = (reason: RejectionReason): void => {
-        if (vaults.length === 0) rejected.push({ claimId, vault: claimId, reason });
+        if (vaults.length === 0) rejected.push({ claimId, vault: null, reason });
         else for (const v of vaults) rejected.push({ claimId, vault: v.address, reason });
       };
 
@@ -186,5 +187,21 @@ export async function collectCandidates(
     }),
   );
 
+  // Deterministic order (candidates/rejects are pushed from concurrent waves).
+  const byClaimVault = (
+    a: { claimId: string; vault: string | null },
+    b: { claimId: string; vault: string | null },
+  ): number =>
+    a.claimId !== b.claimId
+      ? a.claimId < b.claimId
+        ? -1
+        : 1
+      : (a.vault ?? "") < (b.vault ?? "")
+        ? -1
+        : (a.vault ?? "") > (b.vault ?? "")
+          ? 1
+          : 0;
+  candidates.sort(byClaimVault);
+  rejected.sort(byClaimVault);
   return { candidates, rejected };
 }

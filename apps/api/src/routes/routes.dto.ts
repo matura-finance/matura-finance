@@ -41,9 +41,15 @@ export const OptimizeResponseSchema = z.object({
    * authoritative re-quote + mirror happens at prepare-execution.
    */
   result: OptimizeResult,
-  /** Candidates filtered out by hard constraints at collection (with reasons). Plain strings. */
+  /**
+   * Candidates filtered out by hard constraints at collection (with reasons). Plain strings.
+   * `vault` is null for claim-level rejections (no specific vault applies — e.g. not owned,
+   * or the router is paused).
+   */
   filteredOut: z.array(
-    z.object({ claimId: z.string(), vault: z.string(), reason: RejectionReason }).strict(),
+    z
+      .object({ claimId: z.string(), vault: z.string().nullable(), reason: RejectionReason })
+      .strict(),
   ),
 });
 export class OptimizeResponseDto extends createZodDto(OptimizeResponseSchema) {}
