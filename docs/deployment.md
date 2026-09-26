@@ -94,7 +94,8 @@ mismatch (e.g. a local `demo:reset` wipe) it full-wipes + reindexes from the dep
 node apps/api/dist/main.js          # prod   (or: pnpm --filter @matura/api dev)
 ```
 
-Behind a reverse proxy, `trust proxy` is set so the IP-keyed throttler sees the real client.
+Requests are throttled **per authenticated wallet** (falling back to IP for public routes), so
+behind a reverse proxy keep `trust proxy` set for the real client IP on that fallback path.
 Swagger is dev-only at `/docs`.
 
 ### 6. Web app (`apps/app`) — pending
@@ -109,6 +110,7 @@ Point `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_CHAIN_ID` / `NEXT_PUBLIC_RPC_URL` at 
 - [ ] `GET /api/v1/vaults` returns the two vaults with mandates.
 - [ ] `GET /auth/nonce` → `{nonce, domain, chainId}`; SIWE `POST /auth/verify` mints a bearer token.
 - [ ] A `*/prepare` endpoint returns the uniform envelope (chainId, steps, summary, finalizedThrough).
+- [ ] `POST /api/v1/routes/optimize` (authed) with Alice's ELIGIBLE claim ids returns an executable route + `routeId`; `POST /api/v1/routes/:routeId/prepare-execution` returns the `ExecutionRoute` typed-data step. A second prepare of the same `routeId` → `409`.
 - [ ] Restart the worker → no duplicate rows (idempotent).
 
 ## Reindex / rollback
@@ -129,6 +131,13 @@ Point `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_CHAIN_ID` / `NEXT_PUBLIC_RPC_URL` at 
 ## Iteration log
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
+
+### 2026-09-26 — deterministic best-execution router (PR #4)
+
+- **New migration:** `3_route_intent` (adds the `RouteIntent` table + `RouteIntentStatus` enum). Purely additive — `prisma migrate deploy` applies it with no backfill/locks. Re-run step §2 on deploy.
+- **New endpoints:** `POST /api/v1/routes/optimize` + `POST /api/v1/routes/:routeId/prepare-execution` (SIWE-authed; smoke-checked above). No new contracts and **no new env** — uses the existing chain/DB/SIWE config; required on-chain readers already exist in the committed ABIs.
+- **Operational:** throttling is now **per authenticated wallet** (IP fallback for public routes) — see §5. `RouteIntent` rows are short-lived (120s TTL) and pruned opportunistically on `optimize`; no sweeper/cron required.
+- **Not yet wired:** the Hardhat golden-vector parity CI gate for the off-chain `_validateLegs` mirror (see `docs/routing.md` follow-ups).
 
 ### 2026-09-26 — apps/api orchestration & read-model service (PR #3)
 
