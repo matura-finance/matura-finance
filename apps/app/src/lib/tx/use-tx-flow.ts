@@ -15,6 +15,8 @@ export interface TxFlow {
   markIndexing: () => void;
   /** Called by the caller once the API projection reports the execution indexed. */
   markIndexed: () => void;
+  /** Called when the API projection reports the execution FAILED after submission. */
+  markFailed: () => void;
   reset: () => void;
 }
 
@@ -57,10 +59,13 @@ export function useTxFlow(): TxFlow {
   const markIndexed = useCallback(() => {
     dispatch({ type: "indexed" });
   }, []);
+  const markFailed = useCallback(() => {
+    dispatch({ type: "fail", error: "reverted" });
+  }, []);
   const reset = useCallback(() => {
     setHash(undefined);
     dispatch({ type: "reset" });
   }, []);
 
-  return { state, run, markIndexing, markIndexed, reset };
+  return { state, run, markIndexing, markIndexed, markFailed, reset };
 }

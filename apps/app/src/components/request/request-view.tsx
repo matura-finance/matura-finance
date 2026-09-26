@@ -11,6 +11,7 @@ import { Field } from "@matura/ui/components/field";
 import { Input } from "@matura/ui/components/input";
 import { Skeleton } from "@matura/ui/components/skeleton";
 import { Stack } from "@matura/ui/components/stack";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
 
@@ -63,18 +64,20 @@ export function RequestView() {
   // Once the receipt confirms, move into the indexing-poll phase. Depend on the stable
   // status primitive + memoized callback (NOT the whole `tx` object, which is recreated
   // each render) so this fires only on the transition, not every render.
-  const { markIndexing, markIndexed } = tx;
+  const { markIndexing, markIndexed, markFailed } = tx;
   useEffect(() => {
     if (tx.state.status === "confirmed") markIndexing();
   }, [tx.state.status, markIndexing]);
 
-  // When the projection reports the execution, finish and refresh the account exactly once.
+  // When the projection reports the execution, finish (or fail) exactly once.
   useEffect(() => {
     if (poll.data?.status === "EXECUTED") {
       markIndexed();
       if (address !== undefined) invalidate(address);
+    } else if (poll.data?.status === "FAILED") {
+      markFailed();
     }
-  }, [poll.data?.status, markIndexed, invalidate, address]);
+  }, [poll.data?.status, markIndexed, markFailed, invalidate, address]);
 
   const onExpire = useCallback(() => {
     setExpired(true);
@@ -348,6 +351,9 @@ function ExecutionStatus({
           ? "Liquidity received"
           : "Confirmed onchain. Updating your Matura Account…";
   const done = s.status === "indexed";
+  // Once the tx is on-chain (confirmed/indexing) the projection may lag; never dead-end —
+  // offer a non-destructive escape to Activity so the user is never stranded on this screen.
+  const onChainPending = s.status === "confirmed" || s.status === "indexing";
   return (
     <Card>
       <CardContent className="flex flex-col items-start gap-3 py-8">
@@ -356,6 +362,15 @@ function ExecutionStatus({
           <Button onClick={onReset} disabled={isTxInFlight(s)}>
             Make another request
           </Button>
+        )}
+        {onChainPending && (
+          <p className="text-sm text-muted-foreground">
+            Taking longer than expected?{" "}
+            <Link href="/activity" className="text-foreground underline underline-offset-2">
+              View your activity
+            </Link>
+            .
+          </p>
         )}
       </CardContent>
     </Card>
