@@ -1,5 +1,7 @@
 import { type Hex, keccak256, stringToHex } from "viem";
 
+import type { CollectedCandidate } from "./quote-collector";
+
 /**
  * Deterministic canonical serialization for content hashing: object keys sorted,
  * only JSON scalars. Throws on `bigint`/`undefined` so a stray non-string can't
@@ -34,19 +36,12 @@ export function contentHash(value: unknown): Hex {
   return keccak256(stringToHex(canonical(value)));
 }
 
-/** A quote candidate as it feeds the snapshot hash (all base-unit strings). */
-export interface SnapshotCandidate {
-  claimId: string;
-  vault: string;
-  claimType: string;
-  dueDate: string;
-  remainingFace: string;
-  minFace: string;
-  maxFace: string;
-  vaultFundable: string;
-  rateBps: number;
-  slicesRemaining: number;
-}
+/**
+ * A quote candidate as it feeds the snapshot hash. Reuses `CollectedCandidate`
+ * verbatim so a new candidate field can't silently drop out of the snapshot hash
+ * (which would be a determinism bug, not a type error).
+ */
+export type SnapshotCandidate = CollectedCandidate;
 
 /** Hash the pinned quote snapshot: the block + every candidate (sorted for stability). */
 export function quoteSnapshotHash(blockNumber: bigint, candidates: SnapshotCandidate[]): Hex {
@@ -74,6 +69,8 @@ export interface RouteIdLeg {
 /**
  * Deterministic route id: a content hash over the wallet, quote snapshot, chosen
  * legs, target and caps. Identical inputs → identical id (idempotent optimize).
+ * `chainId` is intentionally omitted: the RouteIntent DB is per-deployment and the
+ * session JWT is chain-bound, so a routeId can't be replayed across chains.
  */
 export function routeIdOf(parts: {
   user: string;

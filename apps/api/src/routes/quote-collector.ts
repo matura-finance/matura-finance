@@ -124,6 +124,10 @@ export async function collectCandidates(
         return;
       }
 
+      // The per-vault mandate pre-filters below (type bitmap, duration, min lot) exist ONLY to
+      // produce a granular rejection reason. `quoteAndCheck.ok` remains the authoritative gate,
+      // so if the on-chain mandate math ever changes, a pre-filter can at worst mislabel/skip a
+      // candidate — it can never accept one the vault would reject.
       await Promise.all(
         vaults.map(async (v) => {
           const reject = (reason: RejectionReason): void => {
