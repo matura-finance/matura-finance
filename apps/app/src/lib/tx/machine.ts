@@ -3,11 +3,11 @@ import type { Hex } from "viem";
 import type { TxErrorKind } from "../chain/errors";
 
 /**
- * A per-transaction lifecycle state — the reusable primitive shared by the route
- * execution, issuer, and settlement flows. It tracks PROGRESS; failure detail is a
- * `TxErrorKind` from `chain/errors.ts` (not duplicated as separate states). Flows
- * compose it: `/request` prepends a signature phase; settlement runs two instances;
- * `markDelayed` skips the `indexing` phase entirely.
+ * A per-transaction lifecycle state used by the `/request` execution flow (sign → submit →
+ * confirm → index). It tracks PROGRESS; failure detail is a `TxErrorKind` from
+ * `chain/errors.ts` (not duplicated as separate states). The issuer/settlement flows
+ * currently use a simpler local status (they submit server-provided calldata with no
+ * signature phase); adopting this primitive there is a possible future consolidation.
  */
 export type TxState =
   | { status: "idle" }
