@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_FILTER, APP_GUARD, APP_PIPE } from "@nestjs/core";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
 import Redis from "ioredis";
 import { ZodValidationPipe } from "nestjs-zod";
@@ -12,6 +12,7 @@ import { AccountModule } from "./account/account.module";
 import { ActivityModule } from "./activity/activity.module";
 import { AuthModule } from "./auth/auth.module";
 import { WalletAuthGuard } from "./auth/wallet-auth.guard";
+import { WalletThrottlerGuard } from "./auth/wallet-throttler.guard";
 import { ChainModule } from "./chain/chain.module";
 import { ClaimsPrepareModule } from "./claims/prepare/claims-prepare.module";
 import { ClaimsReadModule } from "./claims/read/claims-read.module";
@@ -64,9 +65,11 @@ import { VaultsModule } from "./vaults/vaults.module";
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
-    // Fail-closed wallet auth: every route requires a valid SIWE JWT unless marked @Public().
+    // Fail-closed wallet auth runs FIRST so the throttler below can key by the resolved wallet.
+    // Every route requires a valid SIWE JWT unless marked @Public().
     { provide: APP_GUARD, useClass: WalletAuthGuard },
+    // Throttle by authenticated wallet (falls back to IP for public routes).
+    { provide: APP_GUARD, useClass: WalletThrottlerGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
