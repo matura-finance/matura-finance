@@ -51,58 +51,77 @@ export class ExecutionsPrepareService {
       throw new UnprocessableEntityException("targetAdvance must be non-zero");
     }
 
+    // 1. Parse + validate leg inputs synchronously (dedup, bytes32, amounts) — no RPC.
     const seen = new Set<string>();
+    const legInputs: PreparedLeg[] = body.legs.map((legInput) => {
+      const claimId = validateBytes32(legInput.claimId, "claimId");
+      if (seen.has(claimId)) throw new ConflictException(`Duplicate claim in route: ${claimId}`);
+      seen.add(claimId);
+      return {
+        claimId,
+        vault: toHexAddress(legInput.vault),
+        faceAmount: parseUint256(legInput.faceAmount, "faceAmount"),
+        minimumAdvanceAmount: parseUint256(legInput.minimumAdvanceAmount, "minimumAdvanceAmount"),
+      };
+    });
+
+    // 2. Wave A: getClaim + isFinanceable for every leg, concurrently (batched by the http transport).
+    const enriched = await Promise.all(
+      legInputs.map(async (leg) => {
+        const [claim, financeable] = await Promise.all([
+          this.chain.getClaim(leg.claimId),
+          this.contracts.isFinanceable(leg.claimId),
+        ]);
+        return { leg, claim, financeable };
+      }),
+    );
+    const validated = enriched.map(({ leg, claim, financeable }) => {
+      if (claim === null) throw new ConflictException(`Claim not found on chain: ${leg.claimId}`);
+      if (!financeable) {
+        throw new ConflictException(`Claim not financeable (must be ELIGIBLE/PARTIALLY_FUNDED): ${leg.claimId}`);
+      }
+      if (claim.beneficiary.toLowerCase() !== user) {
+        throw new ConflictException(`Claim ${leg.claimId} beneficiary does not match the authenticated wallet`);
+      }
+      return { leg, claim };
+    });
+
+    // 3. Wave B: quoteAndCheck for every leg, concurrently.
+    const quoted = await Promise.all(
+      validated.map(async ({ leg, claim }) => ({
+        leg,
+        quote: await this.contracts.quoteAndCheck(leg.vault, claim.issuer, claim.claimType, leg.faceAmount, claim.dueDate),
+      })),
+    );
+
     const legs: PreparedLeg[] = [];
     const perVaultAdvance = new Map<string, bigint>();
     let totalAdvance = 0n;
     let totalFace = 0n;
-
-    for (const legInput of body.legs) {
-      const claimId = validateBytes32(legInput.claimId, "claimId");
-      if (seen.has(claimId)) {
-        throw new ConflictException(`Duplicate claim in route: ${claimId}`);
+    for (const { leg, quote } of quoted) {
+      if (!quote.ok) throw new UnprocessableEntityException(`Vault ${leg.vault} rejected claim ${leg.claimId} (mandate)`);
+      if (quote.advanceAmount < leg.minimumAdvanceAmount) {
+        throw new UnprocessableEntityException(`Advance below minimum for claim ${leg.claimId}`);
       }
-      seen.add(claimId);
-      const vault = toHexAddress(legInput.vault);
-      const faceAmount = parseUint256(legInput.faceAmount, "faceAmount");
-      const minimumAdvanceAmount = parseUint256(legInput.minimumAdvanceAmount, "minimumAdvanceAmount");
-
-      const claim = await this.chain.getClaim(claimId);
-      if (claim === null) {
-        throw new ConflictException(`Claim not found on chain: ${claimId}`);
-      }
-      if (!(await this.contracts.isFinanceable(claimId))) {
-        throw new ConflictException(`Claim not financeable (must be ELIGIBLE/PARTIALLY_FUNDED): ${claimId}`);
-      }
-      if (claim.beneficiary.toLowerCase() !== user) {
-        throw new ConflictException(`Claim ${claimId} beneficiary does not match the authenticated wallet`);
-      }
-
-      const quote = await this.contracts.quoteAndCheck(
-        vault,
-        claim.issuer,
-        claim.claimType,
-        faceAmount,
-        claim.dueDate,
-      );
-      if (!quote.ok) {
-        throw new UnprocessableEntityException(`Vault ${vault} rejected claim ${claimId} (mandate)`);
-      }
-      if (quote.advanceAmount < minimumAdvanceAmount) {
-        throw new UnprocessableEntityException(`Advance below minimum for claim ${claimId}`);
-      }
-
-      legs.push({ claimId, vault, faceAmount, minimumAdvanceAmount });
-      perVaultAdvance.set(vault, (perVaultAdvance.get(vault) ?? 0n) + quote.advanceAmount);
+      legs.push(leg);
+      perVaultAdvance.set(leg.vault, (perVaultAdvance.get(leg.vault) ?? 0n) + quote.advanceAmount);
       totalAdvance += quote.advanceAmount;
-      totalFace += faceAmount;
+      totalFace += leg.faceAmount;
     }
 
-    for (const [vault, advance] of perVaultAdvance) {
-      const fundable = await this.contracts.fundableLiquidity(vault as Hex);
-      if (advance > fundable) {
-        throw new UnprocessableEntityException(`Insufficient vault liquidity for ${vault}`);
-      }
+    // 4. Wave C: fundableLiquidity per distinct vault + the router nonce, concurrently.
+    const [liquidityChecks, nonce] = await Promise.all([
+      Promise.all(
+        [...perVaultAdvance.entries()].map(async ([vault, advance]) => ({
+          vault,
+          advance,
+          fundable: await this.contracts.fundableLiquidity(vault as Hex),
+        })),
+      ),
+      this.contracts.routerNonce(user),
+    ]);
+    for (const { vault, advance, fundable } of liquidityChecks) {
+      if (advance > fundable) throw new UnprocessableEntityException(`Insufficient vault liquidity for ${vault}`);
     }
 
     if (totalAdvance < targetAdvance) {
@@ -113,7 +132,6 @@ export class ExecutionsPrepareService {
       throw new UnprocessableEntityException("route total face exceeds maxTotalFace");
     }
 
-    const nonce = await this.contracts.routerNonce(user);
     const deadline = BigInt(Math.floor(Date.now() / 1000) + (body.deadlineSeconds ?? DEFAULT_DEADLINE_SECONDS));
     const router = this.chain.addresses.router;
 
