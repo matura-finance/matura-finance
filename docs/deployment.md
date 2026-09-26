@@ -9,14 +9,16 @@
 
 ## Deployable surface (status by iteration)
 
-| Component                                |     Local (31337)     | BSC Testnet (97) | Production hosting |
-| ---------------------------------------- | :-------------------: | :--------------: | :----------------: |
-| Contracts (deploy + seed + verify)       |          ✅           |        ✅        |        n/a         |
-| Chain manifests (`@matura/chain`, built) |          ✅           |        ✅        |        n/a         |
-| API DB (Postgres + Prisma migrations)    |          ✅           |   ✅ (manual)    |    ⏳ not wired    |
-| Indexer worker                           |          ✅           |   ✅ (manual)    |    ⏳ not wired    |
-| HTTP API (reads + prepares + SIWE)       |          ✅           |   ✅ (manual)    |    ⏳ not wired    |
-| Web app (`apps/app`)                     | ⏳ API wiring pending |        ⏳        |         ⏳         |
+| Component                                |       Local (31337)       |  BSC Testnet (97)   | Production hosting |
+| ---------------------------------------- | :-----------------------: | :-----------------: | :----------------: |
+| Contracts (deploy + seed + verify)       |            ✅             |         ✅          |        n/a         |
+| Chain manifests (`@matura/chain`, built) |            ✅             |         ✅          |        n/a         |
+| API DB (Postgres + Prisma migrations)    |            ✅             |     ✅ (manual)     |    ⏳ not wired    |
+| Indexer worker                           |            ✅             |     ✅ (manual)     |    ⏳ not wired    |
+| HTTP API (reads + prepares + SIWE)       |            ✅             |     ✅ (manual)     |    ⏳ not wired    |
+| Web app (`apps/app`)                     | ✅ (dev vs seeded stack)  | ⏳ env flip pending |    ⏳ not wired    |
+| Marketing (`apps/landing`)               |            ✅             |     ✅ (static)     |    ⏳ not wired    |
+| E2E (`apps/e2e`, Playwright)             | ✅ landing; product gated |         n/a         |        n/a         |
 
 Legend: ✅ runnable now · ⏳ pending. Update this table each iteration.
 
@@ -98,10 +100,41 @@ Requests are throttled **per authenticated wallet** (falling back to IP for publ
 behind a reverse proxy keep `trust proxy` set for the real client IP on that fallback path.
 Swagger is dev-only at `/docs`.
 
-### 6. Web app (`apps/app`) — pending
+### 6. Frontends (`apps/app` product + `apps/landing` marketing)
 
-Point `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_CHAIN_ID` / `NEXT_PUBLIC_RPC_URL` at the API + chain.
-(Wiring not finalized — see Open items.)
+Both are Next 15 apps. **Only `NEXT_PUBLIC_*` reaches the browser** (lint-guarded; never a keyed
+RPC or any secret). Declared in `turbo.json` `build.env`; see `.env.example`.
+
+**`apps/app`** — point it at the API + chain and build:
+
+```bash
+NEXT_PUBLIC_API_URL=<api>/api/v1  NEXT_PUBLIC_CHAIN_ID=97 \
+NEXT_PUBLIC_RPC_URL=<public BSC-testnet RPC>  NEXT_PUBLIC_LANDING_URL=https://matura.xyz \
+pnpm --filter @matura/app build && pnpm --filter @matura/app start   # :3002
+```
+
+The product **gates on `isDeployed(97)`** — until the manifest (`@matura/chain/src/deployments/97.json`)
+has real addresses it renders "Contracts deploying soon", and the `/request` flow **pins the
+`executeRoute` target to the manifest router** and refuses otherwise. So the app only becomes
+functional **after** step 1's testnet deploy+seed lands and `@matura/chain` is rebuilt. Wallet is
+injected/EIP-6963, BSC-testnet only; SIWE session is a header-bearer JWT (in-memory + `sessionStorage`).
+
+**`apps/landing`** — static + wallet-free; no chain/API:
+
+```bash
+NEXT_PUBLIC_APP_URL=https://app.matura.xyz  NEXT_PUBLIC_CONTRACTS_DEPLOYED=<true|false> \
+pnpm --filter @matura/landing build && pnpm --filter @matura/landing start   # :3001
+```
+
+`NEXT_PUBLIC_CONTRACTS_DEPLOYED=true` flips the `/protocol` + footer "View contracts" links from
+"Contracts deploying soon" to real explorer links (landing can't import `@matura/chain`, so this is
+its build-time gate). Both apps set CSP + security headers in `next.config.ts` — the app's
+`connect-src` is derived from `NEXT_PUBLIC_API_URL` + `NEXT_PUBLIC_RPC_URL`, so those must be the
+real origins at build or API/RPC calls are blocked.
+
+**E2E:** landing suite runs anywhere (`pnpm --filter @matura/e2e e2e:install` once, then
+`test:e2e`); the product happy-path needs `E2E_STACK=1` + a seeded local stack + the signer key set
+to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NOT_OWNED_BY_WALLET`.
 
 ## Post-deploy smoke checklist
 
@@ -112,6 +145,13 @@ Point `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_CHAIN_ID` / `NEXT_PUBLIC_RPC_URL` at 
 - [ ] A `*/prepare` endpoint returns the uniform envelope (chainId, steps, summary, finalizedThrough).
 - [ ] `POST /api/v1/routes/optimize` (authed) with Alice's ELIGIBLE claim ids returns an executable route + `routeId`; `POST /api/v1/routes/:routeId/prepare-execution` returns the `ExecutionRoute` typed-data step. A second prepare of the same `routeId` → `409`.
 - [ ] Restart the worker → no duplicate rows (idempotent).
+- [ ] **Landing** loads at its URL; `/protocol` + footer show real contract links when
+      `NEXT_PUBLIC_CONTRACTS_DEPLOYED=true` (else "Contracts deploying soon"); `check:bundle` passes.
+- [ ] **App**: connect (EIP-6963) → SIWE sign-in mints a session; `/account` shows the connected
+      beneficiary's claims; `/vaults` lists Stable + Flex.
+- [ ] **Request A** (partial payroll slice) and **Request B** (≥2 claims combined) each produce an
+      executable route → review → sign → `executeRoute` → "Liquidity received" after indexing; the
+      execution appears on `/activity` with a working explorer link.
 
 ## Reindex / rollback
 
@@ -126,11 +166,35 @@ Point `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_CHAIN_ID` / `NEXT_PUBLIC_RPC_URL` at 
 - CI migration-freshness gate (`prisma migrate diff` schema-vs-migrations) + running `prisma migrate deploy` from a locked pipeline.
 - Managed Postgres + per-process `connection_limit`; Redis for the shared throttler store.
 - Monitoring/alerting on cursor freshness (readiness), RPC health, and error rates.
-- `apps/app` ↔ API wiring + its own env/build/deploy.
+- **Frontend hosting** for `apps/app` + `apps/landing` (static/SSR host, per-env `NEXT_PUBLIC_*`,
+  `NEXT_PUBLIC_CONTRACTS_DEPLOYED` flip); the app's CSP `connect-src` must match the deployed
+  API/RPC origins.
+- **Seed the claim beneficiary to a wallet you control** on testnet (the seed currently hard-codes
+  Alice → the deployer address); required before the product `/request` demo works end-to-end.
+- **Chain-scope the demo-signing gate** (API `env.validation`): `DEMO_ISSUER_SIGNING_ENABLED` +
+  `ISSUER_PRIVATE_KEY` should be permitted only for `CHAIN_ID ∈ {31337, 97}` so it can never
+  activate against mainnet (flagged in the PR #5 review; not yet implemented).
 
 ## Iteration log
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
+
+### 2026-09-27 — landing + product frontends (PR #5)
+
+- **Added to the deployable surface:** `apps/app` (wallet-connected product — SIWE, best-execution
+  `/request` flow, issuer simulator), `apps/landing` (static marketing site), `apps/e2e` (Playwright).
+  See §6 for build/env.
+- **New public env** (all `NEXT_PUBLIC_*`, in `turbo.json` `build.env`): `NEXT_PUBLIC_API_URL`,
+  `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`,
+  `NEXT_PUBLIC_CONTRACTS_DEPLOYED`. **No new secrets.**
+- **Gating:** the product is inert until the **testnet deploy+seed (step 1)** lands real
+  `97.json` addresses and `@matura/chain` is rebuilt — it renders "Contracts deploying soon" and
+  the `/request` flow pins `executeRoute` to the manifest router. Landing gates its contract links
+  on `NEXT_PUBLIC_CONTRACTS_DEPLOYED`.
+- **CI:** the `verify` job's E2E step now installs Playwright Chromium and runs the landing suite
+  (product happy-path stays gated behind `E2E_STACK`).
+- **Not yet wired:** frontend hosting, the seed-beneficiary parameterization, and the demo-signing
+  chain-scope guard (see Open items). Gotchas: `docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`.
 
 ### 2026-09-26 — deterministic best-execution router (PR #4)
 
