@@ -40,6 +40,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Playwright needs a browser binary. Only the landing suite runs here (the product
+      # happy-path is gated behind E2E_STACK, which needs a seeded chain + API + worker).
+      - name: Install Playwright browser
+        run: pnpm --filter @matura/e2e exec playwright install --with-deps chromium
+
       - name: E2E test
         run: pnpm test:e2e
 
