@@ -41,8 +41,16 @@ interface ActiveVault {
   token: Hex;
 }
 
+/**
+ * Recover the size-independent discount rate (bps) from a probe quote. The
+ * result is clamped to MAX_DISCOUNT_BPS (3000): dividing an already-ceil-rounded
+ * on-chain discount and rounding up again can yield 3001 at the rate ceiling with
+ * a non-dividing face, which would exceed the `RouteCandidate.rateBps` bound and
+ * throw. The estimate stays conservative (drives selection only; the leg is
+ * re-quoted on-chain at prepare). `face` is always > 0 here (guarded by caller).
+ */
 function ceilRateBps(discount: bigint, face: bigint): number {
-  return Number((discount * 10_000n + face - 1n) / face);
+  return Math.min(3000, Number((discount * 10_000n + face - 1n) / face));
 }
 
 /**
@@ -143,6 +151,12 @@ export async function collectCandidates(
           }
 
           const maxFace = remaining < v.mandate.maxFace ? remaining : v.mandate.maxFace;
+          if (maxFace <= 0n) {
+            // Degenerate mandate (e.g. minFace 0 with a fully-financed claim) — no
+            // valid lot, and guards `ceilRateBps`'s division by face.
+            reject("BELOW_MIN_LOT");
+            return;
+          }
           const quote = await reads.quoteAndCheck(
             v.address,
             claim.issuer,
