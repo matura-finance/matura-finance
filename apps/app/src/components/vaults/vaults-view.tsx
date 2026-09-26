@@ -6,7 +6,7 @@ import { Badge } from "@matura/ui/components/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@matura/ui/components/card";
 import { Skeleton } from "@matura/ui/components/skeleton";
 
-import { useVaults } from "../../lib/api/hooks";
+import { useVaults } from "../../lib/queries/hooks";
 import { formatBps, formatUsdt, shortenAddress } from "../../lib/chain/format";
 import { useVaultLabel } from "../../lib/chain/vault-label";
 import type { VaultSummaryWire } from "../../lib/api/schemas";

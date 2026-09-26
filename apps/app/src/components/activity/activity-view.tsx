@@ -7,7 +7,7 @@ import { Skeleton } from "@matura/ui/components/skeleton";
 import { Stack } from "@matura/ui/components/stack";
 import { useAccount } from "wagmi";
 
-import { useActivity } from "../../lib/api/hooks";
+import { useActivity } from "../../lib/queries/hooks";
 import { shortenAddress, txExplorerUrl } from "../../lib/chain/format";
 import { Disconnected, NotDeployed, RpcUnavailable, WrongChain } from "../states";
 

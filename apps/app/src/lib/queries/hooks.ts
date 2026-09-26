@@ -5,7 +5,7 @@ import { useCallback } from "react";
 
 import { env } from "../env";
 import { useSession } from "../auth/session-provider";
-import { ApiError } from "./client";
+import { ApiError } from "../api/client";
 import {
   getActivity,
   getExecution,
@@ -13,8 +13,8 @@ import {
   getVaults,
   postOptimize,
   postPrepareExecution,
-} from "./endpoints";
-import type { ExecutionResponse, OptimizeRequest } from "./schemas";
+} from "../api/endpoints";
+import type { ExecutionResponse, OptimizeRequest } from "../api/schemas";
 
 /** Hierarchical query keys — scoped by chain + address so switching account refetches. */
 export const queryKeys = {

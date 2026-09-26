@@ -8,7 +8,7 @@ import { Skeleton } from "@matura/ui/components/skeleton";
 import { Stack } from "@matura/ui/components/stack";
 import { useAccount } from "wagmi";
 
-import { useAccountPortfolio } from "../../lib/api/hooks";
+import { useAccountPortfolio } from "../../lib/queries/hooks";
 import { formatUsdt, shortenAddress } from "../../lib/chain/format";
 import { CLAIM_TYPE_LABEL } from "../../lib/claim-display";
 import type { ClaimWire } from "../../lib/api/schemas";

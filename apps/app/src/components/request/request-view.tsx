@@ -23,7 +23,7 @@ import {
   useInvalidateOnSettled,
   useOptimize,
   usePrepareExecution,
-} from "../../lib/api/hooks";
+} from "../../lib/queries/hooks";
 import { toAddress } from "../../lib/chain/bridge";
 import { TX_ERROR_COPY } from "../../lib/chain/errors";
 import { prepareRoute } from "../../lib/chain/execution-route";
