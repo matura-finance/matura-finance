@@ -14,6 +14,7 @@ export function Countdown({ expiresAt, onExpire }: { expiresAt: string; onExpire
       setRemainingMs(r);
       if (r === 0) onExpire();
     };
+    tick(); // fire immediately so an already-expired route never shows a live Confirm
     const id = setInterval(tick, 1_000);
     return () => {
       clearInterval(id);
