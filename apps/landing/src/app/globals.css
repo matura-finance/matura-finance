@@ -1,2 +1,40 @@
 @import "@matura/ui/globals.css";
 @source "../../../../packages/ui/src";
+
+/* ---------------------------------------------------------------------------
+ * Landing motion — CSS only, and entirely gated behind
+ * `prefers-reduced-motion: no-preference`. When a visitor prefers reduced
+ * motion, none of these classes carry an animation, so elements render in
+ * their final (visible) state instantly — nothing starts hidden.
+ * ------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes matura-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes matura-flow {
+    from {
+      stroke-dashoffset: var(--flow-length, 240);
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .animate-rise {
+    animation: matura-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--rise-delay, 0ms);
+  }
+
+  .animate-flow {
+    stroke-dasharray: var(--flow-length, 240);
+    animation: matura-flow 1.4s ease-out 0.2s both;
+  }
+}

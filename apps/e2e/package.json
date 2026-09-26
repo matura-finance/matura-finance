@@ -1,0 +1,19 @@
+{
+  "name": "@matura/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "typecheck": "tsc --noEmit",
+    "check:bundle": "node scripts/check-landing-bundle.mjs"
+  },
+  "devDependencies": {
+    "@matura/typescript-config": "workspace:*",
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.10.0",
+    "typescript": "catalog:",
+    "viem": "catalog:"
+  }
+}

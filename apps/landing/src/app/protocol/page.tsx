@@ -1,64 +1,129 @@
 import { Badge } from "@matura/ui/components/badge";
-import { Container } from "@matura/ui/components/container";
-import { Stack } from "@matura/ui/components/stack";
+import { buttonVariants } from "@matura/ui/components/button";
+import { Card } from "@matura/ui/components/card";
+import { cn } from "@matura/ui/lib/utils";
 import type { Metadata } from "next";
 
+import { DisplayHeading, Eyebrow, Lede, Section } from "../../components/marketing";
+import { BSCSCAN_TESTNET_URL, CONTRACTS_DEPLOYED } from "../../lib/site";
+
 export const metadata: Metadata = {
-  title: "Protocol — Matura",
+  title: "Protocol",
   description:
-    "The design principles behind the Matura protocol: verified claims, honest pricing, and self-settling repayment.",
+    "The Matura protocol architecture: issuer-authorized claims, isolated vaults, the Best-Execution Claim Router, trust boundaries, and testnet deployment status.",
+  alternates: { canonical: "/protocol" },
 };
 
-const PRINCIPLES = [
+const ROLES = [
   {
-    title: "Nothing advances unverified",
-    body: "Every claim is checked for authenticity and ownership before it can be funded. A claim that cannot be verified cannot enter the market.",
+    name: "Matura Claims",
+    body: "Issuer-authorized records of a future payment. An approved issuer signs an attestation binding the amount, beneficiary, and maturity; the registry tracks each claim's state through settlement.",
   },
   {
-    title: "Repayment settles itself",
-    body: "The maturing entitlement repays its counterparty directly, so an advance is not a loan you have to remember to pay back.",
+    name: "Matura Vaults",
+    body: "Isolated liquidity pools with their own mandate—supported claim types, maximum duration, and risk limits. Each vault quotes executable prices and funds only the slices it selects.",
   },
   {
-    title: "Pricing is transparent",
-    body: "Offers are quoted against time to settlement and shown to you in full. You accept terms you can see, not terms you infer.",
+    name: "Best-Execution Claim Router",
+    body: "A deterministic optimizer that collects vault quotes, validates each leg onchain against a pinned block, and selects the lowest-cost eligible combination before authorizing atomic funding.",
   },
   {
-    title: "You keep what you don't sell",
-    body: "Splitting a claim advances only the portion you choose. The remainder stays on its original schedule and remains yours.",
+    name: "Settlement",
+    body: "At maturity the issuer pays the protocol. Settlement is conservation-checked—funded vaults are repaid and the retained balance returns to the beneficiary—so value is never created or lost.",
+  },
+] as const;
+
+const BOUNDARIES = [
+  {
+    heading: "Issuers are the source of truth offchain",
+    body: "Payment rights originate with issuers. The chain never holds private documents—only claim state, vault accounting, route authorization, and settlement.",
+  },
+  {
+    heading: "Every write is user-signed",
+    body: "The protocol is non-custodial. It never holds a user key; each funding route is authorized by the beneficiary's own signature and self-submitted.",
+  },
+  {
+    heading: "Quotes are validated onchain",
+    body: "The router re-validates each leg against a pinned block before execution, so a route reflects prices that were actually executable—not a stale or optimistic estimate.",
   },
 ] as const;
 
 export default function ProtocolPage() {
   return (
-    <Container>
-      <Stack gap="xl" className="max-w-3xl py-24">
-        <Stack gap="md">
-          <Badge variant="outline" className="w-fit border-liquid-mint/40 text-liquid-mint">
-            Prototype
-          </Badge>
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-mist">
-            A settlement layer for earned value.
-          </h1>
-          <p className="text-lg text-mist/70">
-            The protocol coordinates three parties around a single claim: the person who earned it,
-            the counterparty who funds it early, and the settlement that repays them in order. These
-            are the principles it holds to. The implementation is an early prototype and is still
-            changing.
-          </p>
-        </Stack>
+    <>
+      <Section tone="mist">
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-gutter">
+          <Eyebrow>Matura Protocol</Eyebrow>
+          <DisplayHeading as="h1" className="text-midnight">
+            Verifiable execution from claim to settlement.
+          </DisplayHeading>
+          <Lede className="text-xl">
+            The protocol coordinates issuer-authorized claims, isolated vaults, deterministic
+            routing, and conservation-checked settlement on BNB Chain. This is a testnet prototype.
+          </Lede>
+        </div>
+      </Section>
 
-        <Stack gap="lg">
-          {PRINCIPLES.map((item) => (
-            <div
-              key={item.title}
-              className="rounded-card border border-white/10 bg-white/[0.02] p-6"
-            >
-              <h2 className="font-heading text-xl font-semibold text-mist">{item.title}</h2>
-              <p className="mt-2 text-mist/70">{item.body}</p>
-            </div>
-          ))}
-        </Stack>
-      </Stack>
-    </Container>
+      <Section tone="card" className="border-y border-midnight/10">
+        <div className="mx-auto w-full max-w-6xl px-gutter">
+          <h2 className="font-heading text-2xl font-semibold text-midnight">Contract roles</h2>
+          <div className="mt-8 grid gap-5 sm:grid-cols-2">
+            {ROLES.map((role) => (
+              <Card key={role.name} className="h-full gap-3 p-6">
+                <span aria-hidden className="h-1.5 w-6 rounded-full bg-liquid-mint" />
+                <h3 className="font-heading text-lg font-semibold text-midnight">{role.name}</h3>
+                <p className="text-sm leading-relaxed text-midnight/70">{role.body}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      <Section tone="mist">
+        <div className="mx-auto w-full max-w-6xl px-gutter">
+          <h2 className="font-heading text-2xl font-semibold text-midnight">Trust boundaries</h2>
+          <div className="mt-8 grid gap-8 md:grid-cols-3">
+            {BOUNDARIES.map((item) => (
+              <div key={item.heading} className="flex flex-col gap-2">
+                <h3 className="font-heading text-lg font-semibold text-midnight">{item.heading}</h3>
+                <p className="text-sm leading-relaxed text-midnight/70">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* Deployment status + explicit mocks (Deep Night) */}
+      <Section tone="deep-night">
+        <div className="mx-auto w-full max-w-3xl px-gutter">
+          <Eyebrow tone="dark">Deployment</Eyebrow>
+          <DisplayHeading className="mt-5 text-mist">Testnet addresses</DisplayHeading>
+          <Lede tone="dark" className="mt-5 text-mist/70">
+            Matura currently runs on BNB Chain Testnet with synthetic claims and mock assets—the
+            settlement token is a mock USDT, and claims are demo issuances, not production
+            obligations.
+          </Lede>
+
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Badge variant="warning">Synthetic claims · mock assets</Badge>
+            {CONTRACTS_DEPLOYED ? (
+              <a
+                href={`${BSCSCAN_TESTNET_URL}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "lg" }),
+                  "border-mist/30 bg-transparent text-mist hover:bg-mist/10 hover:text-mist",
+                )}
+              >
+                View contracts on BscScan
+              </a>
+            ) : (
+              <span className="text-sm font-medium text-liquid-mint">Contracts deploying soon</span>
+            )}
+          </div>
+        </div>
+      </Section>
+    </>
   );
 }

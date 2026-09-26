@@ -29,6 +29,12 @@ pnpm --filter @matura/api worker:dev                 # indexer worker (separate 
 pnpm --filter @matura/api db:migrate                 # prisma migrate dev (needs Postgres)
 pnpm --filter @matura/api test:int                   # Testcontainers integration tests (needs Docker)
 pnpm --filter @matura/api reindex                    # CLI: wipe projections + reindex from deploymentBlock
+pnpm --filter @matura/app dev                        # next dev — product app (:3002)
+pnpm --filter @matura/landing dev                    # next dev — marketing site (:3001)
+pnpm --filter @matura/app test                       # vitest (unit: tx reducer, chain bridge, money format)
+pnpm --filter @matura/e2e e2e:install                # one-time: download Playwright Chromium
+pnpm --filter @matura/e2e test:e2e                   # Playwright: landing always; product happy path needs E2E_STACK=1 + seeded stack
+pnpm --filter @matura/e2e check:bundle               # assert built landing bundle has no wallet/chain code or secrets
 ```
 
 Deploy/seed/verify (Hardhat Ignition + idempotent viem scripts; addresses → per-chain manifest,
@@ -51,6 +57,22 @@ issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/
   `RouteIntent`, and re-validates each leg against a pinned block through one shared off-chain
   `_validateLegs` mirror (`common/leg-mirror.ts`) before emitting the signable `ExecutionRoute`.
   Design + gotchas: `docs/routing.md`.
+
+**`apps/app`** (Next 15, `app.matura.xyz`) — the wallet-connected product. wagmi + viem (BSC
+Testnet only, EIP-6963 discovery) + TanStack Query; a thin typed API client (`src/lib/api`,
+Zod-validated, reuses `@matura/shared` `OptimizeResult`); **SIWE** session (header-bearer JWT,
+in-memory + `sessionStorage`, subject-bound, cleared on 401/switch); a `bridge.ts` brand→viem
+boundary; a per-tx reducer + `useTxFlow`. Routes: `/account`, `/request` (the best-execution
+optimize→review→sign→submit→index flow), `/activity`, `/vaults`, `/issuer` (demo simulator). The
+signing money boundary is `BigInt(str)` (never `toBaseUnits`), one coerced message feeds
+sign+hash+`executeRoute`, and targets are pinned to the manifest. **`apps/landing`** (`matura.xyz`)
+— static, wallet-free marketing site (approved copy, SEO/OG/sitemap/robots/JSON-LD; a CI grep keeps
+the bundle wallet/secret-free). **`apps/e2e`** — Playwright: an always-on landing suite + a
+gated (`E2E_STACK=1`) product happy-path using a Node-side viem signer injected as an EIP-6963
+provider (no wallet code in the app). Frontend build/integration gotchas (connectors barrel,
+unstable-hook refetch loop, SIWE rehydrate race, EIP-712 boundary, e2e wallet injection):
+`docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`. Design + full
+build: `docs/plans/2026-09-26-feat-matura-frontends-landing-and-product-plan.md`.
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
 ABI-freshness gate → manifest-freshness gate. Gotchas: toolchain (Node, tsc `unknown`, ABI/prettier

@@ -12,7 +12,8 @@
         "NEXT_PUBLIC_API_URL",
         "NEXT_PUBLIC_LANDING_URL",
         "NEXT_PUBLIC_APP_URL",
-        "NEXT_PUBLIC_RPC_URL"
+        "NEXT_PUBLIC_RPC_URL",
+        "NEXT_PUBLIC_CONTRACTS_DEPLOYED"
       ],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },

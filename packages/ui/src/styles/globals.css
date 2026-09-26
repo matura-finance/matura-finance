@@ -14,12 +14,22 @@
 
   --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-ui: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
 
   --radius-card: 0.75rem;
   --radius-pill: 9999px;
 
   --spacing-gutter: 1.25rem;
   --spacing-section: 4rem;
+
+  /* Categorical vault ramp for allocation segments — one tonal family, all dark-label-safe.
+     Liquid Mint is intentionally NOT in this ramp (it fails AA as a fill; it is accent-only). */
+  --color-vault-1: #2a78d6;
+  --color-vault-2: #1baf7a;
+  --color-vault-3: #2b3a55;
+  --color-vault-4: #7fb2a6;
+  /* "You retain" is deliberately a non-identity neutral (always rendered hatched). */
+  --color-retained: #898781;
 }
 
 /* ---------------------------------------------------------------------------
@@ -40,7 +50,14 @@
   --accent-foreground: oklch(0.21 0.03 264);
   --border: oklch(0.92 0.006 264);
   --input: oklch(0.92 0.006 264);
-  --ring: var(--color-liquid-mint);
+  /* Focus ring: Midnight on light (mint would be 1.56:1 on Mist — an AA fail). */
+  --ring: var(--color-midnight);
+  /* Caution signal (testnet / synthetic / delayed) — amber, NOT mint. */
+  --warning: oklch(0.75 0.15 75);
+  --warning-foreground: var(--color-deep-night);
+  /* True failures only (reverted / rejected). */
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.99 0 0);
   --radius: 0.625rem;
 }
 
@@ -57,7 +74,12 @@
   --accent-foreground: oklch(0.97 0.005 264);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 15%);
+  /* On dark surfaces Liquid Mint is contrast-legal as the focus ring. */
   --ring: var(--color-liquid-mint);
+  --warning: oklch(0.8 0.14 75);
+  --warning-foreground: var(--color-deep-night);
+  --destructive: oklch(0.65 0.2 27);
+  --destructive-foreground: oklch(0.99 0 0);
 }
 
 /* ---------------------------------------------------------------------------
@@ -78,6 +100,10 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

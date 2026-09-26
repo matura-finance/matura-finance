@@ -1,55 +1,81 @@
-import { Container } from "@matura/ui/components/container";
-import { Stack } from "@matura/ui/components/stack";
+import { Badge } from "@matura/ui/components/badge";
 import type { Metadata } from "next";
 
+import { DisplayHeading, Eyebrow, Lede, Section } from "../../components/marketing";
+import { CONTACT_EMAIL } from "../../lib/site";
+
 export const metadata: Metadata = {
-  title: "Privacy — Matura",
-  description: "How Matura handles information during the prototype phase.",
+  title: "Privacy",
+  description: "How Matura handles information during the testnet prototype phase. Draft.",
+  alternates: { canonical: "/privacy" },
 };
 
 const SECTIONS = [
   {
-    title: "What this covers",
-    body: "Matura is an early prototype. This page explains, in plain terms, how we handle information while the product is still being built. It is not a final legal policy, and it will be replaced before any general release.",
+    heading: "Scope",
+    body: "Matura is a BNB Chain testnet prototype. This notice explains, in plain terms, how information is handled while the product is being built. It is not a finished legal policy and will be replaced before any general release.",
   },
   {
-    title: "What we collect",
-    body: "We collect only what a request needs to function — the details of a claim you choose to verify and basic usage data that helps us find and fix problems. We do not ask for more than the flow in front of you requires.",
+    heading: "What the site does",
+    body: "This marketing site is static and wallet-free. It does not connect a wallet, read onchain balances, set advertising cookies, or collect personal information to browse.",
   },
   {
-    title: "What we don't do",
-    body: "We do not sell your information, and we do not use it for advertising. The landing site itself does not connect a wallet or read on-chain balances.",
+    heading: "What the app processes",
+    body: "The product app processes only what a request needs to function—your wallet address for authentication and the details of claims you choose to route. All transactions are user-signed; Matura never holds your private key.",
   },
   {
-    title: "Your choices",
-    body: "You decide which entitlements to bring to Matura and how much of each to advance. You can ask us what we hold about you, and ask us to remove it, at any time.",
+    heading: "Onchain data is public",
+    body: "Actions you take on BNB Chain are recorded on a public ledger and are outside Matura's control. Do not submit anything you would not want publicly visible.",
   },
   {
-    title: "Contact",
-    body: "Questions about privacy can go to privacy@matura.xyz. Because this is a prototype, please avoid sharing anything you would not be comfortable sharing during active development.",
+    heading: "What we do not do",
+    body: "We do not sell personal information and do not use it for advertising.",
   },
 ] as const;
 
 export default function PrivacyPage() {
   return (
-    <Container>
-      <Stack gap="xl" className="max-w-3xl py-24">
-        <Stack gap="md">
-          <h1 className="font-heading text-4xl font-semibold tracking-tight text-mist">Privacy</h1>
-          <p className="text-lg text-mist/70">
-            Straightforward answers about what we collect and why, written for the prototype phase.
-          </p>
-        </Stack>
+    <Section tone="mist">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-gutter">
+        <Eyebrow>Privacy</Eyebrow>
+        <div className="flex flex-wrap items-center gap-3">
+          <DisplayHeading as="h1" className="text-midnight">
+            Privacy notice
+          </DisplayHeading>
+        </div>
+        <Badge variant="warning" className="w-fit">
+          Draft — pending legal review
+        </Badge>
+        <Lede>
+          Straightforward answers about what is collected and why, written for the prototype phase.
+          Nothing here is counsel-approved.
+        </Lede>
 
-        <Stack gap="lg">
+        <div className="mt-4 flex flex-col gap-8">
           {SECTIONS.map((section) => (
-            <div key={section.title}>
-              <h2 className="font-heading text-xl font-semibold text-mist">{section.title}</h2>
-              <p className="mt-2 text-mist/70">{section.body}</p>
+            <div key={section.heading} className="flex flex-col gap-2">
+              <h2 className="font-heading text-lg font-semibold text-midnight">
+                {section.heading}
+              </h2>
+              <p className="leading-relaxed text-midnight/70">{section.body}</p>
             </div>
           ))}
-        </Stack>
-      </Stack>
-    </Container>
+          <div className="flex flex-col gap-2">
+            <h2 className="font-heading text-lg font-semibold text-midnight">Contact</h2>
+            <p className="leading-relaxed text-midnight/70">
+              Questions about privacy can go to{" "}
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="font-medium text-midnight underline decoration-liquid-mint decoration-2 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                {CONTACT_EMAIL}
+              </a>
+              . Because this is a prototype, please avoid sharing anything you would not be
+              comfortable sharing during active development.
+            </p>
+          </div>
+        </div>
+      </div>
+    </Section>
   );
 }

@@ -1,8 +1,8 @@
 # Architecture
 
 Matura is a pnpm + Turborepo monorepo. This document records the package
-boundaries and why they exist. It describes the **foundation** — interfaces and
-shells only; business contracts, routing, and settlement logic land in later work.
+boundaries and why they exist. Contracts, the API + best-execution router, and both
+frontends are now implemented; per-area design + gotchas live in the linked docs.
 
 ## Component map
 
@@ -12,6 +12,7 @@ flowchart TD
     L["apps/landing<br/>matura.xyz — marketing"]
     A["apps/app<br/>app.matura.xyz — product"]
     API["apps/api<br/>NestJS + Prisma"]
+    E2E["apps/e2e<br/>Playwright"]
   end
   subgraph packages
     UI["@matura/ui<br/>tokens + primitives"]
@@ -27,6 +28,8 @@ flowchart TD
   A --> CH
   A --> SH
   API --> SH
+  E2E -. "drives (e2e)" .-> A & L
+  E2E --> CH
   C -- "exports ABIs (generated → ./abis)" --> CH
 
   TSC -. extended by .-> L & A & API & UI & SH & CH
@@ -35,29 +38,31 @@ flowchart TD
 
 ## Packages
 
-| Package                     | Responsibility                                                                                                                                                                                                                                                                                    | Build                      | Consumed by              |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------ |
-| `@matura/shared`            | Framework-free Zod schemas + inferred domain types (claims, quotes, routes, settlement, errors), branded value types.                                                                                                                                                                             | **tsup** (CJS+ESM+`.d.ts`) | api, app                 |
-| `@matura/chain`             | BSC Testnet chain definition, address schema, deployment manifest, viem client factories, 6-decimal unit helpers.                                                                                                                                                                                 | JIT (raw `.ts`)            | app                      |
-| `@matura/ui`                | Tailwind v4 design tokens (`globals.css`) + low-level primitives (button, badge, layout).                                                                                                                                                                                                         | JIT (raw `.tsx`)           | app, landing             |
-| `@matura/contracts`         | Hardhat 3 (Solidity + viem + `node:test`). Empty at foundation; compiles zero contracts.                                                                                                                                                                                                          | Hardhat                    | (chain, later)           |
-| `@matura/typescript-config` | Shared strict `tsconfig` bases (base / library / nextjs / nestjs).                                                                                                                                                                                                                                | —                          | all                      |
-| `@matura/eslint-config`     | ESLint 9 flat config, type-aware (`strictTypeChecked`) for real no-`any`.                                                                                                                                                                                                                         | —                          | all                      |
-| `apps/api`                  | Orchestration + read-model: viem indexer worker → Prisma/PostgreSQL projections; read + non-custodial prepare endpoints; deterministic best-execution router (`routes/*`, pinned reads + shared `_validateLegs` mirror + single-use `RouteIntent`); SIWE auth; `/api/v1` + health; Swagger (dev). | nest (CJS)                 | `@matura/{chain,shared}` |
-| `apps/app`                  | Next.js 15 product app; wallet/network infra (wagmi + viem) lives **only** here.                                                                                                                                                                                                                  | next                       | —                        |
-| `apps/landing`              | Next.js 15 marketing site; statically optimizable, wallet-free.                                                                                                                                                                                                                                   | next                       | —                        |
+| Package                     | Responsibility                                                                                                                                                                                                                                                                                                        | Build                      | Consumed by                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | --------------------------- |
+| `@matura/shared`            | Framework-free Zod schemas + inferred domain types (claims, quotes, routes, settlement, errors), branded value types.                                                                                                                                                                                                 | **tsup** (CJS+ESM+`.d.ts`) | api, app                    |
+| `@matura/chain`             | BSC Testnet chain definition, address schema, deployment manifest, viem client factories, 6-decimal unit helpers, ABIs + EIP-712 typed-data. `sideEffects:false` so consumers tree-shake unused ABIs.                                                                                                                 | **tsup** (CJS+ESM+`.d.ts`) | app, e2e                    |
+| `@matura/ui`                | Tailwind v4 design tokens (`globals.css`) + low-level primitives (button, badge, layout).                                                                                                                                                                                                                             | JIT (raw `.tsx`)           | app, landing                |
+| `@matura/contracts`         | Hardhat 3 (Solidity + viem + `node:test`). Empty at foundation; compiles zero contracts.                                                                                                                                                                                                                              | Hardhat                    | (chain, later)              |
+| `@matura/typescript-config` | Shared strict `tsconfig` bases (base / library / nextjs / nestjs).                                                                                                                                                                                                                                                    | —                          | all                         |
+| `@matura/eslint-config`     | ESLint 9 flat config, type-aware (`strictTypeChecked`) for real no-`any`.                                                                                                                                                                                                                                             | —                          | all                         |
+| `apps/api`                  | Orchestration + read-model: viem indexer worker → Prisma/PostgreSQL projections; read + non-custodial prepare endpoints; deterministic best-execution router (`routes/*`, pinned reads + shared `_validateLegs` mirror + single-use `RouteIntent`); SIWE auth; `/api/v1` + health; Swagger (dev).                     | nest (CJS)                 | `@matura/{chain,shared}`    |
+| `apps/app`                  | Next.js 15 product app; wallet/network infra (wagmi + viem, EIP-6963) lives **only** here. Typed API client (`src/lib/api`), SIWE session, `bridge.ts` brand→viem, per-tx reducer + `useTxFlow`, react-query hooks (`src/lib/queries`). Routes: account / request (best-execution flow) / activity / vaults / issuer. | next                       | `@matura/{chain,shared,ui}` |
+| `apps/landing`              | Next.js 15 marketing site; **static**, wallet-free (lint + CI-bundle-grep guarded). Approved copy IA + SEO/OG/sitemap/robots/JSON-LD; CSP + security headers.                                                                                                                                                         | next                       | `@matura/ui`                |
+| `apps/e2e`                  | Playwright: always-on landing suite + gated (`E2E_STACK=1`) product happy-path via a Node-side viem signer injected as an EIP-6963 provider. Also a built-bundle wallet/secret-leak check.                                                                                                                            | —                          | `@matura/chain`             |
 
 ## Boundary rules (enforced)
 
 - `@matura/shared` imports no NestJS / Next.js / Prisma / Hardhat — pure TS + Zod
   (lint-guarded). It is **built** (not JIT) because the CommonJS API `require()`s
   it at runtime.
-- `apps/landing` must not import `wagmi`, `viem`, `@matura/chain`, or
-  `@tanstack/react-query` (lint-guarded).
+- `apps/landing` **and `@matura/ui`** must not import `wagmi`, `viem`, `@matura/chain`, or
+  `@tanstack/react-query` (lint-guarded in both, so a leak into a shared primitive is caught at
+  the source), and a CI grep asserts the built landing bundle contains no wallet/chain code.
 - Both Next apps forbid reading secret env vars (`DEPLOYER_PRIVATE_KEY`,
   `ISSUER_PRIVATE_KEY`, `DATABASE_URL`, `BSC_TESTNET_RPC_URL`) via lint.
-- No generated ABI is hand-copied — `@matura/chain` will consume
-  `@matura/contracts` artifacts through a dedicated `./abis` subpath (later).
+- No generated ABI is hand-copied — `@matura/chain` exposes contract ABIs + EIP-712 typed data
+  through its `./abis` and `./eip712` subpaths, consumed by `apps/app`.
 - Base-unit amounts cross APIs as decimal strings; dates as ISO 8601; contracts
   use Unix seconds. Addresses are lowercase for DB lookup, case-preserved for display.
 - Cross-domain links use `NEXT_PUBLIC_LANDING_URL` / `NEXT_PUBLIC_APP_URL`.
