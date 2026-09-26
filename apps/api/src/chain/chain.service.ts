@@ -89,7 +89,8 @@ export class ChainService implements OnModuleInit {
     };
     this.clientRef = createPublicClientFor(chain, rpcUrl, { batch: true });
 
-    const deployed = manifest.addresses.claimRegistry !== "0x0000000000000000000000000000000000000000";
+    const deployed =
+      manifest.addresses.claimRegistry !== "0x0000000000000000000000000000000000000000";
     this.logger.log(
       `Chain ${String(chainId)} @ ${rpcUrl} (deployment block ${String(this.deploymentBlockRef)}, ` +
         `${deployed ? "deployed" : "NOT deployed — zero manifest"})`,
@@ -119,7 +120,11 @@ export class ChainService implements OnModuleInit {
    * for RPCs without the tag. `useCache` serves a short-TTL value for health/probe paths.
    */
   async getFrontierBlock(useCache = false): Promise<BlockRef> {
-    if (useCache && this.frontierCache !== null && Date.now() - this.frontierCache.at < FRONTIER_CACHE_TTL_MS) {
+    if (
+      useCache &&
+      this.frontierCache !== null &&
+      Date.now() - this.frontierCache.at < FRONTIER_CACHE_TTL_MS
+    ) {
       return this.frontierCache.block;
     }
     const client = this.client;
@@ -145,14 +150,18 @@ export class ChainService implements OnModuleInit {
     }
   }
 
-  /** Read-through: the on-chain claim, or null if it doesn't exist (e.g. `ClaimNotFound`). */
-  async getClaim(claimId: Hex): Promise<OnChainClaim | null> {
+  /**
+   * Read-through: the on-chain claim, or null if it doesn't exist (e.g. `ClaimNotFound`).
+   * Pass `blockNumber` to pin the read to a specific block (deterministic snapshot reads).
+   */
+  async getClaim(claimId: Hex, blockNumber?: bigint): Promise<OnChainClaim | null> {
     try {
       const claim = await this.client.readContract({
         address: this.addresses.claimRegistry,
         abi: contractAbis.claimRegistry,
         functionName: "getClaim",
         args: [claimId],
+        blockNumber,
       });
       return {
         beneficiary: claim.beneficiary,

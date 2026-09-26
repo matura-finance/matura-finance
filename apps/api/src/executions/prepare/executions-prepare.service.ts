@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { EXECUTION_ROUTE_TYPES, routerDomain } from "@matura/chain";
-import { type Hex, hashTypedData } from "viem";
+import { type Hex } from "viem";
 import type { z } from "zod";
 
 import { ChainService } from "../../chain/chain.service";
@@ -14,6 +13,7 @@ import {
   type PrepareResponse,
   type PrepareStep,
 } from "../../common/prepare.dto";
+import { buildExecutionRouteTypedData } from "../../common/prepare.serialize";
 import { CursorService } from "../../cursor/cursor.service";
 
 const DEFAULT_DEADLINE_SECONDS = 3600;
@@ -52,7 +52,8 @@ export class ExecutionsPrepareService {
     const seen = new Set<string>();
     const legInputs: PreparedLeg[] = body.legs.map((legInput) => {
       const claimId = validateBytes32(legInput.claimId, "claimId");
-      if (seen.has(claimId)) throw conflict("DUPLICATE_CLAIM_IN_ROUTE", `Duplicate claim in route: ${claimId}`);
+      if (seen.has(claimId))
+        throw conflict("DUPLICATE_CLAIM_IN_ROUTE", `Duplicate claim in route: ${claimId}`);
       seen.add(claimId);
       return {
         claimId,
@@ -73,7 +74,8 @@ export class ExecutionsPrepareService {
       }),
     );
     const validated = enriched.map(({ leg, claim, financeable }) => {
-      if (claim === null) throw conflict("CLAIM_NOT_FOUND", `Claim not found on chain: ${leg.claimId}`);
+      if (claim === null)
+        throw conflict("CLAIM_NOT_FOUND", `Claim not found on chain: ${leg.claimId}`);
       if (!financeable) {
         throw conflict(
           "CLAIM_NOT_FINANCEABLE",
@@ -93,7 +95,13 @@ export class ExecutionsPrepareService {
     const quoted = await Promise.all(
       validated.map(async ({ leg, claim }) => ({
         leg,
-        quote: await this.contracts.quoteAndCheck(leg.vault, claim.issuer, claim.claimType, leg.faceAmount, claim.dueDate),
+        quote: await this.contracts.quoteAndCheck(
+          leg.vault,
+          claim.issuer,
+          claim.claimType,
+          leg.faceAmount,
+          claim.dueDate,
+        ),
       })),
     );
 
@@ -103,10 +111,16 @@ export class ExecutionsPrepareService {
     let totalFace = 0n;
     for (const { leg, quote } of quoted) {
       if (!quote.ok) {
-        throw unprocessable("MANDATE_REJECTED", `Vault ${leg.vault} rejected claim ${leg.claimId} (mandate)`);
+        throw unprocessable(
+          "MANDATE_REJECTED",
+          `Vault ${leg.vault} rejected claim ${leg.claimId} (mandate)`,
+        );
       }
       if (quote.advanceAmount < leg.minimumAdvanceAmount) {
-        throw unprocessable("ADVANCE_BELOW_MINIMUM", `Advance below minimum for claim ${leg.claimId}`);
+        throw unprocessable(
+          "ADVANCE_BELOW_MINIMUM",
+          `Advance below minimum for claim ${leg.claimId}`,
+        );
       }
       legs.push(leg);
       perVaultAdvance.set(leg.vault, (perVaultAdvance.get(leg.vault) ?? 0n) + quote.advanceAmount);
@@ -126,18 +140,22 @@ export class ExecutionsPrepareService {
       this.contracts.routerNonce(user),
     ]);
     for (const { vault, advance, fundable } of liquidityChecks) {
-      if (advance > fundable) throw unprocessable("INSUFFICIENT_LIQUIDITY", `Insufficient vault liquidity for ${vault}`);
+      if (advance > fundable)
+        throw unprocessable("INSUFFICIENT_LIQUIDITY", `Insufficient vault liquidity for ${vault}`);
     }
 
     if (totalAdvance < targetAdvance) {
       throw unprocessable("TARGET_ADVANCE_NOT_MET", "targetAdvance not met by the assembled route");
     }
-    const maxTotalFace = body.maxTotalFace === undefined ? totalFace : parseUint256(body.maxTotalFace, "maxTotalFace");
+    const maxTotalFace =
+      body.maxTotalFace === undefined ? totalFace : parseUint256(body.maxTotalFace, "maxTotalFace");
     if (totalFace > maxTotalFace) {
       throw unprocessable("MAX_FACE_EXCEEDED", "route total face exceeds maxTotalFace");
     }
 
-    const deadline = BigInt(Math.floor(Date.now() / 1000) + (body.deadlineSeconds ?? DEFAULT_DEADLINE_SECONDS));
+    const deadline = BigInt(
+      Math.floor(Date.now() / 1000) + (body.deadlineSeconds ?? DEFAULT_DEADLINE_SECONDS),
+    );
     const router = this.chain.addresses.router;
 
     const message = {
@@ -153,20 +171,18 @@ export class ExecutionsPrepareService {
         minimumAdvanceAmount: leg.minimumAdvanceAmount,
       })),
     };
-    const domain = routerDomain(this.chain.chainId, router);
-    const executionId = hashTypedData({
-      domain,
-      types: EXECUTION_ROUTE_TYPES,
-      primaryType: "ExecutionRoute",
+    const { typedData, executionId } = buildExecutionRouteTypedData(
+      this.chain.chainId,
+      router,
       message,
-    });
+    );
 
     const step: PrepareStep = {
       kind: "typed-data",
       to: router,
       value: "0",
       verifyingContract: router,
-      typedData: { domain, types: EXECUTION_ROUTE_TYPES, primaryType: "ExecutionRoute", message: serializeMessage(message) },
+      typedData,
       submitFunction: "executeRoute",
       nonce: nonce.toString(),
       expiry: deadline.toString(),
@@ -182,28 +198,4 @@ export class ExecutionsPrepareService {
       await this.cursor.finalizedThrough(),
     );
   }
-}
-
-/** JSON-safe view of the typed-data message (bigints → decimal strings) for the response body. */
-function serializeMessage(message: {
-  user: string;
-  targetAdvance: bigint;
-  maxTotalFace: bigint;
-  deadline: bigint;
-  nonce: bigint;
-  legs: { claimId: string; vault: string; faceAmount: bigint; minimumAdvanceAmount: bigint }[];
-}): Record<string, unknown> {
-  return {
-    user: message.user,
-    targetAdvance: message.targetAdvance.toString(),
-    maxTotalFace: message.maxTotalFace.toString(),
-    deadline: message.deadline.toString(),
-    nonce: message.nonce.toString(),
-    legs: message.legs.map((leg) => ({
-      claimId: leg.claimId,
-      vault: leg.vault,
-      faceAmount: leg.faceAmount.toString(),
-      minimumAdvanceAmount: leg.minimumAdvanceAmount.toString(),
-    })),
-  };
 }

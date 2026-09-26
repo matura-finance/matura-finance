@@ -24,6 +24,7 @@ import { HealthModule } from "./health/health.module";
 import { IssuersModule } from "./issuers/issuers.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { QuotesModule } from "./quotes/quotes.module";
+import { RoutesModule } from "./routes/routes.module";
 import { SettlementsPrepareModule } from "./settlements/prepare/settlements-prepare.module";
 import { VaultsModule } from "./vaults/vaults.module";
 
@@ -59,6 +60,7 @@ import { VaultsModule } from "./vaults/vaults.module";
     ClaimsPrepareModule,
     ExecutionsPrepareModule,
     SettlementsPrepareModule,
+    RoutesModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },

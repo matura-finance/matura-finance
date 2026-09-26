@@ -181,3 +181,46 @@ model AuthNonce {
 
   @@index([expiresAt])
 }
+
+// Lifecycle of a short-lived route intent. Distinct from RouteStatus (the
+// indexer's on-chain execution projection). Single source of truth for "is this
+// intent still usable" — no separate `consumed` boolean.
+enum RouteIntentStatus {
+  PENDING
+  CONSUMED
+  FAILED
+}
+
+// A short-lived best-execution route intent produced by POST /routes/optimize
+// and consumed once by POST /routes/:routeId/prepare-execution. Standalone (NO
+// FK to the projection tables — the indexer full-wipes those on reorg, which
+// would cascade-delete or block live intents). `routeId` is a keccak256 content
+// hash of (user, quoteSnapshotHash, canonical legs, target, caps, deadline), so
+// re-optimizing identical inputs collides on the PK: create-or-ignore, never
+// upsert (an upsert would revive a CONSUMED intent — single-use bypass).
+// Consumed atomically:
+// UPDATE ... SET status='CONSUMED' WHERE routeId=$1 AND user=$2 AND status='PENDING' AND expiresAt>now() RETURNING.
+// The persisted advance/cost figures are estimate-at-blockNumber (the on-chain
+// recompute at execution is authoritative). Money is base-unit strings.
+model RouteIntent {
+  routeId              String            @id
+  user                 String
+  status               RouteIntentStatus @default(PENDING)
+  targetAdvance        String
+  maxTotalFace         String?
+  maxTotalCost         String?
+  totalAdvance         String
+  totalFaceAssigned    String
+  totalCost            String
+  effectiveDiscountBps Int
+  legs                 Json
+  rejected             Json
+  explanation          Json
+  quoteSnapshotHash    String
+  blockNumber          BigInt
+  routeDeadlineSeconds Int
+  expiresAt            DateTime
+  createdAt            DateTime          @default(now())
+
+  @@index([expiresAt])
+}
