@@ -39,9 +39,12 @@ export class RouteIntentService {
    * CONSUMED intent can't be resurrected. Opportunistically prunes stale rows.
    */
   async createIfAbsent(input: CreateRouteIntentInput): Promise<RouteIntent> {
-    await this.prisma.routeIntent.deleteMany({
-      where: { OR: [{ expiresAt: { lt: new Date() } }, { status: "CONSUMED" }] },
-    });
+    // Prune ONLY expired rows. Deleting CONSUMED/FAILED rows would (a) race the two-step
+    // consume (delete the just-consumed row before its read → 500) and (b) let a re-optimize
+    // with identical inputs recreate a fresh PENDING row for a spent routeId — defeating the
+    // single-use guarantee. Keeping them until expiry makes the state machine durable, and the
+    // single indexed `expiresAt` predicate uses @@index([expiresAt]).
+    await this.prisma.routeIntent.deleteMany({ where: { expiresAt: { lt: new Date() } } });
     try {
       return await this.prisma.routeIntent.create({ data: input });
     } catch (error) {
