@@ -14,7 +14,9 @@ import { toAddress, toHex32 } from "./bridge";
  * `toBaseUnits`); addresses → `Address` via `getAddress`; bytes32 → `Hex`.
  */
 
-const WireBig = z.union([z.string(), z.number()]);
+// Money/uint256 fields are ALWAYS base-unit strings on the wire (never JSON numbers — a number
+// > 2^53 would already be precision-truncated by JSON.parse before BigInt sees it).
+const WireBig = z.string().regex(/^\d+$/, "expected a base-unit integer string");
 
 const WireMessage = z.object({
   message: z.object({
