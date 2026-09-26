@@ -10,14 +10,9 @@ import { useAccount } from "wagmi";
 
 import { useAccountPortfolio } from "../../lib/api/hooks";
 import { formatUsdt, shortenAddress } from "../../lib/chain/format";
+import { CLAIM_TYPE_LABEL } from "../../lib/claim-display";
 import type { ClaimWire } from "../../lib/api/schemas";
 import { Disconnected, EmptyAccount, NotDeployed, RpcUnavailable, WrongChain } from "../states";
-
-const CLAIM_TYPE_LABEL: Record<ClaimWire["claimType"], string> = {
-  PAYROLL: "Earned salary",
-  FREELANCE_ESCROW: "Approved freelance payout",
-  STREAM: "Onchain stream",
-};
 
 /** Sum a list of base-unit strings with BigInt (never float). */
 function sumBaseUnits(values: string[]): string {

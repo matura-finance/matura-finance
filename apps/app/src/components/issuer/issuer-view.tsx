@@ -20,6 +20,7 @@ import type { PrepareStep } from "../../lib/api/schemas";
 import { toAddress, toHex32, toHexData } from "../../lib/chain/bridge";
 import { classifyTxError, TX_ERROR_COPY } from "../../lib/chain/errors";
 import { parseAmountToBaseUnits } from "../../lib/chain/format";
+import { ISSUER_CLAIM_TYPE_LABEL } from "../../lib/claim-display";
 import { Disconnected, NotDeployed, WrongChain } from "../states";
 
 type Status =
@@ -27,12 +28,6 @@ type Status =
   | { kind: "running"; msg: string }
   | { kind: "done"; msg: string }
   | { kind: "error"; msg: string };
-
-const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
-  PAYROLL: "Payroll claim",
-  FREELANCE_ESCROW: "Freelance payout",
-  STREAM: "Stream claim",
-};
 
 export function IssuerView() {
   const { address, isConnected, chainId } = useAccount();
@@ -91,7 +86,7 @@ export function IssuerView() {
         },
         token,
       );
-      await runSteps(prepared.steps, `Creating ${CLAIM_TYPE_LABEL[claimType]}…`);
+      await runSteps(prepared.steps, `Creating ${ISSUER_CLAIM_TYPE_LABEL[claimType]}…`);
     } catch (e) {
       setStatus({ kind: "error", msg: e instanceof Error ? e.message : "Could not create claim" });
     }
@@ -165,7 +160,7 @@ export function IssuerView() {
                 >
                   {CLAIM_TYPES.map((t) => (
                     <option key={t} value={t}>
-                      {CLAIM_TYPE_LABEL[t]}
+                      {ISSUER_CLAIM_TYPE_LABEL[t]}
                     </option>
                   ))}
                 </select>
