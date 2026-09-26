@@ -60,18 +60,21 @@ export function RequestView() {
     tx.state.status === "confirmed" || tx.state.status === "indexing",
   );
 
-  // Once the receipt confirms, move into the indexing-poll phase.
+  // Once the receipt confirms, move into the indexing-poll phase. Depend on the stable
+  // status primitive + memoized callback (NOT the whole `tx` object, which is recreated
+  // each render) so this fires only on the transition, not every render.
+  const { markIndexing, markIndexed } = tx;
   useEffect(() => {
-    if (tx.state.status === "confirmed") tx.markIndexing();
-  }, [tx.state.status, tx]);
+    if (tx.state.status === "confirmed") markIndexing();
+  }, [tx.state.status, markIndexing]);
 
-  // When the projection reports the execution, finish and refresh the account.
+  // When the projection reports the execution, finish and refresh the account exactly once.
   useEffect(() => {
     if (poll.data?.status === "EXECUTED") {
-      tx.markIndexed();
+      markIndexed();
       if (address !== undefined) invalidate(address);
     }
-  }, [poll.data?.status, tx, invalidate, address]);
+  }, [poll.data?.status, markIndexed, invalidate, address]);
 
   const onExpire = useCallback(() => {
     setExpired(true);

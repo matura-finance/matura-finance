@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { env } from "../env";
 import { useSession } from "../auth/session-provider";
@@ -108,11 +109,15 @@ export function usePrepareExecution() {
   });
 }
 
-/** Invalidate the account + activity reads after a confirmed, indexed execution. */
+/** Invalidate the account + activity reads after a confirmed, indexed execution.
+ *  Memoized so effects depending on it don't re-run every render (see request-view). */
 export function useInvalidateOnSettled() {
   const queryClient = useQueryClient();
-  return (wallet: string) => {
-    void queryClient.invalidateQueries({ queryKey: queryKeys.portfolio(wallet) });
-    void queryClient.invalidateQueries({ queryKey: queryKeys.activity(wallet) });
-  };
+  return useCallback(
+    (wallet: string) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.portfolio(wallet) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.activity(wallet) });
+    },
+    [queryClient],
+  );
 }
