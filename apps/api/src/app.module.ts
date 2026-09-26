@@ -1,8 +1,12 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_FILTER, APP_GUARD, APP_PIPE } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerStorageRedisService } from "@nest-lab/throttler-storage-redis";
+import Redis from "ioredis";
 import { ZodValidationPipe } from "nestjs-zod";
+
+import type { Env } from "./config/env.validation";
 
 import { AccountModule } from "./account/account.module";
 import { ActivityModule } from "./activity/activity.module";
@@ -26,7 +30,20 @@ import { VaultsModule } from "./vaults/vaults.module";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<Env, true>) => {
+        const redisUrl = config.get("REDIS_URL", { infer: true });
+        return {
+          throttlers: [{ ttl: 60000, limit: 100 }],
+          // Shared store only when REDIS_URL is set (multi-instance); else per-instance in-memory.
+          storage:
+            redisUrl === undefined
+              ? undefined
+              : new ThrottlerStorageRedisService(new Redis(redisUrl)),
+        };
+      },
+    }),
     PrismaModule,
     ChainModule,
     CursorModule,

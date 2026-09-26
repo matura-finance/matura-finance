@@ -31,6 +31,10 @@ const BaseEnvSchema = z.object({
   CURSOR_STALE_MS: z.coerce.number().int().positive().default(30_000),
   CURSOR_MAX_LAG_BLOCKS: z.coerce.number().int().positive().default(200),
 
+  // Optional shared rate-limit store. When set, the throttler uses Redis so limits hold across
+  // multiple API instances; unset → per-instance in-memory (fine for a single instance).
+  REDIS_URL: z.url().optional(),
+
   // SIWE auth. JWT_SECRET must be a high-entropy CSPRNG value (min 32 chars).
   JWT_SECRET: z.string().min(32),
   JWT_TTL_SECONDS: z.coerce.number().int().positive().default(900),
