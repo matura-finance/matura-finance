@@ -20,6 +20,7 @@ import { IssuersModule } from "./issuers/issuers.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { QuotesModule } from "./quotes/quotes.module";
 import { SettlementsPrepareModule } from "./settlements/prepare/settlements-prepare.module";
+import { VaultsModule } from "./vaults/vaults.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { SettlementsPrepareModule } from "./settlements/prepare/settlements-prep
     ClaimsReadModule,
     ExecutionsReadModule,
     ActivityModule,
+    VaultsModule,
     QuotesModule,
     IssuersModule,
     ClaimsPrepareModule,

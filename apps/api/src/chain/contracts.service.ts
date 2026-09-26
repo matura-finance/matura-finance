@@ -131,6 +131,23 @@ export class ContractsService implements OnModuleInit {
     });
   }
 
+  getMandate(vault: Hex): Promise<{
+    supportedTypesBitmap: number;
+    baseDiscountBps: number;
+    durationBpsPerDay: number;
+    maxDurationDays: number;
+    minFace: bigint;
+    maxFace: bigint;
+    liquidityCap: bigint;
+    claimTypePremiumBps: readonly [number, number, number];
+  }> {
+    return this.chain.client.readContract({
+      address: vault,
+      abi: vaultAbi,
+      functionName: "getMandate",
+    });
+  }
+
   fundableLiquidity(vault: Hex): Promise<bigint> {
     return this.chain.client.readContract({
       address: vault,
