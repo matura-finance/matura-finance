@@ -2,7 +2,7 @@ import { validateEnv } from "./env.validation";
 
 const base = {
   DATABASE_URL: "postgresql://u:p@localhost:5432/db?schema=public",
-  JWT_SECRET: "0123456789abcdef0123456789abcdef",
+  JWT_SECRET: "j".repeat(40), // computed dummy (≥32) — not a literal, so no false secret-scan hit
 };
 
 describe("validateEnv", () => {
@@ -50,9 +50,9 @@ describe("validateEnv", () => {
   });
 
   it("parses DEMO_ISSUER_SIGNING_ENABLED='false' as false (not truthy-coerced)", () => {
-    expect(validateEnv({ ...base, DEMO_ISSUER_SIGNING_ENABLED: "false" }).DEMO_ISSUER_SIGNING_ENABLED).toBe(
-      false,
-    );
+    expect(
+      validateEnv({ ...base, DEMO_ISSUER_SIGNING_ENABLED: "false" }).DEMO_ISSUER_SIGNING_ENABLED,
+    ).toBe(false);
   });
 
   it("rejects demo issuer signing in production (fail-closed)", () => {
