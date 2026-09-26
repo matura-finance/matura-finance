@@ -34,6 +34,8 @@ export interface ChainAddresses {
 export interface BlockRef {
   number: bigint;
   hash: Hex;
+  /** Block timestamp (Unix seconds) — used for duration/quote math without a second fetch. */
+  timestamp: bigint;
 }
 
 /** On-chain claim as returned by `ClaimRegistry.getClaim`. */
@@ -135,7 +137,7 @@ export class ChainService implements OnModuleInit {
       block = await this.getRequiredBlock(target);
     } else {
       const raw = await client.getBlock({ blockTag: "finalized" });
-      block = { number: raw.number, hash: raw.hash };
+      block = { number: raw.number, hash: raw.hash, timestamp: raw.timestamp };
     }
     this.frontierCache = { block, at: Date.now() };
     return block;
@@ -184,7 +186,7 @@ export class ChainService implements OnModuleInit {
 
   private async getRequiredBlock(blockNumber: bigint): Promise<BlockRef> {
     const raw = await this.client.getBlock({ blockNumber });
-    return { number: raw.number, hash: raw.hash };
+    return { number: raw.number, hash: raw.hash, timestamp: raw.timestamp };
   }
 }
 

@@ -58,7 +58,6 @@ export class RoutesService {
     const routeDeadlineSeconds = body.routeDeadlineSeconds ?? EXECUTION_DEADLINE_SECONDS;
 
     const frontier = await this.chain.getFrontierBlock();
-    const block = await this.chain.client.getBlock({ blockNumber: frontier.number });
     const reads = this.contracts.pinnedAt(frontier.number);
     const finalizedThrough = await this.cursor.finalizedThrough();
 
@@ -84,7 +83,7 @@ export class RoutesService {
 
     const { candidates, rejected } = await collectCandidates(
       reads,
-      block.timestamp,
+      frontier.timestamp,
       user,
       claimIds,
     );

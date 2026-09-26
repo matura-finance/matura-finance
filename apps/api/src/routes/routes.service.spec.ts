@@ -67,8 +67,8 @@ function makeService(
   const chain = {
     chainId: 31337,
     addresses: { router: ROUTER },
-    getFrontierBlock: () => Promise.resolve({ number: 10n, hash: hex("0".repeat(64)) }),
-    client: { getBlock: () => Promise.resolve({ timestamp: TS }) },
+    getFrontierBlock: () =>
+      Promise.resolve({ number: 10n, hash: hex("0".repeat(64)), timestamp: TS }),
   } as unknown as ChainService;
   const contracts = { pinnedAt: () => pinned } as unknown as ContractsService;
   const cursor = { finalizedThrough: () => Promise.resolve("10") } as unknown as CursorService;
