@@ -67,7 +67,9 @@ model ClaimProjection {
   legs       RouteLegProjection[]
   settlement SettlementProjection?
 
-  @@unique([txHash, logIndex])
+  // NOTE: no @@unique([txHash, logIndex]) — claims are idempotent via the claimId PK (upsert
+  // keys on claimId), and txHash/logIndex are OVERWRITTEN to the latest mutating event, so a
+  // constraint on them would be both misleading and unnecessary.
   @@index([beneficiary])
   @@index([issuer])
   @@index([state, dueAt])
