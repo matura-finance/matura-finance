@@ -1,19 +1,15 @@
 import { Injectable } from "@nestjs/common";
 import { type Hex } from "viem";
 import type { z } from "zod";
-import {
-  CLAIM_STATES,
-  optimizeRoute,
-  parseOptimizeInput,
-  RouteIntentPayload,
-} from "@matura/shared";
+import { optimizeRoute, parseOptimizeInput, RouteIntentPayload } from "@matura/shared";
 
 import { ChainService } from "../chain/chain.service";
-import { ContractsService, type PinnedReads } from "../chain/contracts.service";
+import { ContractsService } from "../chain/contracts.service";
 import { CursorService } from "../cursor/cursor.service";
 import { parseUint256 } from "../common/amount.util";
 import { toHexAddress, validateBytes32 } from "../common/evm.util";
 import { conflict, notFound, unprocessable } from "../common/http-errors";
+import { validateRouteLegs } from "../common/leg-mirror";
 import {
   buildPrepareResponse,
   type PrepareResponse,
@@ -34,9 +30,6 @@ const ROUTE_INTENT_TTL_SECONDS = 120;
 const EXECUTION_DEADLINE_SECONDS = 300;
 /** A prepared route must remain valid at least this long, or we refuse to hand out dead typed data. */
 const MIN_DEADLINE_MARGIN_SECONDS = 30;
-
-const ELIGIBLE = CLAIM_STATES.indexOf("ELIGIBLE");
-const PARTIALLY_FUNDED = CLAIM_STATES.indexOf("PARTIALLY_FUNDED");
 
 @Injectable()
 export class RoutesService {
@@ -197,13 +190,30 @@ export class RoutesService {
         throw unprocessable("ROUTER_PAUSED", "Router is paused; re-optimize later");
       }
 
-      const messageLegs = await this.revalidateLegs(reads, user, payload.legs);
+      // Authoritative mirror of _validateLegs (+ slice/remaining/dup) on the fresh block.
+      const validated = await validateRouteLegs(reads, user, payload.legs);
+      const messageLegs = validated.map((l) => ({
+        claimId: l.claimId,
+        vault: l.vault,
+        faceAmount: l.faceAmount,
+        // minimumAdvanceAmount = the fresh authoritative advance — the only on-chain cost floor.
+        minimumAdvanceAmount: l.advance,
+      }));
 
       const totalAdvance = messageLegs.reduce((sum, l) => sum + l.minimumAdvanceAmount, 0n);
       if (totalAdvance < BigInt(intent.targetAdvance)) {
         throw unprocessable("TARGET_NO_LONGER_MET", "Liquidity/pricing moved; re-optimize");
       }
       const totalFace = messageLegs.reduce((sum, l) => sum + l.faceAmount, 0n);
+      // Enforce the user's advisory cost cap at the FRESH price (there is no on-chain cost field,
+      // so prepare is the only place this can be honoured after pricing may have drifted).
+      const totalCost = totalFace - totalAdvance;
+      if (intent.maxTotalCost !== null && totalCost > BigInt(intent.maxTotalCost)) {
+        throw unprocessable(
+          "MAX_COST_EXCEEDED",
+          "Route cost exceeds maxTotalCost at current pricing; re-optimize",
+        );
+      }
       const maxTotalFace = intent.maxTotalFace === null ? totalFace : BigInt(intent.maxTotalFace);
 
       const nonce = await reads.routerNonce(user);
@@ -257,70 +267,6 @@ export class RoutesService {
       await this.intents.markFailed(routeId);
       throw error;
     }
-  }
-
-  /** Re-validate each stored leg on a fresh block; returns the on-chain message legs. */
-  private async revalidateLegs(
-    reads: PinnedReads,
-    user: Hex,
-    legs: { claimId: string; vault: string; faceAmount: string }[],
-  ): Promise<ExecutionRouteMessage["legs"]> {
-    // Validate + re-quote every leg concurrently (no shared mutable state here).
-    const messageLegs = await Promise.all(
-      legs.map(async (leg) => {
-        const claimId = validateBytes32(leg.claimId, "claimId");
-        const vault = toHexAddress(leg.vault);
-        const claim = await reads.getClaim(claimId);
-        if (claim === null) {
-          throw unprocessable("LEG_NOT_FINANCEABLE", `Claim ${claimId} not found`);
-        }
-        if (claim.beneficiary.toLowerCase() !== user.toLowerCase()) {
-          throw unprocessable("LEG_NOT_FINANCEABLE", `Claim ${claimId} not financeable for wallet`);
-        }
-        if (claim.state !== ELIGIBLE && claim.state !== PARTIALLY_FUNDED) {
-          throw unprocessable("LEG_NOT_FINANCEABLE", `Claim ${claimId} not in a financeable state`);
-        }
-        const [issuerActive, vaultActive, vaultToken] = await Promise.all([
-          reads.isIssuerActive(claim.issuer),
-          reads.isVaultActive(vault),
-          reads.vaultToken(vault),
-        ]);
-        if (!issuerActive)
-          throw unprocessable("ISSUER_INACTIVE", `Issuer inactive for claim ${claimId}`);
-        if (!vaultActive) throw unprocessable("VAULT_INACTIVE", `Vault ${vault} inactive`);
-        if (claim.token.toLowerCase() !== vaultToken.toLowerCase()) {
-          throw unprocessable("TOKEN_MISMATCH", `Token mismatch for claim ${claimId}`);
-        }
-
-        const faceAmount = parseUint256(leg.faceAmount, "faceAmount");
-        const quote = await reads.quoteAndCheck(
-          vault,
-          claim.issuer,
-          claim.claimType,
-          faceAmount,
-          claim.dueDate,
-        );
-        if (!quote.ok) throw unprocessable("MANDATE_REJECTED", `Vault rejected claim ${claimId}`);
-
-        // minimumAdvanceAmount = the fresh authoritative advance — the ONLY on-chain cost floor.
-        return { claimId, vault, faceAmount, minimumAdvanceAmount: quote.advanceAmount };
-      }),
-    );
-
-    // Aggregate advances per distinct vault against one fundable snapshot (mirror _validateLegs).
-    const perVault = new Map<string, bigint>();
-    for (const leg of messageLegs) {
-      perVault.set(leg.vault, (perVault.get(leg.vault) ?? 0n) + leg.minimumAdvanceAmount);
-    }
-    await Promise.all(
-      [...perVault.entries()].map(async ([vault, reserved]) => {
-        const fundable = await reads.fundableLiquidity(vault as Hex);
-        if (reserved > fundable)
-          throw unprocessable("INSUFFICIENT_LIQUIDITY", `Vault ${vault} lacks liquidity`);
-      }),
-    );
-
-    return messageLegs;
   }
 }
 
