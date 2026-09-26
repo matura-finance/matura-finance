@@ -185,6 +185,19 @@ export const ActivityPage = z.object({
 });
 export type ActivityPage = z.infer<typeof ActivityPage>;
 
+// ── Issuer attestation (demo-sign claim registration) ──────────────────────────
+export const AttestationPrepareRequest = z.object({
+  claimId: Bytes32,
+  beneficiary: Address,
+  token: Address,
+  faceValue: Money,
+  dueAt: IsoDate,
+  claimType: ClaimType,
+  externalIdHash: Bytes32.optional(),
+  evidenceHash: Bytes32.optional(),
+});
+export type AttestationPrepareRequest = z.infer<typeof AttestationPrepareRequest>;
+
 // ── Quotes preview ────────────────────────────────────────────────────────────
 export const QuoteWire = z.object({
   vault: Address,

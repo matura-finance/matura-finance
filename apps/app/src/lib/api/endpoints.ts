@@ -10,6 +10,7 @@ import {
   QuotesResponse,
   SessionResponse,
   VaultsResponse,
+  type AttestationPrepareRequest,
   type OptimizeRequest,
 } from "./schemas";
 
@@ -76,6 +77,30 @@ export const postPrepareExecution = (routeId: string, token: string, signal?: Ab
   apiRequest({
     method: "POST",
     path: `/routes/${routeId}/prepare-execution`,
+    schema: PrepareResponse,
+    token,
+    signal,
+  });
+
+// Issuer simulator (demo-signing): both return `kind:"transaction"` calldata steps.
+export const postClaimRegistrationPrepare = (
+  body: AttestationPrepareRequest,
+  token: string,
+  signal?: AbortSignal,
+) =>
+  apiRequest({
+    method: "POST",
+    path: "/claims/registration/prepare",
+    schema: PrepareResponse,
+    body,
+    token,
+    signal,
+  });
+
+export const postSettlementPrepare = (claimId: string, token: string, signal?: AbortSignal) =>
+  apiRequest({
+    method: "POST",
+    path: `/settlements/${claimId}/prepare`,
     schema: PrepareResponse,
     token,
     signal,
