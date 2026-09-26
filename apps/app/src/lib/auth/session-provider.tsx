@@ -48,6 +48,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Rehydrate on mount / when the active account resolves. Only trust a stored token
   // whose subject matches the active wallet and that hasn't expired.
   useEffect(() => {
+    // Wait for wagmi to finish reconnecting before judging a stored session — otherwise a
+    // valid session is dropped on every reload while `address` is momentarily undefined.
+    if (lowerAddress === undefined) return;
     const stored = loadStoredSession();
     if (stored === null) return;
     if (isSessionExpired(stored) || stored.subject !== lowerAddress) {
