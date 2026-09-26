@@ -1,6 +1,6 @@
 "use client";
 
-import type { RejectedAlternative, RouteResult } from "@matura/shared";
+import type { RouteResult } from "@matura/shared";
 import { AllocationBar } from "@matura/ui/components/allocation-bar";
 import { Badge } from "@matura/ui/components/badge";
 import { Card, CardContent } from "@matura/ui/components/card";
@@ -29,15 +29,17 @@ export function RouteBreakdown({
 }) {
   const vaultLabel = useVaultLabel();
 
-  const { segments, retained } = useMemo(() => {
+  // All derived values in one memo (deps: result, filteredOut, vaultLabel) — avoids rebuilding
+  // the rate Map twice and re-sorting/re-reducing on every render.
+  const { segments, retained, rateByLeg, retainedTotal, rejected, filtered } = useMemo(() => {
     const assigned = BigInt(result.totalFaceAssigned);
-    const retainedTotal = result.retainedFace.reduce((a, r) => a + BigInt(r.retained), 0n);
-    const whole = assigned + retainedTotal;
-    const rateByLeg = new Map(
+    const retTotal = result.retainedFace.reduce((a, r) => a + BigInt(r.retained), 0n);
+    const whole = assigned + retTotal;
+    const rates = new Map(
       result.explanation.steps.map((s) => [`${s.claimId}-${s.vault}`, s.rateBps]),
     );
     const segs = result.legs.map((leg, i) => {
-      const rate = rateByLeg.get(`${leg.claimId}-${leg.vault}`);
+      const rate = rates.get(`${leg.claimId}-${leg.vault}`);
       return {
         key: `${leg.claimId}-${leg.vault}`,
         label: vaultLabel(leg.vault),
@@ -48,21 +50,19 @@ export function RouteBreakdown({
     });
     return {
       segments: segs,
+      rateByLeg: rates,
+      retainedTotal: retTotal,
+      rejected: sortByPrecedence(result.rejected),
+      filtered: sortByPrecedence(filteredOut),
       retained:
-        retainedTotal > 0n
+        retTotal > 0n
           ? {
-              widthPct: widthPct(retainedTotal, whole),
-              label: `You retain ${formatUsdt(retainedTotal.toString())}`,
+              widthPct: widthPct(retTotal, whole),
+              label: `You retain ${formatUsdt(retTotal.toString())}`,
             }
           : undefined,
     };
-  }, [result, vaultLabel]);
-
-  const rateByLeg = new Map(
-    result.explanation.steps.map((s) => [`${s.claimId}-${s.vault}`, s.rateBps]),
-  );
-  const rejected: RejectedAlternative[] = sortByPrecedence(result.rejected);
-  const filtered = sortByPrecedence(filteredOut);
+  }, [result, filteredOut, vaultLabel]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,12 +117,7 @@ export function RouteBreakdown({
           <Summary label="Claim value assigned" value={formatUsdt(result.totalFaceAssigned)} />
           <Summary label="Total cost" value={formatUsdt(result.totalCost)} />
           <Summary label="Effective cost" value={formatBps(result.effectiveDiscountBps)} />
-          <Summary
-            label="You retain"
-            value={formatUsdt(
-              result.retainedFace.reduce((a, r) => a + BigInt(r.retained), 0n).toString(),
-            )}
-          />
+          <Summary label="You retain" value={formatUsdt(retainedTotal.toString())} />
         </CardContent>
       </Card>
 
