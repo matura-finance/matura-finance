@@ -35,17 +35,17 @@ flowchart TD
 
 ## Packages
 
-| Package                     | Responsibility                                                                                                        | Build                      | Consumed by    |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------- | -------------- |
-| `@matura/shared`            | Framework-free Zod schemas + inferred domain types (claims, quotes, routes, settlement, errors), branded value types. | **tsup** (CJS+ESM+`.d.ts`) | api, app       |
-| `@matura/chain`             | BSC Testnet chain definition, address schema, deployment manifest, viem client factories, 6-decimal unit helpers.     | JIT (raw `.ts`)            | app            |
-| `@matura/ui`                | Tailwind v4 design tokens (`globals.css`) + low-level primitives (button, badge, layout).                             | JIT (raw `.tsx`)           | app, landing   |
-| `@matura/contracts`         | Hardhat 3 (Solidity + viem + `node:test`). Empty at foundation; compiles zero contracts.                              | Hardhat                    | (chain, later) |
-| `@matura/typescript-config` | Shared strict `tsconfig` bases (base / library / nextjs / nestjs).                                                    | —                          | all            |
-| `@matura/eslint-config`     | ESLint 9 flat config, type-aware (`strictTypeChecked`) for real no-`any`.                                             | —                          | all            |
-| `apps/api`                  | Orchestration + read-model: viem indexer worker → Prisma/PostgreSQL projections; read + non-custodial prepare endpoints; SIWE auth; `/api/v1` + health; Swagger (dev). | nest (CJS) | `@matura/{chain,shared}` |
-| `apps/app`                  | Next.js 15 product app; wallet/network infra (wagmi + viem) lives **only** here.                                      | next                       | —              |
-| `apps/landing`              | Next.js 15 marketing site; statically optimizable, wallet-free.                                                       | next                       | —              |
+| Package                     | Responsibility                                                                                                                                                                                                                                                                                    | Build                      | Consumed by              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------ |
+| `@matura/shared`            | Framework-free Zod schemas + inferred domain types (claims, quotes, routes, settlement, errors), branded value types.                                                                                                                                                                             | **tsup** (CJS+ESM+`.d.ts`) | api, app                 |
+| `@matura/chain`             | BSC Testnet chain definition, address schema, deployment manifest, viem client factories, 6-decimal unit helpers.                                                                                                                                                                                 | JIT (raw `.ts`)            | app                      |
+| `@matura/ui`                | Tailwind v4 design tokens (`globals.css`) + low-level primitives (button, badge, layout).                                                                                                                                                                                                         | JIT (raw `.tsx`)           | app, landing             |
+| `@matura/contracts`         | Hardhat 3 (Solidity + viem + `node:test`). Empty at foundation; compiles zero contracts.                                                                                                                                                                                                          | Hardhat                    | (chain, later)           |
+| `@matura/typescript-config` | Shared strict `tsconfig` bases (base / library / nextjs / nestjs).                                                                                                                                                                                                                                | —                          | all                      |
+| `@matura/eslint-config`     | ESLint 9 flat config, type-aware (`strictTypeChecked`) for real no-`any`.                                                                                                                                                                                                                         | —                          | all                      |
+| `apps/api`                  | Orchestration + read-model: viem indexer worker → Prisma/PostgreSQL projections; read + non-custodial prepare endpoints; deterministic best-execution router (`routes/*`, pinned reads + shared `_validateLegs` mirror + single-use `RouteIntent`); SIWE auth; `/api/v1` + health; Swagger (dev). | nest (CJS)                 | `@matura/{chain,shared}` |
+| `apps/app`                  | Next.js 15 product app; wallet/network infra (wagmi + viem) lives **only** here.                                                                                                                                                                                                                  | next                       | —                        |
+| `apps/landing`              | Next.js 15 marketing site; statically optimizable, wallet-free.                                                                                                                                                                                                                                   | next                       | —                        |
 
 ## Boundary rules (enforced)
 
@@ -89,8 +89,12 @@ flowchart TD
 ```
 
 **Flow.** An allowlisted issuer signs an EIP-712 `ClaimAttestation`
-(`ClaimRegistry.registerClaim` → `ATTESTED`); a reviewer marks it `ELIGIBLE`. A
-user signs an EIP-712 `ExecutionRoute`; `MaturaRouter.executeRoute` recomputes each
+(`ClaimRegistry.registerClaim` → `ATTESTED`); a reviewer marks it `ELIGIBLE`.
+`apps/api`'s **best-execution router** then selects the cheapest verifiable
+`ExecutionRoute` for the user (pure integer optimizer in `@matura/shared`;
+pinned-block collection + one shared off-chain `_validateLegs` mirror; single-use
+`RouteIntent`) and hands back the typed data — see `docs/routing.md`. The
+user signs that EIP-712 `ExecutionRoute`; `MaturaRouter.executeRoute` recomputes each
 vault quote on-chain, reserves slices, and funds the user atomically
 (`PARTIALLY_FUNDED`/`FUNDED`), registering allocations in `SettlementManager`. At
 maturity anyone marks the claim `MATURED`; the issuer (or any payer) settles by
