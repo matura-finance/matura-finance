@@ -81,23 +81,39 @@ export function useExecutionPoll(executionId: string | undefined, active: boolea
   });
 }
 
+/** A 401 means the bearer token is dead (expired/revoked) — clear the session so the UI
+ *  drops back to the sign-in state instead of retrying with a dead token. */
+function useClearSessionOn401() {
+  const { signOut } = useSession();
+  return useCallback(
+    (error: unknown) => {
+      if (error instanceof ApiError && error.status === 401) signOut();
+    },
+    [signOut],
+  );
+}
+
 export function useOptimize() {
   const { token } = useSession();
+  const onError = useClearSessionOn401();
   return useMutation({
     mutationFn: (body: OptimizeRequest) => {
       if (token === null) throw new ApiError(401, "NO_SESSION", "Sign in to continue");
       return postOptimize(body, token);
     },
+    onError,
   });
 }
 
 export function usePrepareExecution() {
   const { token } = useSession();
+  const onError = useClearSessionOn401();
   return useMutation({
     mutationFn: (routeId: string) => {
       if (token === null) throw new ApiError(401, "NO_SESSION", "Sign in to continue");
       return postPrepareExecution(routeId, token);
     },
+    onError,
   });
 }
 

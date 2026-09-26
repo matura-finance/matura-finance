@@ -42,7 +42,7 @@ export interface RequestOptions<T> {
 /**
  * Typed fetch wrapper: injects `Authorization: Bearer`, JSON-encodes the body, and
  * validates the response through a Zod schema. Throws {@link ApiError} with the machine
- * `code` on non-2xx. A 401 clears the caller's session upstream (handled by the hook).
+ * `code` on non-2xx. Authed hooks map a 401 to a session clear (see `useClearSessionOn401`).
  */
 export async function apiRequest<T>({
   method = "GET",
