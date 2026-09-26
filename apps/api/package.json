@@ -28,6 +28,7 @@
     "nestjs-zod": "^5.5.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "viem": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

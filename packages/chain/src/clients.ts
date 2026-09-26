@@ -14,10 +14,17 @@ import {
  * The RPC URL is a parameter — this factory never reads it from the
  * environment.
  */
-export function createPublicClientFor(chain: Chain, rpcUrl: string): PublicClient {
+export function createPublicClientFor(
+  chain: Chain,
+  rpcUrl: string,
+  options?: { batch?: boolean },
+): PublicClient {
   return createPublicClient({
     chain,
-    transport: http(rpcUrl),
+    // JSON-RPC request batching (many calls → one HTTP request). Safe everywhere,
+    // including a local Hardhat node (unlike Multicall3 aggregation). Opt-in so
+    // deploy/seed scripts keep their original one-call-per-request semantics.
+    transport: http(rpcUrl, options?.batch === true ? { batch: true } : undefined),
   });
 }
 
