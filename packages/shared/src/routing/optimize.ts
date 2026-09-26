@@ -56,11 +56,13 @@ function group(candidates: readonly RouteCandidate[]): Map<string, RouteCandidat
  */
 function fillByRate(legs: readonly RouteCandidate[], target: bigint, maxLegs: number): Allocation {
   const vaultRemaining = new Map<string, bigint>();
+  const usedClaims = new Set<string>();
   const draws: Draw[] = [];
   let remaining = target;
 
   for (const c of sortByRate(legs)) {
     if (remaining <= 0n || draws.length >= maxLegs) break;
+    if (usedClaims.has(c.claimId)) continue; // one vault per claim (guards a mixed-vault input set)
     const vRem = vaultRemaining.get(c.vault) ?? BigInt(c.vaultFundable);
     if (vRem <= 0n) continue;
     const minFace = BigInt(c.minFace);
@@ -70,6 +72,7 @@ function fillByRate(legs: readonly RouteCandidate[], target: bigint, maxLegs: nu
     const face = needed === null ? faceCap : needed < minFace ? minFace : needed;
     const advance = advanceForFace(face, c.rateBps);
     draws.push({ candidate: c, face, advance, discount: face - advance });
+    usedClaims.add(c.claimId);
     vaultRemaining.set(c.vault, vRem - advance);
     remaining -= advance;
   }
@@ -77,32 +80,66 @@ function fillByRate(legs: readonly RouteCandidate[], target: bigint, maxLegs: nu
 }
 
 /**
+ * Hard bound on the number of leaf allocations the exact search may evaluate.
+ * The branching factor is `1 + vaultsPerClaim` per claim (vault count is NOT
+ * capped by the caller), so an adversarial vault fan-out could otherwise explode
+ * combinatorially and block the single-threaded event loop. When the budget is
+ * exhausted the search aborts and the caller falls back to a greedy result
+ * marked `approximation: "greedy"`. The demo/normal domain (≤ a few claims × a
+ * few vaults) stays far under this and remains exact.
+ */
+const SEARCH_LEAF_BUDGET = 200_000;
+
+interface ExactSearchResult {
+  /** Min-cost allocation meeting target AND the caps, or null. */
+  withCaps: Allocation | null;
+  /** Min-cost allocation meeting target ignoring caps (to classify MAX_COST_EXCEEDED vs TARGET_UNSATISFIABLE). */
+  ignoringCaps: Allocation | null;
+  /** True if the leaf budget was hit before the search completed (result is partial → caller uses greedy). */
+  exhausted: boolean;
+}
+
+/**
  * Bounded exact search: for each claim choose none or exactly one of its vaults
  * (pruned to ≤ maxLegs chosen), fill the chosen legs by rate, and keep the
- * min-cost allocation that meets `target` (and the caps when `applyCaps`). This
- * explores the vault-choice trade-off (rate vs capacity) that a pure per-claim
- * cheapest-vault greedy would miss. Correct for the small MVP domain.
+ * min-cost allocation that meets `target`. Explores the vault-choice trade-off
+ * (rate vs capacity) that a per-claim cheapest-vault greedy would miss. Tracks
+ * the caps-respecting and caps-ignoring optima in ONE pass, and aborts once
+ * `SEARCH_LEAF_BUDGET` leaves are evaluated (worst-case time bound).
  */
 function exactSearch(
   byClaim: Map<string, RouteCandidate[]>,
   target: bigint,
   input: OptimizeInput,
-  applyCaps: boolean,
-): Allocation | null {
-  const claimIds = [...byClaim.keys()];
-  let best: Allocation | null = null;
+): ExactSearchResult {
+  // Consider cheapest-rate claims first so a good candidate is found early.
+  const claimIds = [...byClaim.keys()].sort(
+    (a, b) => (byClaim.get(a)?.[0]?.rateBps ?? 0) - (byClaim.get(b)?.[0]?.rateBps ?? 0),
+  );
+  let withCaps: Allocation | null = null;
+  let ignoringCaps: Allocation | null = null;
+  let exhausted = false;
+  let leaves = 0;
   const chosen: RouteCandidate[] = [];
 
   const consider = (): void => {
     if (chosen.length === 0) return;
+    if (leaves >= SEARCH_LEAF_BUDGET) {
+      exhausted = true;
+      return;
+    }
+    leaves++;
     const alloc = fillByRate(chosen, target, input.maxLegs);
-    if (alloc.totalAdvance < target) return;
-    if (applyCaps && !withinCaps(alloc, input)) return;
-    if (best === null || isBetter(alloc, best)) best = alloc;
+    // A real route needs ≥1 leg (an empty route reverts on-chain with EmptyRoute) —
+    // this also makes a non-positive target fall through to a non-executable result.
+    if (alloc.draws.length === 0 || alloc.totalAdvance < target) return;
+    if (ignoringCaps === null || isBetter(alloc, ignoringCaps)) ignoringCaps = alloc;
+    if (withinCaps(alloc, input) && (withCaps === null || isBetter(alloc, withCaps)))
+      withCaps = alloc;
   };
 
   const rec = (i: number): void => {
-    if (chosen.length > input.maxLegs) return; // prune
+    if (exhausted || chosen.length > input.maxLegs) return; // budget/depth prune
     if (i === claimIds.length) {
       consider();
       return;
@@ -112,6 +149,7 @@ function exactSearch(
     const vaults = claimId === undefined ? undefined : byClaim.get(claimId);
     if (vaults) {
       for (const c of vaults) {
+        // The top-of-rec `exhausted` guard stops descent once the budget is hit.
         chosen.push(c);
         rec(i + 1);
         chosen.pop();
@@ -119,7 +157,7 @@ function exactSearch(
     }
   };
   rec(0);
-  return best;
+  return { withCaps, ignoringCaps, exhausted };
 }
 
 function isBetter(a: Allocation, b: Allocation): boolean {
@@ -269,9 +307,7 @@ function rejections(candidates: readonly RouteCandidate[], draws: Draw[]): Rejec
   );
 }
 
-function stepsOf(
-  draws: Draw[],
-): {
+function stepsOf(draws: Draw[]): {
   claimId: string;
   vault: string;
   faceAmount: string;
@@ -307,34 +343,47 @@ export function optimizeRoute(input: OptimizeInput): OptimizeResult {
       greedyMaxAdvance([], input.maxLegs),
       input,
       candidatesConsidered,
+      "bounded-exact",
     );
   }
 
   const byClaim = group(input.candidates);
   const distinctClaims = byClaim.size;
 
+  // Exact search for the small domain; a single pass yields both the caps-respecting
+  // optimum and the caps-ignoring optimum (to classify a failure). If the leaf budget
+  // is exhausted (adversarial vault fan-out), fall through to the greedy approximation.
   if (distinctClaims <= EXACT_SEARCH_MAX_CLAIMS) {
-    const withCaps = exactSearch(byClaim, target, input, true);
-    if (withCaps)
-      return buildExecutable(withCaps, "bounded-exact", "exact", input, candidatesConsidered);
-    // Distinguish "caps blocked an otherwise-reachable target" from "unreachable".
-    const ignoringCaps = exactSearch(byClaim, target, input, false);
-    const reason: RejectionReason = ignoringCaps ? "MAX_COST_EXCEEDED" : "TARGET_UNSATISFIABLE";
-    return nonExecutable(
-      reason,
-      target,
-      greedyMaxAdvance(input.candidates, input.maxLegs),
-      input,
-      candidatesConsidered,
-    );
+    const search = exactSearch(byClaim, target, input);
+    if (!search.exhausted) {
+      if (search.withCaps)
+        return buildExecutable(
+          search.withCaps,
+          "bounded-exact",
+          "exact",
+          input,
+          candidatesConsidered,
+        );
+      const reason: RejectionReason = search.ignoringCaps
+        ? "MAX_COST_EXCEEDED"
+        : "TARGET_UNSATISFIABLE";
+      return nonExecutable(
+        reason,
+        target,
+        greedyMaxAdvance(input.candidates, input.maxLegs),
+        input,
+        candidatesConsidered,
+        "bounded-exact",
+      );
+    }
   }
 
-  // Large domain: cheapest-vault-per-claim greedy (approximate).
+  // Large domain OR budget-exhausted: cheapest-vault-per-claim greedy (approximate).
   const cheapestPerClaim = [...byClaim.values()]
     .map((v) => v[0])
     .filter((c): c is RouteCandidate => c !== undefined);
   const greedy = fillByRate(cheapestPerClaim, target, input.maxLegs);
-  if (greedy.totalAdvance >= target && withinCaps(greedy, input)) {
+  if (greedy.draws.length > 0 && greedy.totalAdvance >= target && withinCaps(greedy, input)) {
     return buildExecutable(greedy, "greedy-degraded", "greedy", input, candidatesConsidered);
   }
   return nonExecutable(
@@ -343,8 +392,12 @@ export function optimizeRoute(input: OptimizeInput): OptimizeResult {
     greedyMaxAdvance(input.candidates, input.maxLegs),
     input,
     candidatesConsidered,
+    "greedy-degraded",
   );
 }
+
+/** Which selection path produced a result — for observability, not control flow. */
+type Strategy = "bounded-exact" | "greedy-degraded";
 
 function nonExecutable(
   reasonCode: RejectionReason,
@@ -352,6 +405,7 @@ function nonExecutable(
   partial: Allocation,
   input: OptimizeInput,
   candidatesConsidered: number,
+  strategy: Strategy,
 ): OptimizeResult {
   const shortfall = target - partial.totalAdvance;
   return OptimizeResult.parse({
@@ -362,7 +416,7 @@ function nonExecutable(
     bestFeasiblePartial: partial.draws.length > 0 ? core(partial) : undefined,
     rejected: rejections(input.candidates, partial.draws),
     explanation: {
-      strategy: "greedy-degraded",
+      strategy,
       steps: stepsOf(partial.draws),
       candidatesConsidered,
       targetAdvance: input.targetAdvance,
@@ -373,7 +427,7 @@ function nonExecutable(
 
 function buildExecutable(
   alloc: Allocation,
-  strategy: "greedy-fast-path" | "bounded-exact" | "greedy-degraded",
+  strategy: Strategy,
   approximation: "exact" | "greedy",
   input: OptimizeInput,
   candidatesConsidered: number,

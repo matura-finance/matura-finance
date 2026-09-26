@@ -25,8 +25,8 @@ export type ExplanationStep = z.infer<typeof ExplanationStep>;
 
 export const Explanation = z
   .object({
-    /** "exact" (greedy fast-path or optimal bounded search) or "greedy" (degraded above the cap). */
-    strategy: z.enum(["greedy-fast-path", "bounded-exact", "greedy-degraded"]),
+    /** Which selection path ran: the optimal bounded exact search, or the greedy fallback. */
+    strategy: z.enum(["bounded-exact", "greedy-degraded"]),
     /** Allocation steps in the order the optimizer selected them. */
     steps: z.array(ExplanationStep),
     /** Number of eligible candidates considered. */
