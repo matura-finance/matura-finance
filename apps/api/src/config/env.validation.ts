@@ -56,7 +56,11 @@ export const EnvSchema = BaseEnvSchema.refine(
       "DEMO_ISSUER_SIGNING_ENABLED requires NODE_ENV!=production and a non-empty ISSUER_PRIVATE_KEY",
     path: ["DEMO_ISSUER_SIGNING_ENABLED"],
   },
-);
+).refine((env) => env.NODE_ENV !== "production" || env.ISSUER_PRIVATE_KEY === "", {
+  // The attestation signer key must never be loadable in production (fail-fast at boot).
+  error: "ISSUER_PRIVATE_KEY must be empty when NODE_ENV=production",
+  path: ["ISSUER_PRIVATE_KEY"],
+});
 
 /** Validated, coerced environment. */
 export type Env = z.infer<typeof EnvSchema>;

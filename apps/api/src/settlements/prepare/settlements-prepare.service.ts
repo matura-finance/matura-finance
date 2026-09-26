@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { contractAbis } from "@matura/chain";
+import { CLAIM_STATES } from "@matura/shared";
 import { encodeFunctionData } from "viem";
 
 import { ChainService } from "../../chain/chain.service";
@@ -9,8 +10,9 @@ import { validateBytes32 } from "../../common/evm.util";
 import { buildPrepareResponse, type PrepareResponse, type PrepareStep } from "../../common/prepare.dto";
 import { CursorService } from "../../cursor/cursor.service";
 
-const STATE_MATURED = 4;
-const STATE_DELAYED = 6;
+// Derived from the shared ordinal source-of-truth (not magic numbers) so a reorder can't desync.
+const STATE_MATURED = CLAIM_STATES.indexOf("MATURED");
+const STATE_DELAYED = CLAIM_STATES.indexOf("DELAYED");
 
 @Injectable()
 export class SettlementsPrepareService {

@@ -66,6 +66,12 @@ describe("validateEnv", () => {
     ).toThrow(/Invalid environment variables/);
   });
 
+  it("rejects a non-empty ISSUER_PRIVATE_KEY in production (fail-fast)", () => {
+    expect(() =>
+      validateEnv({ ...base, NODE_ENV: "production", ISSUER_PRIVATE_KEY: `0x${"a".repeat(64)}` }),
+    ).toThrow(/Invalid environment variables/);
+  });
+
   it("allows demo issuer signing in development with a key", () => {
     const env = validateEnv({
       ...base,

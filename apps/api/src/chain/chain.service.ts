@@ -9,7 +9,14 @@ import {
   getManifest,
   hardhatLocal,
 } from "@matura/chain";
-import type { Chain, Hex, PublicClient } from "viem";
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+  ContractFunctionZeroDataError,
+  type Chain,
+  type Hex,
+  type PublicClient,
+} from "viem";
 
 import type { Env } from "../config/env.validation";
 
@@ -158,8 +165,11 @@ export class ChainService implements OnModuleInit {
         faceValue: claim.faceValue,
         financedFaceValue: claim.financedFaceValue,
       };
-    } catch {
-      return null;
+    } catch (error) {
+      // A contract revert (ClaimNotFound) or empty return means "not found" → null.
+      // A transport/RPC error must propagate (→ 5xx), not masquerade as a 404/409.
+      if (isNotFoundRevert(error)) return null;
+      throw error;
     }
   }
 
@@ -173,4 +183,13 @@ function resolveChain(chainId: number): Chain {
   if (chainId === BSC_TESTNET_CHAIN_ID) return bscTestnet;
   if (chainId === LOCAL_CHAIN_ID) return hardhatLocal;
   throw new Error(`Unsupported CHAIN_ID ${String(chainId)} (expected 97 or 31337)`);
+}
+
+/** True when a viem read error is a contract revert / empty return (not a transport failure). */
+function isNotFoundRevert(error: unknown): boolean {
+  if (!(error instanceof BaseError)) return false;
+  const cause = error.walk(
+    (e) => e instanceof ContractFunctionRevertedError || e instanceof ContractFunctionZeroDataError,
+  );
+  return cause !== null;
 }
