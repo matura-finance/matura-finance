@@ -4,12 +4,9 @@ import { z } from "zod";
 const MAX_UINT256 = (1n << 256n) - 1n;
 
 /**
- * Zod schema for a non-negative uint256 as a decimal string (base units). The
- * bound `refine` is guarded by the same digit test as the `regex`: Zod does not
- * short-circuit a failed prior check, so an unguarded `BigInt("1.5")` here would
- * throw a raw `SyntaxError` out of `safeParse` (→ a 500, not a clean 400) for any
- * malformed money value at the HTTP boundary. When the string isn't digits the
- * `regex` already reports it and the bound check is skipped.
+ * Zod schema for a non-negative uint256 as a decimal string (base units). The digit re-test in the
+ * `refine` guards `BigInt()`: the regex already ran but Zod v4 doesn't abort on a failed prior
+ * check, so without it `BigInt("1.5")` would throw a raw `SyntaxError` (→ 500 instead of a 400).
  */
 export const Uint256StringSchema = z
   .string()
