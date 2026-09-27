@@ -91,9 +91,9 @@ All prior open questions are resolved (codebase investigation + user confirmatio
 - **Dedup = two layers:** adapter-side `mapping(payoutId ⇒ claimId)` (structural — one claim per
   payout) **plus** `externalIdHash = keccak256(adapter, payoutId)` so the registry's existing
   `_usedExternalId` uniqueness also guards it globally.
-- **Obligor:** the **escrow + stream adapters are their own obligors** (hold funds, `forceApprove`
-  - call `settleClaim` — the `SourceObligor` pattern, needs no role). Payroll keeps the existing
-    signed path + its `SourceObligor`.
+- **Obligor:** the **escrow + stream adapters are their own obligors** — they hold funds and
+  `forceApprove` + call `settleClaim` (the `SourceObligor` pattern, needs no role). Payroll keeps
+  the existing signed path + its `SourceObligor`.
 - **Time model:** local `evm_increaseTime` (deterministic; already used by `demo:settle`).
 - **e2e home:** a **new dedicated workspace package** owning the full-stack scenario + its own
   script, wired into the root turbo task. Reuses the existing Testcontainers `startTestDb()`
