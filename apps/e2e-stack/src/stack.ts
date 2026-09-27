@@ -86,6 +86,23 @@ function freePort8545(): void {
   }
 }
 
+/// Refuse to run if the manifest files this harness restores via `git checkout` on teardown have
+/// uncommitted edits — otherwise teardown would silently destroy the developer's work. (They are
+/// committed all-zero; the local deploy overwrites them, then teardown restores the committed
+/// version.) Fail fast with a clear remedy instead.
+function assertManifestsClean(): void {
+  const dirty = execFileSync("git", ["status", "--porcelain", "--", ...DIRTIED_MANIFEST_PATHS], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  }).trim();
+  if (dirty !== "") {
+    throw new Error(
+      `Refusing to run: uncommitted changes to manifest files that teardown restores via ` +
+        `\`git checkout\` (would be lost):\n${dirty}\nCommit or stash them first.`,
+    );
+  }
+}
+
 export interface Stack {
   databaseUrl: string;
   stop: () => Promise<void>;
@@ -133,6 +150,10 @@ export async function startStack(): Promise<Stack> {
     }
     freePort8545(); // belt-and-suspenders: ensure :8545 is released for the next run
   };
+
+  // Guard BEFORE anything starts (and before the try, so its throw can't trigger the catch's
+  // teardown `git checkout`, which would itself clobber the dirty edits we're protecting).
+  assertManifestsClean();
 
   try {
     // 1. Postgres + migrations (reproducible: the committed migrations, same SQL as CI/prod).
