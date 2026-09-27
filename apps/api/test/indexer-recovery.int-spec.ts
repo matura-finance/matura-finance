@@ -1,7 +1,7 @@
 import { Logger } from "@nestjs/common";
 
 import { INDEXER_CONSUMER } from "../src/cursor/cursor.service";
-import { applyEvent } from "../src/indexer/indexer.service";
+import { applyEvent, applyRange } from "../src/indexer/indexer.service";
 import type { ParsedEvent } from "../src/indexer/parse";
 import { INDEXER_LOCK_KEY, resetProjections } from "../src/indexer/reset";
 import { startTestDb, type TestDb } from "./db/postgres-testcontainer";
@@ -110,8 +110,10 @@ describe("indexer recovery + atomicity (integration)", () => {
     });
   });
 
-  /** Replicates the live `processRange` transaction: prefetch beneficiaries → advisory lock → apply
-   *  non-legs, then legs → advance the cursor. All-or-nothing (the point of the atomicity tests). */
+  /** Drives the REAL shipped range pipeline: replicate the service's RPC-free preamble (prefetch
+   *  beneficiaries + sort), then hand the sorted events to the exported `applyRange` inside a
+   *  `$transaction` — the same advisory-lock → non-legs → legs → cursor body production runs.
+   *  All-or-nothing (the point of the atomicity tests). */
   async function processRange(
     events: ParsedEvent[],
     endBlock: bigint,
@@ -137,29 +139,22 @@ describe("indexer recovery + atomicity (integration)", () => {
           });
     const beneficiaries = new Map(prefetched.map((r) => [r.claimId, r.beneficiary]));
 
-    await db.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${INDEXER_LOCK_KEY})`;
-      const ctx = {
-        targetAdvances: new Map<string, string>(),
-        beneficiaries,
-        chainId: CHAIN_ID,
-        logger: new Logger("indexer-recovery-int"),
-      };
-      const nonLegs = events.filter((e) => e.kind !== "RouteLegExecuted");
-      const legs = events.filter((e) => e.kind === "RouteLegExecuted");
-      for (const e of nonLegs) await applyEvent(tx, e, ctx);
-      for (const e of legs) await applyEvent(tx, e, ctx);
-      await tx.chainCursor.upsert({
-        where: { consumerName_chainId: { consumerName: INDEXER_CONSUMER, chainId: CHAIN_ID } },
-        create: {
-          consumerName: INDEXER_CONSUMER,
-          chainId: CHAIN_ID,
-          lastProcessedBlock: endBlock,
-          lastProcessedBlockHash: endHash,
-        },
-        update: { lastProcessedBlock: endBlock, lastProcessedBlockHash: endHash },
-      });
-    });
+    // Sort exactly as the service's processRange does before calling applyRange.
+    const sorted = [...events].sort((a, b) =>
+      a.blockNumber !== b.blockNumber
+        ? Number(a.blockNumber - b.blockNumber)
+        : a.logIndex - b.logIndex,
+    );
+    const ctx = {
+      targetAdvances: new Map<string, string>(),
+      beneficiaries,
+      chainId: CHAIN_ID,
+      logger: new Logger("indexer-recovery-int"),
+    };
+
+    await db.prisma.$transaction((tx) =>
+      applyRange(tx, sorted, ctx, { number: endBlock, hash: endHash }),
+    );
   }
 
   function readCursor() {

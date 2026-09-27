@@ -129,34 +129,21 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
     const endBlock = await this.chain.getBlockAt(toBlock);
     if (endBlock === null) return; // block vanished mid-poll; next tick re-resolves
 
+    // Sort here (RPC-adjacent, service-owned); the atomic apply lives in the shared `applyRange`.
     events.sort((a, b) =>
       a.blockNumber !== b.blockNumber
         ? Number(a.blockNumber - b.blockNumber)
         : a.logIndex - b.logIndex,
     );
-    // FK-safe two passes: everything except legs first (creates claims + executions), then legs.
-    const nonLegs = events.filter((event) => event.kind !== "RouteLegExecuted");
-    const legs = events.filter((event) => event.kind === "RouteLegExecuted");
-    const ctx: ApplyContext = { targetAdvances, beneficiaries, chainId: this.chain.chainId, logger: this.logger };
+    const ctx: ApplyContext = {
+      targetAdvances,
+      beneficiaries,
+      chainId: this.chain.chainId,
+      logger: this.logger,
+    };
 
     await this.prisma.$transaction(
-      async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${INDEXER_LOCK_KEY})`;
-        for (const event of nonLegs) await applyEvent(tx, event, ctx);
-        for (const event of legs) await applyEvent(tx, event, ctx);
-        await tx.chainCursor.upsert({
-          where: {
-            consumerName_chainId: { consumerName: INDEXER_CONSUMER, chainId: this.chain.chainId },
-          },
-          create: {
-            consumerName: INDEXER_CONSUMER,
-            chainId: this.chain.chainId,
-            lastProcessedBlock: endBlock.number,
-            lastProcessedBlockHash: endBlock.hash,
-          },
-          update: { lastProcessedBlock: endBlock.number, lastProcessedBlockHash: endBlock.hash },
-        });
-      },
+      (tx) => applyRange(tx, events, ctx, { number: endBlock.number, hash: endBlock.hash }),
       { timeout: 120_000, maxWait: 10_000 },
     );
 
@@ -171,16 +158,65 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
     const { claimRegistry, router, settlementManager } = this.chain.addresses;
     const client = this.chain.client;
 
-    const [registered, stateChanged, sliceReserved, sliceReleased, routeExecuted, routeLegExecuted, settled] =
-      await Promise.all([
-        client.getLogs({ address: claimRegistry, event: ClaimRegisteredEvent, fromBlock, toBlock, strict: true }),
-        client.getLogs({ address: claimRegistry, event: ClaimStateChangedEvent, fromBlock, toBlock, strict: true }),
-        client.getLogs({ address: claimRegistry, event: ClaimSliceReservedEvent, fromBlock, toBlock, strict: true }),
-        client.getLogs({ address: claimRegistry, event: ClaimSliceReleasedEvent, fromBlock, toBlock, strict: true }),
-        client.getLogs({ address: router, event: RouteExecutedEvent, fromBlock, toBlock, strict: true }),
-        client.getLogs({ address: router, event: RouteLegExecutedEvent, fromBlock, toBlock, strict: true }),
-        client.getLogs({ address: settlementManager, event: ClaimSettledEvent, fromBlock, toBlock, strict: true }),
-      ]);
+    const [
+      registered,
+      stateChanged,
+      sliceReserved,
+      sliceReleased,
+      routeExecuted,
+      routeLegExecuted,
+      settled,
+    ] = await Promise.all([
+      client.getLogs({
+        address: claimRegistry,
+        event: ClaimRegisteredEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+      client.getLogs({
+        address: claimRegistry,
+        event: ClaimStateChangedEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+      client.getLogs({
+        address: claimRegistry,
+        event: ClaimSliceReservedEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+      client.getLogs({
+        address: claimRegistry,
+        event: ClaimSliceReleasedEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+      client.getLogs({
+        address: router,
+        event: RouteExecutedEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+      client.getLogs({
+        address: router,
+        event: RouteLegExecutedEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+      client.getLogs({
+        address: settlementManager,
+        event: ClaimSettledEvent,
+        fromBlock,
+        toBlock,
+        strict: true,
+      }),
+    ]);
 
     const events: ParsedEvent[] = [];
     for (const log of registered) {
@@ -201,7 +237,12 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
     for (const log of stateChanged) {
       const meta = extractMeta(log);
       if (meta === null) continue;
-      events.push({ ...meta, kind: "ClaimStateChanged", claimId: lower(log.args.claimId), newState: log.args.newState });
+      events.push({
+        ...meta,
+        kind: "ClaimStateChanged",
+        claimId: lower(log.args.claimId),
+        newState: log.args.newState,
+      });
     }
     for (const log of sliceReserved) {
       const meta = extractMeta(log);
@@ -280,7 +321,9 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
     const entries = [...routeTxs.entries()];
     for (let i = 0; i < entries.length; i += DECODE_CHUNK) {
       const chunk = entries.slice(i, i + DECODE_CHUNK);
-      const results = await Promise.all(chunk.map(([executionId, txHash]) => this.decodeOne(executionId, txHash)));
+      const results = await Promise.all(
+        chunk.map(([executionId, txHash]) => this.decodeOne(executionId, txHash)),
+      );
       for (const result of results) {
         if (result !== null) map.set(result.executionId, result.targetAdvance);
       }
@@ -298,10 +341,14 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
       if (decoded.functionName === "executeRoute") {
         return { executionId, targetAdvance: decoded.args[0].targetAdvance.toString() };
       }
-      this.logger.warn(`RouteExecuted ${executionId}: tx is not a direct executeRoute call; targetAdvance unknown`);
+      this.logger.warn(
+        `RouteExecuted ${executionId}: tx is not a direct executeRoute call; targetAdvance unknown`,
+      );
       return null;
     } catch {
-      this.logger.warn(`RouteExecuted ${executionId}: failed to decode targetAdvance from calldata`);
+      this.logger.warn(
+        `RouteExecuted ${executionId}: failed to decode targetAdvance from calldata`,
+      );
       return null;
     }
   }
@@ -341,7 +388,9 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
         consumerName_chainId: { consumerName: INDEXER_CONSUMER, chainId: this.chain.chainId },
       },
     });
-    return row === null ? null : { block: row.lastProcessedBlock, hash: row.lastProcessedBlockHash };
+    return row === null
+      ? null
+      : { block: row.lastProcessedBlock, hash: row.lastProcessedBlockHash };
   }
 
   private sleep(ms: number): Promise<void> {
@@ -355,13 +404,56 @@ export class IndexerService implements OnApplicationBootstrap, OnApplicationShut
   }
 }
 
+/** Block identity written to the cursor once a range commits. */
+export interface CursorTarget {
+  number: bigint;
+  hash: string;
+}
+
+/**
+ * Apply one already-sorted range of events and advance the cursor, atomically, under the advisory
+ * lock: lock → FK-safe two passes (everything except legs first, so claims + executions exist,
+ * then legs) → cursor upsert. The caller runs this inside a `$transaction` and owns the RPC reads,
+ * the pre-fetch, and the sort. Exported so integration tests drive the SAME shipped transaction body.
+ */
+export async function applyRange(
+  tx: PrismaTx,
+  sortedEvents: ParsedEvent[],
+  ctx: ApplyContext,
+  cursorTarget: CursorTarget,
+): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${INDEXER_LOCK_KEY})`;
+  const nonLegs = sortedEvents.filter((event) => event.kind !== "RouteLegExecuted");
+  const legs = sortedEvents.filter((event) => event.kind === "RouteLegExecuted");
+  for (const event of nonLegs) await applyEvent(tx, event, ctx);
+  for (const event of legs) await applyEvent(tx, event, ctx);
+  await tx.chainCursor.upsert({
+    where: {
+      consumerName_chainId: { consumerName: INDEXER_CONSUMER, chainId: ctx.chainId },
+    },
+    create: {
+      consumerName: INDEXER_CONSUMER,
+      chainId: ctx.chainId,
+      lastProcessedBlock: cursorTarget.number,
+      lastProcessedBlockHash: cursorTarget.hash,
+    },
+    update: { lastProcessedBlock: cursorTarget.number, lastProcessedBlockHash: cursorTarget.hash },
+  });
+}
+
 /** Apply one parsed event to the projections within a transaction. Exported for integration tests. */
-export async function applyEvent(tx: PrismaTx, event: ParsedEvent, ctx: ApplyContext): Promise<void> {
+export async function applyEvent(
+  tx: PrismaTx,
+  event: ParsedEvent,
+  ctx: ApplyContext,
+): Promise<void> {
   switch (event.kind) {
     case "ClaimRegistered": {
       const claimType = CLAIM_TYPES[event.claimType];
       if (claimType === undefined) {
-        ctx.logger.warn(`ClaimRegistered ${event.claimId}: unknown claimType ordinal ${String(event.claimType)} — skipped`);
+        ctx.logger.warn(
+          `ClaimRegistered ${event.claimId}: unknown claimType ordinal ${String(event.claimType)} — skipped`,
+        );
         return;
       }
       await tx.claimProjection.upsert({
@@ -394,7 +486,12 @@ export async function applyEvent(tx: PrismaTx, event: ParsedEvent, ctx: ApplyCon
       if (state === undefined) return;
       await tx.claimProjection.updateMany({
         where: { claimId: event.claimId },
-        data: { state, blockNumber: event.blockNumber, logIndex: event.logIndex, txHash: event.txHash },
+        data: {
+          state,
+          blockNumber: event.blockNumber,
+          logIndex: event.logIndex,
+          txHash: event.txHash,
+        },
       });
       await appendClaimActivity(tx, event.claimId, "ClaimStateChanged", event, { state }, ctx);
       return;
@@ -447,8 +544,14 @@ export async function applyEvent(tx: PrismaTx, event: ParsedEvent, ctx: ApplyCon
       // FK-safe guard: skip (don't abort the batch) if the parent claim or execution is absent —
       // e.g. a claim skipped for an unknown claimType ordinal. Prevents an FK-violation poison-pill.
       const [claim, execution] = await Promise.all([
-        tx.claimProjection.findUnique({ where: { claimId: event.claimId }, select: { claimId: true } }),
-        tx.routeExecution.findUnique({ where: { executionId: event.executionId }, select: { executionId: true } }),
+        tx.claimProjection.findUnique({
+          where: { claimId: event.claimId },
+          select: { claimId: true },
+        }),
+        tx.routeExecution.findUnique({
+          where: { executionId: event.executionId },
+          select: { executionId: true },
+        }),
       ]);
       if (claim === null || execution === null) {
         ctx.logger.warn(
