@@ -61,34 +61,56 @@ contract-only reconciliation wouldn't prove the read-model the product actually 
 5. **Settlement:** reuse the existing waterfall; add the issuer-simulator demo action, receipt +
    before/after balances, and the delayed path (no false PAID, principal stays outstanding, no
    reserve reimbursement in P0).
-6. **Integration test = full cross-stack**, one root script: local hardhat + Testcontainers
-   Postgres + indexer worker + API; deploy → seed → register 3 claims → optimize+execute Request
-   A (partial payroll slice) → optimize+execute Request B (≥2 claims) → settle funded → reconcile
-   events ↔ DB projections ↔ balance deltas (exact) → mark a separate claim delayed → assert
-   not-PAID. Runnable repeatedly on a clean env (idempotent / reset between runs).
+6. **Integration test = full cross-stack**, a **new dedicated package** with one command (wired
+   into the root turbo task), driven **through the API** (not direct `executeRoute` calldata):
+   local hardhat + Testcontainers Postgres (`startTestDb()`) + the real indexer worker
+   (`INDEXER_CONFIRMATIONS=1`) + API; deploy → seed → register 3 claims → **`POST /routes/optimize` → `prepare-execution` →
+   sign (test key) → submit `executeRoute`** for Request A (partial payroll slice) and Request B
+   (≥2 claims) → settle funded → reconcile events ↔ DB projections ↔ balance deltas (exact) →
+   mark a separate claim delayed → assert not-PAID. Going through the optimizer/prepare path is
+   what validates the router _and_ the read-model end-to-end (a direct-calldata e2e would prove
+   neither). Runnable repeatedly on a clean env (idempotent / reset between runs).
 7. **Scope = one plan, ordered slices:** escrow adapter → stream adapter → payroll-issuer
    formalization → settlement/delayed → cross-stack e2e.
 
-## Open Questions
+## Resolved Questions (2026-09-27)
 
-- **`ClaimRegistry` new path shape:** exact signature of `registerFromSource` + how source
-  adapters are allowlisted (a `SOURCE_ROLE` on the registry vs a source-registry lookup). Must
-  preserve every existing invariant (dueDate>now, face>0, token match, no dup claimId). Decide in
-  planning; it touches an audited contract → needs its own tests + threat-model note.
-- **`payoutRef` / dedup key:** reuse the existing `externalIdHash` uniqueness for the payout id,
-  or a dedicated adapter-side `mapping(payoutId ⇒ claimId)`? (Leaning: adapter-side mapping +
-  `externalIdHash` = `keccak(adapter, payoutId)`.)
-- **Escrow → obligor funding at settlement:** does the escrow adapter itself hold the client
-  funds and pay at settlement (becoming the obligor), or does it hand off to a `SourceObligor`?
-  (Leaning: the adapter _is_ the obligor for its claims, giving real per-source accounting the
-  generic `SourceObligor` deliberately lacks.)
-- **Time model:** local `evm_increaseTime` to reach maturity (deterministic, already used by
-  `demo:settle`) vs seeding near-due claims. (Leaning: time-warp.)
-- **e2e harness home:** a new `apps/e2e`-adjacent package / a `packages/contracts` script / a root
-  `scripts/` orchestration invoked by one root `pnpm` task — and whether it reuses the existing
-  Testcontainers setup from `apps/api` `test:int`.
-- **Reset/repeatability:** `demo:reset` wipes local state; confirm the e2e self-cleans so it
-  "passes repeatedly on a clean local environment."
+All prior open questions are resolved (codebase investigation + user confirmation):
+
+- **`ClaimRegistry` change — confirmed.** `ClaimRegistry` uses OZ `AccessControl`. Extract the
+  inline claim-write from `registerClaim` into a shared internal `_createClaim(...)`; add
+  `registerFromSource(...)` gated by a new **`SOURCE_REGISTRAR_ROLE`** (granted to each adapter in
+  the Ignition module). It reuses every existing invariant (face>0, dueDate>now, token match,
+  valid claimType, dup-claimId, `_usedExternalId`/`_claimExternalId` bookkeeping) but **skips the
+  EIP-712 signer path** — the adapter's on-chain state + role is the authority. Needs its own unit
+  tests + a `docs/threat-model.md` update for the new registration authority (a second writer to
+  the registry, distinct from the ROUTER_ROLE single-writer boundary).
+- **Source-claim issuer identity:** **each adapter is registered as its own active issuer entity**
+  in `IssuerRegistry` (signer field unused on the source path), so the optimizer's per-leg
+  `isActive(issuer)` check passes and provenance is an honest 1:1 source→issuer.
+- **Dedup = two layers:** adapter-side `mapping(payoutId ⇒ claimId)` (structural — one claim per
+  payout) **plus** `externalIdHash = keccak256(adapter, payoutId)` so the registry's existing
+  `_usedExternalId` uniqueness also guards it globally.
+- **Obligor:** the **escrow + stream adapters are their own obligors** (hold funds, `forceApprove`
+  - call `settleClaim` — the `SourceObligor` pattern, needs no role). Payroll keeps the existing
+    signed path + its `SourceObligor`.
+- **Time model:** local `evm_increaseTime` (deterministic; already used by `demo:settle`).
+- **e2e home:** a **new dedicated workspace package** owning the full-stack scenario + its own
+  script, wired into the root turbo task. Reuses the existing Testcontainers `startTestDb()`
+  helper; boots a local hardhat node + the **real indexer worker** + API and drives the API
+  optimize→prepare→sign→`executeRoute`→settle flow.
+- **`finalized`-tag on local:** local EDR has **no `finalized` block tag**, so the e2e runs the
+  worker with **`INDEXER_CONFIRMATIONS=1`** (the `head − N` branch), and mines one extra block
+  after the last tx so the frontier includes the settlement events. This gates the "DB
+  projections" half of the reconciliation.
+- **Repeatability:** inherent — ephemeral Testcontainer DB + a fresh local hardhat node + fresh
+  deploy/seed per run.
+
+## Remaining implementation notes (for the plan, not blockers)
+
+- Exact `_createClaim` signature + `registerFromSource` params (payoutRef, face, dueDate,
+  beneficiary, issuer) — settle in planning; must keep `registerClaim` behavior byte-identical.
+- The mined-block "nudge" after settlement so `head − 1` includes the final events deterministically.
 
 ## Acceptance Criteria (carried from the request)
 
@@ -100,6 +122,8 @@ treated as PAID and leaves principal outstanding (no fabricated reserve reimburs
 ## Next Step
 
 Run `/workflows:plan` to turn this into an implementation plan (it will auto-detect this
-brainstorm). Suggested spine: `ClaimRegistry` source-registration path (+ tests) → MockFreelanceEscrow
-→ MockStream → Mock Payroll Issuer formalization → settlement receipt + delayed path → deploy/seed
-wiring → cross-stack reconciliation e2e + one root script.
+brainstorm). Suggested spine: `ClaimRegistry` refactor (`_createClaim`) + `SOURCE_REGISTRAR_ROLE` +
+`registerFromSource` (+ tests + threat-model note) → MockFreelanceEscrow (reference adapter, its
+own issuer entity + obligor) → MockStream (linear, own issuer + obligor) → Mock Payroll Issuer
+formalization → settlement receipt + delayed path → deploy/seed + manifest wiring → new cross-stack
+e2e package (Testcontainers + local hardhat + worker@`INDEXER_CONFIRMATIONS=1` + API), one command.
