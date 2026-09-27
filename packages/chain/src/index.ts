@@ -20,7 +20,7 @@ export { createPublicClientFor, createWalletClientFor } from "./clients.js";
 
 export { SETTLEMENT_DECIMALS, toBaseUnits, fromBaseUnits } from "./units.js";
 
-export { contractAbis, vaultAbi, sourceAbi } from "./contracts.js";
+export { contractAbis, vaultAbi, sourceAbi, sourceAbis } from "./contracts.js";
 
 export {
   CLAIM_REGISTRY_DOMAIN_NAME,

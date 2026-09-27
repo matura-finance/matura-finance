@@ -6,13 +6,14 @@ import {
   createWalletClient,
   getAddress,
   http,
-  publicActions,
+  keccak256,
+  toHex,
   type Address,
   type Hex,
   type PublicClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { contractAbis, hardhatLocal } from "@matura/chain";
+import { contractAbis, hardhatLocal, sourceAbis } from "@matura/chain";
 import { ALICE_KEY, CHAIN_ID, DEPLOYER_KEY, REPO_ROOT, RPC_URL } from "./env.js";
 import { Manifest } from "./schemas.js";
 import {
@@ -23,12 +24,13 @@ import {
   siweLogin,
   signAndExecuteRoute,
 } from "./api.js";
-import { payrollClaimId } from "./claims.js";
 import { startStack, waitFor } from "./stack.js";
 
 const DAY = 86_400;
 
-/// All three sources expose `settle(bytes32)` (SourceObligor + both adapters share the signature).
+/// All three sources expose `settle(bytes32)` (SourceObligor + both adapters share the signature),
+/// so a single minimal shared ABI is the right call for the settle calls (the full per-slot ABIs in
+/// `sourceAbis` are used for the struct reads below).
 const SETTLE_ABI = [
   {
     type: "function",
@@ -39,52 +41,11 @@ const SETTLE_ABI = [
   },
 ] as const;
 
-/// Minimal read ABIs to fetch the adapter-derived claimIds straight from source state (avoids any
-/// off-chain derivation drift — the adapter is the authority on its own claimId).
-const GET_ENGAGEMENT_ABI = [
-  {
-    type: "function",
-    name: "getEngagement",
-    stateMutability: "view",
-    inputs: [{ name: "engagementId", type: "uint256" }],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "client", type: "address" },
-          { name: "beneficiary", type: "address" },
-          { name: "amount", type: "uint256" },
-          { name: "releaseDate", type: "uint64" },
-          { name: "state", type: "uint8" },
-          { name: "claimId", type: "bytes32" },
-        ],
-      },
-    ],
-  },
-] as const;
-const GET_STREAM_ABI = [
-  {
-    type: "function",
-    name: "getStream",
-    stateMutability: "view",
-    inputs: [{ name: "streamId", type: "uint256" }],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "funder", type: "address" },
-          { name: "recipient", type: "address" },
-          { name: "deposit", type: "uint256" },
-          { name: "start", type: "uint64" },
-          { name: "stop", type: "uint64" },
-          { name: "withdrawn", type: "uint256" },
-          { name: "assigned", type: "bool" },
-          { name: "claimId", type: "bytes32" },
-        ],
-      },
-    ],
-  },
-] as const;
+/// The signed payroll claim's id is label-derived (mirrors `packages/contracts/config/demo.ts`,
+/// which is not an importable package). The label is stable; if it ever drifted, Request A's
+/// optimize would fail claim-not-owned at runtime. The adapter (escrow/stream) claimIds are NOT
+/// mirrored — they are read straight from the adapter contracts (the authority on their own id).
+const payrollClaimId = (): Hex => keccak256(toHex("claim:alice-payroll"));
 
 const POLL = { timeoutMs: 30_000, intervalMs: 500 } as const;
 
@@ -98,7 +59,7 @@ async function main(): Promise<void> {
       chain: hardhatLocal,
       mode: "hardhat",
       transport: http(RPC_URL),
-    }).extend(publicActions);
+    });
     const alice = privateKeyToAccount(ALICE_KEY);
     const deployer = privateKeyToAccount(DEPLOYER_KEY);
     const deployerWallet = createWalletClient({
@@ -127,7 +88,7 @@ async function main(): Promise<void> {
     const stream = (
       await publicClient.readContract({
         address: streamSource,
-        abi: GET_STREAM_ABI,
+        abi: sourceAbis.stream,
         functionName: "getStream",
         args: [1n],
       })
@@ -135,7 +96,7 @@ async function main(): Promise<void> {
     const freelance = (
       await publicClient.readContract({
         address: freelanceSource,
-        abi: GET_ENGAGEMENT_ABI,
+        abi: sourceAbis.freelance,
         functionName: "getEngagement",
         args: [1n],
       })
