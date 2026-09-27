@@ -1,5 +1,5 @@
 import { network } from "hardhat";
-import { getAddress, keccak256, toHex, parseUnits, type Address, type Hex } from "viem";
+import { getAddress, keccak256, toHex, parseUnits, zeroHash, type Address, type Hex } from "viem";
 import { assertChainId } from "./lib/network-guard.js";
 import { readManifest, manifestAddresses, isManifestDeployed } from "./lib/read-manifest.js";
 import { isRevertNamed } from "./lib/revert.js";
@@ -19,7 +19,7 @@ import {
   type ClaimSource,
 } from "../config/demo.js";
 import { STABLE_MANDATE, FLEX_MANDATE } from "../config/vault-mandates.js";
-import { ALLOWED_CHAIN_IDS, DAY_SECONDS } from "./lib/constants.js";
+import { ALLOWED_CHAIN_IDS, DAY_SECONDS, ZERO_ADDRESS } from "./lib/constants.js";
 
 const OBLIGOR_FUNDING = parseUnits("25000", 6); // payroll obligor: covers the largest claim face
 
@@ -182,9 +182,7 @@ async function main(): Promise<void> {
     }
     await registerClaim(claim, now);
     await exec(`markEligible ${claim.label}`, () =>
-      claimRegistry.write.markEligible([resolveClaimId(claim, sources)], {
-        account: deployerAccount,
-      }),
+      claimRegistry.write.markEligible([claimId], { account: deployerAccount }),
     );
   };
 
@@ -220,46 +218,64 @@ async function main(): Promise<void> {
       }
       case "escrow": {
         // Client (deployer) funds the engagement, approves the work, then the escrow creates the
-        // payout claim from its own verified state (issuer == the escrow).
+        // payout claim from its own verified state (issuer == the escrow). State-aware so a re-run
+        // after a mid-sequence crash RESUMES from the right step rather than re-funding (which would
+        // mint a second engagement + double-charge). EngagementState: 0 None, 1 Funded, 2 Approved.
         const releaseDate = nowTs + BigInt(claim.dueInDays) * DAY_SECONDS;
-        await fundTo(`escrow client (${claim.label})`, deployerAccount.address, claim.amount);
-        await exec(`approve escrow ${claim.label}`, () =>
-          usdt.write.approve([escrowIssuer, claim.amount], { account: deployerAccount }),
-        );
-        await exec(`fundEngagement ${claim.label}`, () =>
-          escrow.write.fundEngagement([aliceAddr, claim.amount, releaseDate], {
-            account: deployerAccount,
-          }),
-        );
-        await exec(`approveWork ${claim.label}`, () =>
-          escrow.write.approveWork([claim.engagementId], { account: deployerAccount }),
-        );
-        await exec(`createPayout ${claim.label}`, () =>
-          escrow.write.createPayout([claim.engagementId], { account: deployerAccount }),
-        );
+        if ((await escrow.read.getEngagement([claim.engagementId])).state === 0) {
+          await fundTo(`escrow client (${claim.label})`, deployerAccount.address, claim.amount);
+          await exec(`approve escrow ${claim.label}`, () =>
+            usdt.write.approve([escrowIssuer, claim.amount], { account: deployerAccount }),
+          );
+          await exec(`fundEngagement ${claim.label}`, () =>
+            escrow.write.fundEngagement([aliceAddr, claim.amount, releaseDate], {
+              account: deployerAccount,
+            }),
+          );
+        }
+        if ((await escrow.read.getEngagement([claim.engagementId])).state === 1) {
+          await exec(`approveWork ${claim.label}`, () =>
+            escrow.write.approveWork([claim.engagementId], { account: deployerAccount }),
+          );
+        }
+        if ((await escrow.read.getEngagement([claim.engagementId])).claimId === zeroHash) {
+          await exec(`createPayout ${claim.label}`, () =>
+            escrow.write.createPayout([claim.engagementId], { account: deployerAccount }),
+          );
+        }
         return;
       }
       case "stream": {
         // Funder (deployer) deposits the stream to Alice; Alice assigns it to the protocol; the
         // stream freezes the claimable-at-registration as the claim face (issuer == the stream).
+        // State-aware resume (mirrors the escrow branch): a fresh stream has funder == 0.
         const start = nowTs - BigInt(claim.startOffsetDays) * DAY_SECONDS;
         const stop = start + BigInt(claim.durationDays) * DAY_SECONDS;
-        await fundTo(`stream funder (${claim.label})`, deployerAccount.address, claim.deposit);
-        await exec(`approve stream ${claim.label}`, () =>
-          usdt.write.approve([streamIssuer, claim.deposit], { account: deployerAccount }),
-        );
-        await exec(`createStream ${claim.label}`, () =>
-          stream.write.createStream([aliceAddr, claim.deposit, start, stop], {
-            account: deployerAccount,
-          }),
-        );
-        await exec(`assignToProtocol ${claim.label}`, () =>
-          stream.write.assignToProtocol([claim.streamId], { account: aliceWallet.account }),
-        );
+        if (
+          getAddress((await stream.read.getStream([claim.streamId])).funder) ===
+          getAddress(ZERO_ADDRESS)
+        ) {
+          await fundTo(`stream funder (${claim.label})`, deployerAccount.address, claim.deposit);
+          await exec(`approve stream ${claim.label}`, () =>
+            usdt.write.approve([streamIssuer, claim.deposit], { account: deployerAccount }),
+          );
+          await exec(`createStream ${claim.label}`, () =>
+            stream.write.createStream([aliceAddr, claim.deposit, start, stop], {
+              account: deployerAccount,
+            }),
+          );
+        }
+        if (!(await stream.read.getStream([claim.streamId])).assigned) {
+          await exec(`assignToProtocol ${claim.label}`, () =>
+            stream.write.assignToProtocol([claim.streamId], { account: aliceWallet.account }),
+          );
+        }
         // createClaim is recipient-gated (prevents front-running the frozen face) → call as Alice.
-        await exec(`createClaim ${claim.label}`, () =>
-          stream.write.createClaim([claim.streamId], { account: aliceWallet.account }),
-        );
+        if ((await stream.read.getStream([claim.streamId])).claimId === zeroHash) {
+          await exec(`createClaim ${claim.label}`, () =>
+            stream.write.createClaim([claim.streamId], { account: aliceWallet.account }),
+          );
+        }
         return;
       }
     }
