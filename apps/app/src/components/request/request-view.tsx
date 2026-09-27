@@ -122,7 +122,11 @@ export function RequestView() {
         );
         return;
       }
-      const { domain, message, executionId: id } = prepareRoute(step);
+      const {
+        domain,
+        message,
+        executionId: id,
+      } = prepareRoute(step, getDeployment(bscTestnet.id).router);
       setExecutionId(id);
       await tx.run(async () => {
         const signature = await signTypedDataAsync({
