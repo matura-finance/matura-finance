@@ -86,17 +86,23 @@ describe("MockStream", () => {
 
     // Not assigned yet → NotAssigned.
     await ctx.viem.assertions.revertWithCustomError(
-      stream.write.createClaim([1n]),
+      stream.write.createClaim([1n], { account: ctx.accounts.user.account }),
       stream,
       "NotAssigned",
     );
 
     await stream.write.assignToProtocol([1n], { account: ctx.accounts.user.account });
+    // Recipient-gated: a non-recipient cannot create (freeze) the claim (anti-front-run).
+    await ctx.viem.assertions.revertWithCustomError(
+      stream.write.createClaim([1n], { account: ctx.accounts.treasury.account }),
+      stream,
+      "NotRecipient",
+    );
     // Pin the createClaim block to exactly start + 40d so the frozen face is deterministic:
     // deposit * 40d / 100d = 40% of deposit, exact integer division.
     const elapsed = 40n * 86_400n;
     await ctx.networkHelpers.time.setNextBlockTimestamp(ctx.now + elapsed);
-    await stream.write.createClaim([1n]);
+    await stream.write.createClaim([1n], { account: ctx.accounts.user.account });
     const expectedFace = (deposit * elapsed) / duration;
 
     const claimId = (await stream.read.getStream([1n])).claimId;
@@ -107,7 +113,7 @@ describe("MockStream", () => {
 
     // Second createClaim on the same stream reverts (cumulative-face solvency bound).
     await ctx.viem.assertions.revertWithCustomError(
-      stream.write.createClaim([1n]),
+      stream.write.createClaim([1n], { account: ctx.accounts.user.account }),
       stream,
       "AlreadyClaimed",
     );
@@ -126,7 +132,7 @@ describe("MockStream", () => {
     await createStream(ctx, stream, deposit, 100n * 86_400n);
     await networkHelpers.time.increase(40 * 86_400);
     await stream.write.assignToProtocol([1n], { account: accounts.user.account });
-    await stream.write.createClaim([1n]);
+    await stream.write.createClaim([1n], { account: ctx.accounts.user.account });
     const claimId = (await stream.read.getStream([1n])).claimId;
     const face = (await claimRegistry.read.getClaim([claimId])).faceValue;
 
@@ -165,7 +171,7 @@ describe("MockStream", () => {
     await createStream(ctx, stream, deposit, 100n * 86_400n);
     await networkHelpers.time.increase(40 * 86_400);
     await stream.write.assignToProtocol([1n], { account: accounts.user.account });
-    await stream.write.createClaim([1n]);
+    await stream.write.createClaim([1n], { account: ctx.accounts.user.account });
     const claimId = (await stream.read.getStream([1n])).claimId;
     const face = (await claimRegistry.read.getClaim([claimId])).faceValue;
     await claimRegistry.write.markEligible([claimId]);

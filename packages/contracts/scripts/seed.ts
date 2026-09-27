@@ -256,8 +256,9 @@ async function main(): Promise<void> {
         await exec(`assignToProtocol ${claim.label}`, () =>
           stream.write.assignToProtocol([claim.streamId], { account: aliceWallet.account }),
         );
+        // createClaim is recipient-gated (prevents front-running the frozen face) → call as Alice.
         await exec(`createClaim ${claim.label}`, () =>
-          stream.write.createClaim([claim.streamId], { account: deployerAccount }),
+          stream.write.createClaim([claim.streamId], { account: aliceWallet.account }),
         );
         return;
       }

@@ -132,10 +132,14 @@ contract MockStream is ReentrancyGuardTransient {
 
     /// @notice Freeze the remaining-claimable amount as the single financeable claim for this stream.
     ///         Requires the stream to be assigned; a second call reverts {AlreadyClaimed}.
-    /// @dev faceValue = claimable-at-registration; dueDate = stop. The claim's beneficiary is the
-    ///      recipient (they receive the residual on settlement). Issuer is this contract.
+    /// @dev Recipient-gated: the frozen `face` is the claimable AT CALL TIME, so a permissionless
+    ///      call would let a third party front-run the recipient's intended timing and lock in a
+    ///      smaller face (stranding the remainder, since `withdraw` is disabled post-assign). Only
+    ///      the recipient may create the claim. faceValue = claimable-at-registration; dueDate =
+    ///      stop; the claim's beneficiary is the recipient; issuer is this contract.
     function createClaim(uint256 streamId) external returns (bytes32 claimId) {
         Stream storage s = _streams[streamId];
+        if (msg.sender != s.recipient) revert NotRecipient();
         if (!s.assigned) revert NotAssigned();
         if (s.claimId != bytes32(0)) revert AlreadyClaimed();
 
