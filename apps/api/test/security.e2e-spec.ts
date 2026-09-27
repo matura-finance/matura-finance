@@ -5,10 +5,10 @@ import { ThrottlerModule } from "@nestjs/throttler";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { Test } from "@nestjs/testing";
 import type { Request } from "express";
-import helmet from "helmet";
 import request from "supertest";
 
 import { AllExceptionsFilter } from "../src/common/api-error.filter";
+import { applySecurity, parseCorsOrigins } from "../src/common/security-bootstrap";
 import { AuthJwtService } from "../src/auth/jwt.service";
 import { Public } from "../src/auth/public.decorator";
 import { WalletAuthGuard } from "../src/auth/wallet-auth.guard";
@@ -58,14 +58,6 @@ class AccountController {
   }
 }
 
-/** Mirrors `main.ts`: trimmed, non-empty, never-wildcard CORS allowlist parsed from a CSV. */
-function parseCorsOrigins(csv: string): string[] {
-  return csv
-    .split(",")
-    .map((origin) => origin.trim())
-    .filter((origin) => origin.length > 0 && origin !== "*");
-}
-
 interface AppOptions {
   corsCsv?: string;
   limit?: number;
@@ -90,11 +82,12 @@ async function createApp(options: AppOptions = {}): Promise<INestApplication> {
   }).compile();
 
   const app = moduleRef.createNestApplication<NestExpressApplication>();
-  app.set("trust proxy", 1);
-  // Production helmet variant (full CSP + HSTS), matching `main.ts` when NODE_ENV=production.
-  app.use(helmet());
-  app.useBodyParser("json", { limit: "100kb" });
-  app.enableCors({ origin: parseCorsOrigins(options.corsCsv ?? ""), credentials: true });
+  // Exercise the REAL production security surface (helmet full CSP + HSTS, 100kb body limit, CORS
+  // allowlist, trust proxy) via the same helper `main.ts` uses — no hand-copied config to drift.
+  applySecurity(app, {
+    corsOrigins: parseCorsOrigins(options.corsCsv ?? ""),
+    isProduction: true,
+  });
   app.setGlobalPrefix("api");
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: "1" });
   await app.init();
