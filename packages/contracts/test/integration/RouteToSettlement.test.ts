@@ -230,12 +230,15 @@ describe("Integration: route → mature → settle", () => {
 
   it("A2: underfunded payer reverts atomically — claim stays settleable (isSettled == false)", async () => {
     const ctx = await deployProtocol();
-    const { claimRegistry, settlement, accounts } = ctx;
+    const { viem, claimRegistry, settlement, usdt, accounts } = ctx;
     const claimId = await fundAndMature(ctx, "under", parseUnits("1000", 6));
 
-    // Payer has neither balance nor allowance → safeTransferFrom reverts, rolling back _settled=true.
-    await assert.rejects(
+    // Payer has neither balance nor allowance → the settlement-token pull reverts on the allowance
+    // check (spent before balance in ERC20.transferFrom), rolling back _settled=true.
+    await viem.assertions.revertWithCustomError(
       settlement.write.settleClaim([claimId], { account: accounts.issuer.account }),
+      usdt,
+      "ERC20InsufficientAllowance",
     );
     assert.equal(await settlement.read.isSettled([claimId]), false);
     assert.equal((await claimRegistry.read.getClaim([claimId])).state, CLAIM_STATE.MATURED);
@@ -243,24 +246,27 @@ describe("Integration: route → mature → settle", () => {
 
   it("A2: approving the wrong token cannot fund settlement — the pull is pinned to the immutable token", async () => {
     const ctx = await deployProtocol();
-    const { viem, settlement, accounts } = ctx;
+    const { viem, settlement, usdt, accounts } = ctx;
     const face = parseUnits("1000", 6);
     const claimId = await fundAndMature(ctx, "wrongtok", face);
 
-    // Payer funds + approves an UNRELATED token; the settlement token pull still finds no allowance.
+    // Payer funds + approves an UNRELATED token; the settlement token pull still finds no allowance
+    // on the immutable settlement token → ERC20InsufficientAllowance.
     const wrong = await viem.deployContract("MockUSDT", []);
     await wrong.write.mint([accounts.issuer.account.address, face]);
     await wrong.write.approve([settlement.address, face], { account: accounts.issuer.account });
 
-    await assert.rejects(
+    await viem.assertions.revertWithCustomError(
       settlement.write.settleClaim([claimId], { account: accounts.issuer.account }),
+      usdt,
+      "ERC20InsufficientAllowance",
     );
     assert.equal(await settlement.read.isSettled([claimId]), false);
   });
 
   it("A2: raising feeBps after the payer approved reverts settlement with no partial state (still settleable)", async () => {
     const ctx = await deployProtocol();
-    const { claimRegistry, settlement, usdt, accounts } = ctx;
+    const { viem, claimRegistry, settlement, usdt, accounts } = ctx;
     const face = parseUnits("1000", 6);
     const claimId = await fundAndMature(ctx, "feebump", face);
 
@@ -269,9 +275,14 @@ describe("Integration: route → mature → settle", () => {
     await usdt.write.mint([payer.account.address, face]);
     await usdt.write.approve([settlement.address, face], { account: payer.account });
 
-    // Admin raises the fee AFTER the approval → required surcharge exceeds the allowance.
+    // Admin raises the fee AFTER the approval → required surcharge (face + fee) exceeds the
+    // allowance, so the settlement-token pull reverts on the allowance check.
     await settlement.write.setFeeBps([500]);
-    await assert.rejects(settlement.write.settleClaim([claimId], { account: payer.account }));
+    await viem.assertions.revertWithCustomError(
+      settlement.write.settleClaim([claimId], { account: payer.account }),
+      usdt,
+      "ERC20InsufficientAllowance",
+    );
     assert.equal(await settlement.read.isSettled([claimId]), false);
     assert.equal((await claimRegistry.read.getClaim([claimId])).state, CLAIM_STATE.MATURED);
 
