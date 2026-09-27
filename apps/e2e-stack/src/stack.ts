@@ -5,17 +5,33 @@ import { createPublicClient, http } from "viem";
 import { hardhatLocal } from "@matura/chain";
 import { API_PORT, DIRTIED_MANIFEST_PATHS, REPO_ROOT, RPC_URL, childEnv } from "./env.js";
 
-/// Await a child process exit without leaking `node:events.once`'s `Promise<any[]>`.
-function waitForExit(child: ChildProcess): Promise<void> {
+/// Await a child process exit without leaking `node:events.once`'s `Promise<any[]>`. Bounded: if the
+/// child ignores SIGTERM within `timeoutMs`, escalate to SIGKILL so teardown can never hang (which
+/// in CI would burn the whole job timeout instead of failing fast).
+function waitForExit(child: ChildProcess, timeoutMs = 10_000): Promise<void> {
   return new Promise((resolvePromise) => {
     if (child.exitCode !== null || child.signalCode !== null) {
       resolvePromise();
       return;
     }
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+    }, timeoutMs);
+    timer.unref();
     child.once("exit", () => {
+      clearTimeout(timer);
       resolvePromise();
     });
   });
+}
+
+/// Attach an `error` listener so a spawn failure (ENOENT, etc.) surfaces on the promise instead of
+/// throwing an uncaught exception that bypasses teardown — and so `waitForExit` can't hang on it.
+function guardSpawn(child: ChildProcess, label: string): ChildProcess {
+  child.once("error", (err: Error) => {
+    process.stderr.write(`child "${label}" failed to spawn/errored: ${err.message}\n`);
+  });
+  return child;
 }
 
 /// Bounded predicate poll — no unbounded await, no dangling timer.
@@ -25,9 +41,17 @@ export async function waitFor(
   opts: { timeoutMs: number; intervalMs: number },
 ): Promise<void> {
   const deadline = Date.now() + opts.timeoutMs;
+  let lastError: unknown;
   for (;;) {
-    if (await pred().catch(() => false)) return;
-    if (Date.now() > deadline) throw new Error(`Timed out waiting for: ${label}`);
+    try {
+      if (await pred()) return;
+    } catch (err: unknown) {
+      lastError = err; // don't mask a persistent error (e.g. a Zod parse) behind a generic timeout
+    }
+    if (Date.now() > deadline) {
+      const detail = lastError instanceof Error ? ` (last error: ${lastError.message})` : "";
+      throw new Error(`Timed out waiting for: ${label}${detail}`);
+    }
     await new Promise((r) => setTimeout(r, opts.intervalMs));
   }
 }
@@ -46,6 +70,9 @@ function freePort8545(): void {
       encoding: "utf8",
     }).trim();
     if (pids !== "") {
+      process.stderr.write(
+        `freePort8545: killing pid(s) on :8545 → ${pids.replace(/\n/g, ", ")}\n`,
+      );
       for (const pid of pids.split("\n")) {
         try {
           process.kill(Number(pid), "SIGKILL");
@@ -130,12 +157,15 @@ export async function startStack(): Promise<Stack> {
     //    makes it a process-group leader so teardown can kill the whole pnpm → hardhat tree.
     freePort8545();
     process.stdout.write("\n▶ starting hardhat node…\n");
-    node = spawn("pnpm", ["--filter", "@matura/contracts", "node"], {
-      cwd: REPO_ROOT,
-      stdio: "ignore",
-      env: process.env,
-      detached: true,
-    });
+    node = guardSpawn(
+      spawn("pnpm", ["--filter", "@matura/contracts", "node"], {
+        cwd: REPO_ROOT,
+        stdio: "ignore",
+        env: process.env,
+        detached: true,
+      }),
+      "hardhat-node",
+    );
     const publicClient = createPublicClient({ chain: hardhatLocal, transport: http(RPC_URL) });
     await waitFor("hardhat node RPC", async () => (await publicClient.getBlockNumber()) >= 0n, {
       timeoutMs: 30_000,
@@ -149,19 +179,29 @@ export async function startStack(): Promise<Stack> {
     run("build @matura/chain", "pnpm", ["--filter", "@matura/chain", "build"]);
 
     // 4. Build the API (prisma generate + nest build) once, then boot the worker + HTTP API.
+    // NB: we spawn the built entrypoints directly with cwd = REPO_ROOT ON PURPOSE — a package-script
+    // indirection (`pnpm --filter @matura/api run start`) would set cwd = apps/api, causing Nest's
+    // ConfigModule to load apps/api/.env (which pins INDEXER_CONFIRMATIONS=0, wrong for local EDR
+    // which has no `finalized` tag). Running from REPO_ROOT loads no .env, so childEnv wins.
     run("build @matura/api", "pnpm", ["--filter", "@matura/api", "build"]);
     process.stdout.write("\n▶ booting indexer worker…\n");
-    worker = spawn("node", ["apps/api/dist/worker.js"], {
-      cwd: REPO_ROOT,
-      stdio: "inherit",
-      env: childEnv(databaseUrl),
-    });
+    worker = guardSpawn(
+      spawn("node", ["apps/api/dist/worker.js"], {
+        cwd: REPO_ROOT,
+        stdio: "inherit",
+        env: childEnv(databaseUrl),
+      }),
+      "worker",
+    );
     process.stdout.write("\n▶ booting HTTP API…\n");
-    api = spawn("node", ["apps/api/dist/main.js"], {
-      cwd: REPO_ROOT,
-      stdio: "inherit",
-      env: childEnv(databaseUrl, { PORT: String(API_PORT) }),
-    });
+    api = guardSpawn(
+      spawn("node", ["apps/api/dist/main.js"], {
+        cwd: REPO_ROOT,
+        stdio: "inherit",
+        env: childEnv(databaseUrl, { PORT: String(API_PORT) }),
+      }),
+      "api",
+    );
     await waitFor(
       "HTTP API ready",
       async () => {

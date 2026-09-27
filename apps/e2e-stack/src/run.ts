@@ -53,6 +53,13 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 
 async function main(): Promise<void> {
   const stack = await startStack();
+  // Ctrl-C / SIGTERM: tear the stack down (esp. the detached hardhat node holding :8545) instead of
+  // orphaning it. `stop()` is safe to call once here; the `finally` below covers the normal path.
+  const onSignal = (): void => {
+    void stack.stop().finally(() => process.exit(130));
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
   try {
     const publicClient = makePublicClient();
     const test = createTestClient({
