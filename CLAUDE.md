@@ -87,7 +87,11 @@ expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
 `docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`; **cross-stack
 e2e harness** (instant-mine frontier lag → nonce override + cursor gating, block-timestamp skew →
 RouteExpired, fresh-node-per-run lifecycle, `INDEXER_CONFIRMATIONS=1` + `cwd=REPO_ROOT`, poll
-projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`.
+projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`;
+**security hardening** (adversarial-tests-as-regression, proof-of-pinning vs full harness,
+pause-can't-strand-settlement, the false-green guard test — a guard test must fail if the guard is
+removed, share prod bootstrap/orchestration with tests instead of copying, scan bundles for secret
+_values_ not env names) `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`.
 
 ## Conventions
 

@@ -15,6 +15,9 @@ tags:
     redaction,
     reconciliation,
     testnet,
+    test-fidelity,
+    false-green,
+    prod-drift,
   ]
 module: "packages/contracts, apps/api (auth + indexer + routes), apps/{app,landing,e2e}"
 symptom: "A pre-demo hardening pass over a codebase that is already strongly hardened: the risk isn't missing controls, it's controls asserted only by the threat model and never exercised by a test — plus a couple of off-chain surfaces (mirror parity, read-through error scope) that could hide a real P1."
@@ -36,6 +39,12 @@ related:
 > correctness) — with **everything else confirmed as proof-of-control**. **No
 > contract source changed** (+29 contract tests, 159 passing; all on-chain controls
 > held on first assertion).
+
+> **Review addendum (2026-09-28):** a follow-up multi-agent review of the PR found
+> **no P1s**, but surfaced 5 P2 + 9 P3 — almost all **test-fidelity / prod-drift**
+> issues (see §11–§14), all since fixed. Headline: one "reentrancy guard" test was a
+> **false green** (passed on `AlreadySettled`, not the guard). That lesson (§11) is the
+> most reusable output of the whole pass.
 
 Hard-won, reusable patterns from the 2026-09-27 hardening pass over the Matura MVP.
 The codebase was already unusually security-conscious (OZ `AccessControl`, EIP-712
@@ -153,6 +162,69 @@ that silently enables a demo signer. Use `z.stringbool` so `"false"` → `false`
 Pair it with the boot-refusal regression: `ISSUER_PRIVATE_KEY` set +
 `NODE_ENV=production` must throw at boot. Both are one-line regressions guarding a
 credential-exposure footgun.
+
+---
+
+# Review-round lessons — test fidelity (added 2026-09-28)
+
+The review that followed this pass found the _code_ sound but caught several tests
+and one fix that were subtly weaker than they read. These are the highest-leverage
+lessons because a security test that passes for the wrong reason is worse than no
+test — it manufactures false confidence.
+
+## 11. A guard test must FAIL if you delete the guard (the false-green trap)
+
+The settle-path reentrancy test armed a malicious token to re-enter
+`settleClaim(sameClaim)`. But `settleClaim` sets `_settled[claimId] = true` **before**
+the transfer that fires the hook (correct CEI), so the reentry reverts on
+`AlreadySettled()` — **even with `nonReentrant` removed**. The test passed regardless
+of the guard it claimed to prove.
+
+**The check:** for any "guard blocks X" test, mentally (or literally) delete the
+guard — if the test still passes, it isn't testing the guard. Here the fix was to
+re-enter a **different, independently-settleable** claim B during claim A's transfer:
+B is unsettled, so `AlreadySettled` cannot fire and `nonReentrant` is the sole thing
+that can stop the reentry. Now removing the guard flips the assertion.
+
+Contrast: the `fund` reentrancy test was already faithful — `fund` has no
+duplicate-claim guard, so only `nonReentrant` could stop a re-entrant `fund`. When a
+CEI/idempotency flag co-defends the same path, it will mask the guard in the test
+unless you deliberately route around it.
+
+## 12. When a test needs production config or logic, EXTRACT and SHARE — never copy
+
+Two tests re-implemented production and silently diverged:
+
+- The HTTP-security e2e **hand-copied `main.ts`'s** helmet/body-limit/CORS bootstrap;
+  the copy called bare `helmet()` while prod called `helmet(isProduction ? … )`, and
+  the CORS wildcard-filter assertion validated the test's _own_ copy of the parser.
+- The indexer-recovery int-spec **re-implemented `processRange`'s** transaction
+  orchestration and dropped the production `events.sort((block, logIndex))`.
+
+A copied security control tests a fossil, not the shipping code — the guarantee
+drifts away the moment prod changes. Fix: extract the real thing into a shared,
+exported unit (`common/security-bootstrap.ts` → `applySecurity`/`parseCorsOrigins`;
+`indexer.service.ts` → exported `applyRange(tx, sortedEvents, ctx, cursorTarget)`) and
+have both prod and test call it. The test then pins reality.
+
+## 13. Client-bundle secret scan: grep for VALUES, not env-var NAMES
+
+A guard that greps built chunks for `ISSUER_PRIVATE_KEY` (the **name**) gives a false
+"clean": Next.js inlines a leaked env as its **value** and strips server envs to
+`undefined`, so the name never appears — the actual leak vector is the value. Scan for
+credential-**shaped** values instead: `postgres://user:pass@…`, JWT `eyJ…eyJ…`,
+`privateKey`-adjacent hex. **Avoid a blanket `0x[0-9a-f]{64}` rule** — a real client
+build legitimately contains ~12 such strings (secp256k1 constants, ERC-6492 magic,
+bytecode fragments); it would red-fail every clean build. Redact matches in output.
+
+## 14. Don't map every numeric 4xx error to a client 4xx
+
+An error filter that surfaces **any** non-`HttpException` carrying a numeric
+`status`/`statusCode` in `[400,500)` as a client 4xx will let an **outbound** RPC/undici
+error (`status: 429`/`404`) masquerade as a client error — hiding a server-side failure
+from 5xx alerting. Key the passthrough off the **framework error type**
+(`entity.too.large` → 413, `entity.parse.failed` → 400), not a bare status, so only
+genuine request-layer errors get a truthful 4xx and everything else stays a 500.
 
 ---
 
