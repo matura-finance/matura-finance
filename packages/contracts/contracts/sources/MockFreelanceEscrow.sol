@@ -155,6 +155,12 @@ contract MockFreelanceEscrow is ReentrancyGuardTransient {
     /// @dev CEI: the engagement is marked Settled before any external call. Requires
     ///      `settlementManager.feeBps() == 0` (the escrow holds exactly the face); at zero fee the
     ///      amount owed equals `faceValue`, which the engagement funded.
+    ///      NOTE: this is a BOUND, ZERO-FEE obligor. Despite sharing the `settle(bytes32)` signature
+    ///      with {SourceObligor}, the two are NOT substitutable: {SourceObligor} replicates the
+    ///      surcharge math and settles from a pooled balance at any `feeBps`, whereas this adapter
+    ///      fails closed under any nonzero fee. Callers must not treat the three sources as
+    ///      interchangeable through the shared signature (see the `sourceAbis` binding in the chain
+    ///      package).
     function settle(bytes32 claimId) external nonReentrant {
         uint256 engagementId = claimToEngagement[claimId];
         if (engagementId == 0) revert UnknownClaim();

@@ -167,7 +167,9 @@ contract MockStream is ReentrancyGuardTransient {
     }
 
     /// @notice Bound obligor: mature (if needed) then settle the claim bound to this stream, paying
-    ///         only that stream's deposit. See {MockFreelanceEscrow-settle} for the shared discipline.
+    ///         only that stream's deposit. See {MockFreelanceEscrow-settle} for the shared discipline
+    ///         AND the bound-zero-fee-vs-surcharge non-substitutability note (fails closed unless
+    ///         `feeBps() == 0`).
     function settle(bytes32 claimId) external nonReentrant {
         uint256 streamId = claimToStream[claimId];
         if (streamId == 0) revert UnknownClaim();

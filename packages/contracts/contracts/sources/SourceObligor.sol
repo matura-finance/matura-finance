@@ -58,6 +58,10 @@ contract SourceObligor {
 
     /// @notice Permissionless: mature (if needed) then settle a funded claim, approving the exact
     ///         settlement amount just-in-time and paying it out of this contract's balance.
+    /// @dev This is the SURCHARGE-AWARE, pooled obligor: it replicates the fee math and settles at
+    ///      any `feeBps`. The stateful source adapters ({MockFreelanceEscrow}/{MockStream}) share the
+    ///      `settle(bytes32)` signature but are BOUND, ZERO-FEE obligors (they fail closed unless
+    ///      `feeBps()==0`) — the three sources are NOT substitutable through the shared signature.
     /// @dev Mirrors {SettlementManager-settleClaim}'s fee-as-surcharge math exactly: the payer owes
     ///      `faceValue + ceil(faceValue * feeBps / BPS_DENOMINATOR)`. If the claim is still
     ///      FUNDED/PARTIALLY_FUNDED it is matured first (reverts {IClaimRegistry-NotMatured} if the
