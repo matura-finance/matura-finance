@@ -56,12 +56,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
-    // Framework HTTP errors that aren't Nest HttpExceptions (e.g. body-parser's PayloadTooLargeError
-    // at 413, or a malformed-JSON 400) carry a numeric status but are NOT caught above. Preserve the
-    // client-error status so callers see a truthful 4xx instead of a misleading 500 — but derive the
-    // code/message from the status ONLY (never `error.message`), so redaction still holds.
-    const clientStatus = extractHttpStatus(exception);
-    if (clientStatus !== null && clientStatus >= 400 && clientStatus < 500) {
+    // Request-layer framework errors that aren't Nest HttpExceptions — body-parser's
+    // PayloadTooLargeError (413) and malformed-body parse failures (400). Identify them by their
+    // body-parser `type` (NOT a bare numeric status), so an outbound RPC/undici error that happens
+    // to carry a 4xx `status` (e.g. 429/404) still falls through to a generic 500 and stays visible
+    // to 5xx alerting. The code/message derive from the status ONLY (never `error.message`).
+    const clientStatus = extractBodyParserStatus(exception);
+    if (clientStatus !== null) {
       const code = this.codeForStatus(clientStatus);
       return { status: clientStatus, code, message: genericMessageForStatus(clientStatus) };
     }
@@ -98,12 +99,33 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 }
 
-/** Read a numeric HTTP status off a non-HttpException error (`status`/`statusCode`), or null. */
-function extractHttpStatus(exception: unknown): number | null {
+/**
+ * Canonical client status for the body-parser errors we treat as truthful 4xx. Keyed by the
+ * body-parser `error.type` so the mapping can't be spoofed by a rogue numeric `status` on some
+ * other (e.g. outbound) error.
+ */
+const BODY_PARSER_STATUS_BY_TYPE: Record<string, number> = {
+  "entity.too.large": HttpStatus.PAYLOAD_TOO_LARGE,
+  "entity.parse.failed": HttpStatus.BAD_REQUEST,
+};
+
+/**
+ * Map a body-parser request error to its canonical client status (413/400), or null for anything
+ * else. Detects the framework error by its `type` (or constructor name as a fallback), never by a
+ * bare numeric status — an outbound RPC error carrying `status: 429` must NOT be treated as 4xx.
+ */
+function extractBodyParserStatus(exception: unknown): number | null {
   if (typeof exception !== "object" || exception === null) return null;
   const obj = exception as Record<string, unknown>;
-  const raw = obj.status ?? obj.statusCode;
-  return typeof raw === "number" && Number.isInteger(raw) ? raw : null;
+  const type = typeof obj.type === "string" ? obj.type : undefined;
+  if (type !== undefined && type in BODY_PARSER_STATUS_BY_TYPE) {
+    return BODY_PARSER_STATUS_BY_TYPE[type] ?? null;
+  }
+  // Fallback: body-parser's PayloadTooLargeError may arrive without a `type` in some paths.
+  if (exception instanceof Error && exception.constructor.name === "PayloadTooLargeError") {
+    return HttpStatus.PAYLOAD_TOO_LARGE;
+  }
+  return null;
 }
 
 /** A safe, status-derived client message (never echoes the underlying error text). */

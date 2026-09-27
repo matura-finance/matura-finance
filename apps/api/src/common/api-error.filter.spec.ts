@@ -85,6 +85,37 @@ describe("AllExceptionsFilter redaction", () => {
     expect(JSON.stringify(body)).not.toContain("/secret/path");
   });
 
+  it("preserves a malformed-body 400 (body-parser entity.parse.failed) but redacts the underlying message", () => {
+    const parseError = Object.assign(new Error("Unexpected token } in JSON at position 42"), {
+      status: 400,
+      statusCode: 400,
+      type: "entity.parse.failed",
+    });
+
+    const { status, body } = run(parseError);
+
+    expect(status).toBe(400);
+    expect(body.error.code).toBe("BAD_REQUEST");
+    expect(body.error.message).toBe("Bad request");
+    expect(JSON.stringify(body)).not.toContain("Unexpected token");
+  });
+
+  it("does NOT surface an outbound-style 4xx (e.g. RPC/undici 429) as a client error — stays generic 500", () => {
+    // A non-HttpException error carrying a numeric 4xx `status` but no body-parser `type` must not
+    // be reported as a client 4xx, or a server-side upstream failure would be masked from 5xx alerting.
+    const upstream = Object.assign(new Error("rate limited by rpc.example.com"), {
+      status: 429,
+      statusCode: 429,
+    });
+
+    const { status, body } = run(upstream);
+
+    expect(status).toBe(500);
+    expect(body.error.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(body.error.message).toBe("Internal server error");
+    expect(JSON.stringify(body)).not.toContain("rpc.example.com");
+  });
+
   it("does not upgrade a non-HttpException 5xx status to a leaky response (stays generic 500)", () => {
     const upstream = Object.assign(new Error("upstream failed at 10.0.0.5:5432"), { status: 503 });
     const { status, body } = run(upstream);
