@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { network } from "hardhat";
-import { encodeFunctionData, getAddress, parseUnits } from "viem";
+import { encodeFunctionData, getAddress, parseUnits, type Hex } from "viem";
 import { deployProtocol, demoMandate, toBytes32 } from "./helpers/fixtures.js";
 import {
   CLAIM_ATTESTATION_TYPES,
@@ -120,25 +120,42 @@ describe("A7: reentrancy — pinning + guard", () => {
     );
   });
 
-  it("A7: a reentrant token callback into SettlementManager.settleClaim is blocked (guard + AlreadySettled)", async () => {
-    const { evil, settlement, claimRegistry, accounts, claimId, face } = await deployEvilStack();
+  it("A7: a reentrant token callback into SettlementManager.settleClaim is blocked by nonReentrant", async () => {
+    // Two INDEPENDENT matured+settleable claims. During claim A's settlement the token hook
+    // re-enters settleClaim for claim B — which is NOT yet settled — so the ONLY thing that can
+    // stop the reentry is `nonReentrant`. (Re-entering A itself would revert on AlreadySettled
+    // even without the guard, since `_settled[A]=true` is set before the transfer; that would not
+    // isolate the guard, hence the distinct claim B here.)
+    const { evil, settlement, claimRegistry, accounts, claimIdA, claimIdB, faceA, faceB } =
+      await deployEvilStack();
 
-    // Fund the payer and arm the token to re-enter settleClaim on the first token movement.
-    await evil.write.mint([accounts.payer.account.address, face]);
-    await evil.write.approve([settlement.address, face], { account: accounts.payer.account });
+    // Fund + approve the payer for BOTH claims so the reentry into B would clear balance/allowance
+    // and fail (or not) solely on the reentrancy guard.
+    const total = faceA + faceB;
+    await evil.write.mint([accounts.payer.account.address, total]);
+    await evil.write.approve([settlement.address, total], { account: accounts.payer.account });
+
+    // Arm the token to re-enter settleClaim(B) on the first balance change (A's payer pull).
     const reentryData = encodeFunctionData({
       abi: settlement.abi,
       functionName: "settleClaim",
-      args: [claimId],
+      args: [claimIdB],
     });
     await evil.write.arm([settlement.address, reentryData]);
 
-    await settlement.write.settleClaim([claimId], { account: accounts.payer.account });
+    await settlement.write.settleClaim([claimIdA], { account: accounts.payer.account });
 
+    // The reentry was attempted and blocked by the guard (only nonReentrant can stop it — B was
+    // unsettled). Remove `nonReentrant` from settleClaim and this reentry would SUCCEED instead,
+    // flipping reentryReverted to false AND leaving B settled — both assertions below would fail.
     assert.equal(await evil.read.reentryAttempted(), true);
     assert.equal(await evil.read.reentryReverted(), true);
-    assert.equal((await claimRegistry.read.getClaim([claimId])).state, CLAIM_STATE.PAID);
-    assert.equal(await settlement.read.isSettled([claimId]), true);
+    // Claim A settled correctly.
+    assert.equal((await claimRegistry.read.getClaim([claimIdA])).state, CLAIM_STATE.PAID);
+    assert.equal(await settlement.read.isSettled([claimIdA]), true);
+    // Claim B was NOT settled by the blocked reentry — it remains settleable.
+    assert.equal((await claimRegistry.read.getClaim([claimIdB])).state, CLAIM_STATE.MATURED);
+    assert.equal(await settlement.read.isSettled([claimIdB]), false);
   });
 
   // ---- optional defensive: SafeERC20 surfaces a misbehaving token as a revert ------------------
@@ -180,8 +197,11 @@ describe("A7: reentrancy — pinning + guard", () => {
   });
 });
 
-/// Full protocol wired around the reentrant MaliciousToken as the settlement token, with one
-/// fully-financed + matured claim ready to settle. Mirrors `deployProtocol`'s wiring exactly.
+/// Full protocol wired around the reentrant MaliciousToken as the settlement token, with TWO
+/// independent fully-financed + matured claims (A and B) each ready to settle. Mirrors
+/// `deployProtocol`'s wiring exactly. Two claims are required so the settle-path guard test can
+/// re-enter a DIFFERENT claim (B) during A's settlement — the only way to isolate `nonReentrant`
+/// from the `AlreadySettled` short-circuit.
 async function deployEvilStack() {
   const { viem, networkHelpers } = await network.create();
   const publicClient = await viem.getPublicClient();
@@ -247,56 +267,65 @@ async function deployEvilStack() {
 
   const chainId = await publicClient.getChainId();
   const now = BigInt(await networkHelpers.time.latest());
-  const face = parseUnits("1000", 6);
-  const claimId = toBytes32("evil-settle");
+  const faceA = parseUnits("1000", 6);
+  const faceB = parseUnits("1000", 6);
 
-  const att = {
-    claimId,
-    issuer: getAddress(issuer.account.address),
-    beneficiary: getAddress(user.account.address),
-    token: getAddress(evil.address),
-    faceValue: face,
-    dueDate: now + 30n * 86_400n,
-    claimType: CLAIM_TYPE.PAYROLL,
-    externalIdHash: toBytes32("evil-ext"),
-    evidenceHash: toBytes32("evil-ev"),
-    signerEpoch: 0n,
-    nonce: 0n,
-    deadline: now + 3_600n,
-  };
-  const attSig = await issuerSigner.signTypedData({
-    account: issuerSigner.account,
-    domain: claimRegistryDomain(chainId, claimRegistry.address),
-    types: CLAIM_ATTESTATION_TYPES,
-    primaryType: "ClaimAttestation",
-    message: att,
-  });
-  await claimRegistry.write.registerClaim([att, attSig]);
-  await claimRegistry.write.markEligible([claimId]);
+  /// Register (EIP-712), mark eligible, and fully fund one claim via a signed route. The token is
+  /// NOT armed while this runs, so it behaves as a plain ERC-20 during funding. Returns the claimId.
+  async function fundClaim(label: string, face: bigint, seq: bigint): Promise<Hex> {
+    const claimId = toBytes32(label);
+    const att = {
+      claimId,
+      issuer: getAddress(issuer.account.address),
+      beneficiary: getAddress(user.account.address),
+      token: getAddress(evil.address),
+      faceValue: face,
+      dueDate: now + 30n * 86_400n,
+      claimType: CLAIM_TYPE.PAYROLL,
+      externalIdHash: toBytes32(`${label}-ext`),
+      evidenceHash: toBytes32(`${label}-ev`),
+      signerEpoch: 0n,
+      nonce: seq, // per-signer attestation nonce
+      deadline: now + 3_600n,
+    };
+    const attSig = await issuerSigner.signTypedData({
+      account: issuerSigner.account,
+      domain: claimRegistryDomain(chainId, claimRegistry.address),
+      types: CLAIM_ATTESTATION_TYPES,
+      primaryType: "ClaimAttestation",
+      message: att,
+    });
+    await claimRegistry.write.registerClaim([att, attSig]);
+    await claimRegistry.write.markEligible([claimId]);
 
-  const route = {
-    user: getAddress(user.account.address),
-    targetAdvance: 1n,
-    maxTotalFace: parseUnits("1000000", 6),
-    deadline: now + 3_600n,
-    nonce: 0n,
-    legs: [
-      { claimId, vault: getAddress(vault.address), faceAmount: face, minimumAdvanceAmount: 0n },
-    ],
-  };
-  const routeSig = await user.signTypedData({
-    account: user.account,
-    domain: routerDomain(chainId, router.address),
-    types: EXECUTION_ROUTE_TYPES,
-    primaryType: "ExecutionRoute",
-    message: route,
-  });
-  // Not armed during funding → the token behaves normally while the route executes.
-  await router.write.executeRoute([route, routeSig], { account: user.account });
+    const route = {
+      user: getAddress(user.account.address),
+      targetAdvance: 1n,
+      maxTotalFace: parseUnits("1000000", 6),
+      deadline: now + 3_600n,
+      nonce: seq, // per-user route nonce
+      legs: [
+        { claimId, vault: getAddress(vault.address), faceAmount: face, minimumAdvanceAmount: 0n },
+      ],
+    };
+    const routeSig = await user.signTypedData({
+      account: user.account,
+      domain: routerDomain(chainId, router.address),
+      types: EXECUTION_ROUTE_TYPES,
+      primaryType: "ExecutionRoute",
+      message: route,
+    });
+    await router.write.executeRoute([route, routeSig], { account: user.account });
+    return claimId;
+  }
+
+  const claimIdA = await fundClaim("evil-settle-a", faceA, 0n);
+  const claimIdB = await fundClaim("evil-settle-b", faceB, 1n);
 
   await networkHelpers.time.increase(31 * 86_400);
-  await claimRegistry.write.markMatured([claimId]);
+  await claimRegistry.write.markMatured([claimIdA]);
+  await claimRegistry.write.markMatured([claimIdB]);
 
   const accounts = { admin, issuerSigner, user, treasury, issuer, payer };
-  return { evil, settlement, claimRegistry, accounts, claimId, face };
+  return { evil, settlement, claimRegistry, accounts, claimIdA, claimIdB, faceA, faceB };
 }
