@@ -107,7 +107,9 @@ projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e
 - **Secrets** via Hardhat keystore / `configVariable()` (never `.env`, never committed):
   `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY` (attestation signer — most sensitive), RPC URL.
 - **Solidity:** 0.8.28 + OpenZeppelin 5.6.1; custom errors + NatSpec; CEI + SafeERC20 +
-  `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md`.
+  `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md` (full-stack
+  threat model), `SECURITY.md` (disclosure policy + testnet-only warning), and
+  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity).
 - **Boundaries:** `apps/landing` stays wallet-free (lint-guarded, incl. subpath imports);
   `@matura/shared` is framework-free Zod; `@matura/contracts` is self-contained (no `@matura/*` deps).
   `@matura/chain` ships a **tsup dual CJS/ESM build** (`dist`) so the CommonJS `apps/api` can
