@@ -39,21 +39,38 @@ interface ApiRequestOptions<T> {
   token?: string;
 }
 
+const FETCH_TIMEOUT_MS = 15_000;
+const MAX_429_RETRIES = 5;
+
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
 /// A single Zod-validating HTTP wrapper — every response is parsed at the boundary, so nothing
-/// downstream ever touches an `any`/unknown body.
+/// downstream ever touches an `any`/unknown body. Fails fast on a wedged API (fetch timeout) and
+/// backs off on 429 (the `optimize` endpoint is throttled to 5/min per wallet) rather than throwing
+/// the throttle error straight into the scenario.
 export async function apiRequest<T>(opts: ApiRequestOptions<T>): Promise<T> {
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (opts.token !== undefined) headers.authorization = `Bearer ${opts.token}`;
-  const res = await fetch(`${API_BASE_URL}${opts.path}`, {
-    method: opts.method ?? "GET",
-    headers,
-    body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`API ${opts.method ?? "GET"} ${opts.path} → ${String(res.status)}: ${text}`);
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API_BASE_URL}${opts.path}`, {
+      method: opts.method ?? "GET",
+      headers,
+      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    const text = await res.text();
+    if (res.status === 429 && attempt < MAX_429_RETRIES) {
+      const retryAfter = Number(res.headers.get("retry-after") ?? "");
+      await sleep(
+        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2000 * (attempt + 1),
+      );
+      continue;
+    }
+    if (!res.ok) {
+      throw new Error(`API ${opts.method ?? "GET"} ${opts.path} → ${String(res.status)}: ${text}`);
+    }
+    return opts.schema.parse(JSON.parse(text) as unknown);
   }
-  return opts.schema.parse(JSON.parse(text) as unknown);
 }
 
 /// SIWE sign-in for `account`, returning a bearer token. Builds the message with viem's
@@ -122,7 +139,7 @@ function coerceRoute(m: ExecutionRouteMessage) {
     deadline: BigInt(m.deadline),
     nonce: BigInt(m.nonce),
     legs: m.legs.map((l) => ({
-      claimId: l.claimId as Hex,
+      claimId: l.claimId, // Hex-validated at the schema boundary
       vault: getAddress(l.vault),
       faceAmount: BigInt(l.faceAmount),
       minimumAdvanceAmount: BigInt(l.minimumAdvanceAmount),

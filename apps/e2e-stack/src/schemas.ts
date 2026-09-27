@@ -1,5 +1,9 @@
 import { OptimizeResult } from "@matura/shared";
+import { isHex, type Hex } from "viem";
 import { z } from "zod";
+
+/// A 0x-hex string, validated + typed as viem `Hex` at the boundary (no downstream `as Hex` casts).
+const HexString = z.custom<Hex>((v) => typeof v === "string" && isHex(v), "expected 0x-hex");
 
 /// The freshly-deployed manifest, read from disk at runtime (NOT via @matura/chain's compiled
 /// getManifest, which is bound to the dist loaded at import time — before the stack deploys).
@@ -60,8 +64,8 @@ export const ExecutionRouteMessage = z.object({
   nonce: z.string(),
   legs: z.array(
     z.object({
-      claimId: z.string(),
-      vault: z.string(),
+      claimId: HexString,
+      vault: HexString,
       faceAmount: z.string(),
       minimumAdvanceAmount: z.string(),
     }),
