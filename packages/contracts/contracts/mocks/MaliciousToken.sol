@@ -7,7 +7,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 /// @notice TEST-ONLY reentrant ERC-20. On every balance change it optionally re-enters a preset
 ///         target with preset calldata and records whether that reentrant call reverted, so tests
 ///         can prove a `nonReentrant` guard actively blocked the reentry (rather than the reentry
-///         merely being uneconomical). Behaves as a standard 6-decimal ERC-20 when disarmed.
+///         merely being uneconomical). Behaves as a standard 6-decimal ERC-20 while not armed.
 /// @dev !!! TEST-ONLY — NOT FOR PRODUCTION !!! Never deployed by the protocol, never registered as a
 ///      settlement token in a manifest, and deliberately EXCLUDED from the ABI export set
 ///      (`scripts/export-abis.ts`). It exists only to exercise the reentrancy guards on the
@@ -47,11 +47,6 @@ contract MaliciousToken is ERC20 {
         armed = true;
         reentryAttempted = false;
         reentryReverted = false;
-    }
-
-    /// @notice Disarms so subsequent transfers behave as a standard ERC-20.
-    function disarm() external {
-        armed = false;
     }
 
     /// @dev Fires at most one reentrant call per arming; disarms BEFORE the call so the reentry
