@@ -35,6 +35,7 @@ pnpm --filter @matura/app test                       # vitest (unit: tx reducer,
 pnpm --filter @matura/e2e e2e:install                # one-time: download Playwright Chromium
 pnpm --filter @matura/e2e test:e2e                   # Playwright: landing always; product happy path needs E2E_STACK=1 + seeded stack
 pnpm --filter @matura/e2e check:bundle               # assert built landing bundle has no wallet/chain code or secrets
+pnpm --filter @matura/e2e-stack test:e2e:stack       # cross-stack reconciliation e2e (needs Docker): boots node+PG+worker+API, drives optimize→execute→settle, reconciles events↔DB↔balances
 ```
 
 Deploy/seed/verify (Hardhat Ignition + idempotent viem scripts; addresses → per-chain manifest,
@@ -83,7 +84,10 @@ gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/se
 `docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`; **best-execution router**
 (one shared off-chain `_validateLegs` mirror, `PinnedReads` determinism, single-use intents pruned
 expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
-`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`.
+`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`; **cross-stack
+e2e harness** (instant-mine frontier lag → nonce override + cursor gating, block-timestamp skew →
+RouteExpired, fresh-node-per-run lifecycle, `INDEXER_CONFIRMATIONS=1` + `cwd=REPO_ROOT`, poll
+projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`.
 
 ## Conventions
 

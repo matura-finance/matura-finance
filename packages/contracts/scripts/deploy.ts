@@ -48,7 +48,8 @@ async function main(): Promise<void> {
     stream: d.streamSource.address,
   } as const;
 
-  // Assert wiring on-chain before recording anything.
+  // Assert wiring on-chain before recording anything. The two adapters (freelance/stream) hold
+  // SOURCE_REGISTRAR_ROLE; the payroll obligor holds no privileged role.
   await assertWiring(viem, {
     claimRegistry: addresses.claimRegistry,
     settlementManager: addresses.settlementManager,
@@ -57,6 +58,7 @@ async function main(): Promise<void> {
     stableVault: namedVaults.stableVault,
     flexVault: namedVaults.flexVault,
     sources: [sources.payroll, sources.freelance, sources.stream],
+    sourceRegistrars: [sources.freelance, sources.stream],
   });
   console.log("Wiring assertions passed.");
 

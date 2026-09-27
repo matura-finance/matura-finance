@@ -3,6 +3,8 @@ export { claimRegistryAbi } from "./claimRegistry.js";
 export { issuerRegistryAbi } from "./issuerRegistry.js";
 export { liquidityVaultAbi } from "./liquidityVault.js";
 export { maturaRouterAbi } from "./maturaRouter.js";
+export { mockFreelanceEscrowAbi } from "./mockFreelanceEscrow.js";
+export { mockStreamAbi } from "./mockStream.js";
 export { mockUSDTAbi } from "./mockUSDT.js";
 export { settlementManagerAbi } from "./settlementManager.js";
 export { sourceObligorAbi } from "./sourceObligor.js";

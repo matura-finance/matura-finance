@@ -20,6 +20,10 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
     bytes32 public constant CLAIM_REVIEWER_ROLE = keccak256("CLAIM_REVIEWER_ROLE");
     bytes32 public constant ROUTER_ROLE = keccak256("ROUTER_ROLE");
     bytes32 public constant SETTLEMENT_ROLE = keccak256("SETTLEMENT_ROLE");
+    /// @dev Holders (source adapters) may register claims from their own verified on-chain state via
+    ///      `registerFromSource`, bypassing the EIP-712 signature. A second writer to the registry,
+    ///      distinct from the ROUTER_ROLE single-writer boundary; each holder can mint only as itself.
+    bytes32 public constant SOURCE_REGISTRAR_ROLE = keccak256("SOURCE_REGISTRAR_ROLE");
 
     bytes32 private constant CLAIM_ATTESTATION_TYPEHASH = keccak256(
         "ClaimAttestation(bytes32 claimId,address issuer,address beneficiary,address token,uint256 faceValue,uint256 dueDate,uint8 claimType,bytes32 externalIdHash,bytes32 evidenceHash,uint256 signerEpoch,uint256 nonce,uint256 deadline)"
@@ -83,34 +87,46 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
 
         if (_usedNonce[signer][att.nonce]) revert NonceAlreadyUsed();
 
-        // Effects
+        // Effects. The nonce write is signer-dependent so it stays here; the shared claim write +
+        // event live in _writeClaim (identical to the source path).
         _usedNonce[signer][att.nonce] = true;
-        _usedExternalId[att.externalIdHash] = true;
-        _claimExternalId[att.claimId] = att.externalIdHash;
-        _exists[att.claimId] = true;
-        _claims[att.claimId] = Claim({
-            beneficiary: att.beneficiary,
-            issuer: att.issuer,
-            claimType: att.claimType,
-            token: att.token,
-            faceValue: att.faceValue,
-            financedFaceValue: 0,
-            dueDate: SafeCast.toUint64(att.dueDate),
-            state: ClaimStates.ATTESTED,
-            sliceCount: 0
-        });
-
-        emit ClaimRegistered(
+        _writeClaim(
             att.claimId,
-            att.issuer,
             att.beneficiary,
-            att.claimType,
+            att.issuer,
             att.token,
             att.faceValue,
             att.dueDate,
+            att.claimType,
             att.externalIdHash,
             att.evidenceHash
         );
+    }
+
+    /// @inheritdoc IClaimRegistry
+    function registerFromSource(
+        bytes32 claimId,
+        address beneficiary,
+        address token,
+        uint256 faceValue,
+        uint256 dueDate,
+        uint8 claimType,
+        bytes32 externalIdHash,
+        bytes32 evidenceHash
+    ) external onlyRole(SOURCE_REGISTRAR_ROLE) {
+        // The issuer IS the caller — provenance is unspoofable by construction. Re-run every
+        // registerClaim invariant except the signature/nonce path (skipped: SignatureExpired, ECDSA,
+        // NonceAlreadyUsed). Same short-circuit order as registerClaim for the shared checks.
+        address issuer = msg.sender;
+        if (_exists[claimId]) revert DuplicateClaimId();
+        if (_usedExternalId[externalIdHash]) revert DuplicateExternalId();
+        if (faceValue == 0) revert ZeroFaceValue();
+        if (dueDate <= block.timestamp) revert DueDateInPast();
+        if (!ClaimTypes.isValid(claimType)) revert InvalidClaimType();
+        if (token != settlementToken) revert TokenNotSettlement();
+        if (!issuerRegistry.isActive(issuer)) revert IssuerInactive();
+
+        _writeClaim(claimId, beneficiary, issuer, token, faceValue, dueDate, claimType, externalIdHash, evidenceHash);
     }
 
     /// @inheritdoc IClaimRegistry
@@ -200,6 +216,38 @@ contract ClaimRegistry is IClaimRegistry, AccessControl, EIP712 {
         if (!_exists[claimId]) return false;
         uint8 s = _claims[claimId].state;
         return s == ClaimStates.ELIGIBLE || s == ClaimStates.PARTIALLY_FUNDED;
+    }
+
+    /// @dev The single shared effect+event site for both registration paths. Marks the externalId
+    ///      used, writes the ATTESTED claim (dueDate narrowed to uint64), and emits ClaimRegistered
+    ///      with the RAW uint256 dueDate. Callers own their path-specific validations + nonce writes.
+    function _writeClaim(
+        bytes32 claimId,
+        address beneficiary,
+        address issuer,
+        address token,
+        uint256 faceValue,
+        uint256 dueDate,
+        uint8 claimType,
+        bytes32 externalIdHash,
+        bytes32 evidenceHash
+    ) private {
+        _usedExternalId[externalIdHash] = true;
+        _claimExternalId[claimId] = externalIdHash;
+        _exists[claimId] = true;
+        _claims[claimId] = Claim({
+            beneficiary: beneficiary,
+            issuer: issuer,
+            claimType: claimType,
+            token: token,
+            faceValue: faceValue,
+            financedFaceValue: 0,
+            dueDate: SafeCast.toUint64(dueDate),
+            state: ClaimStates.ATTESTED,
+            sliceCount: 0
+        });
+
+        emit ClaimRegistered(claimId, issuer, beneficiary, claimType, token, faceValue, dueDate, externalIdHash, evidenceHash);
     }
 
     /// @dev Frees the claim's externalIdHash so the underlying invoice can be re-attested after a

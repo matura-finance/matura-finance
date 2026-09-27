@@ -5,6 +5,7 @@ import { STABLE_MANDATE, FLEX_MANDATE, type VaultMandate } from "../../config/va
 // Role identifiers — keccak256(toHex("X")) is byte-identical to Solidity keccak256("X").
 const ROUTER_ROLE = keccak256(toHex("ROUTER_ROLE"));
 const SETTLEMENT_ROLE = keccak256(toHex("SETTLEMENT_ROLE"));
+const SOURCE_REGISTRAR_ROLE = keccak256(toHex("SOURCE_REGISTRAR_ROLE"));
 
 /// The `as const` config mandates are deeply readonly; Ignition constructor args must be mutable
 /// Solidity parameters, so materialize a mutable copy (the config stays the single typed source).
@@ -52,14 +53,17 @@ export default buildModule("MaturaProtocol", (m) => {
     id: "FlexVault",
   });
 
-  // --- Three self-paying source-simulator obligors ---
+  // --- Three claim sources ---
+  // Payroll stays a self-paying SourceObligor (the signed-attestation path is genuinely an issuer
+  // attestation). Freelance + stream are stateful adapters that register claims from their OWN
+  // verified state via registerFromSource — each is its own issuer entity AND its own bound obligor.
   const payrollSource = m.contract("SourceObligor", [usdt, settlement, claimRegistry], {
     id: "PayrollSource",
   });
-  const freelanceSource = m.contract("SourceObligor", [usdt, settlement, claimRegistry], {
+  const freelanceSource = m.contract("MockFreelanceEscrow", [usdt, claimRegistry, settlement], {
     id: "FreelanceSource",
   });
-  const streamSource = m.contract("SourceObligor", [usdt, settlement, claimRegistry], {
+  const streamSource = m.contract("MockStream", [usdt, claimRegistry, settlement], {
     id: "StreamSource",
   });
 
@@ -73,6 +77,15 @@ export default buildModule("MaturaProtocol", (m) => {
   });
   m.call(flexVault, "grantRole", [ROUTER_ROLE, router], { id: "flex_grant_router" });
   m.call(flexVault, "grantRole", [SETTLEMENT_ROLE, settlement], { id: "flex_grant_settlement" });
+
+  // The two source adapters may register claims from their own verified state (declarative deploy
+  // wiring). Issuer registration + vault allowlisting are imperative + signer-driven → seed.ts.
+  m.call(claimRegistry, "grantRole", [SOURCE_REGISTRAR_ROLE, freelanceSource], {
+    id: "cr_grant_freelance_registrar",
+  });
+  m.call(claimRegistry, "grantRole", [SOURCE_REGISTRAR_ROLE, streamSource], {
+    id: "cr_grant_stream_registrar",
+  });
 
   // --- Registrations (grant both roles BEFORE registering — no unsettleable-claim window) ---
   m.call(vaultRegistry, "registerVault", [stableVault], { id: "register_stable" });

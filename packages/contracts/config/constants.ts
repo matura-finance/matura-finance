@@ -8,6 +8,7 @@ export const ROLES = {
   CLAIM_REVIEWER_ROLE: keccak256(toHex("CLAIM_REVIEWER_ROLE")),
   ROUTER_ROLE: keccak256(toHex("ROUTER_ROLE")),
   SETTLEMENT_ROLE: keccak256(toHex("SETTLEMENT_ROLE")),
+  SOURCE_REGISTRAR_ROLE: keccak256(toHex("SOURCE_REGISTRAR_ROLE")),
   PAUSER_ROLE: keccak256(toHex("PAUSER_ROLE")),
 } as const;
 

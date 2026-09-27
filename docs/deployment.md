@@ -19,14 +19,20 @@
 | Web app (`apps/app`)                     | ✅ (dev vs seeded stack)  | ⏳ env flip pending |    ⏳ not wired    |
 | Marketing (`apps/landing`)               |            ✅             |     ✅ (static)     |    ⏳ not wired    |
 | E2E (`apps/e2e`, Playwright)             | ✅ landing; product gated |         n/a         |        n/a         |
+| Cross-stack E2E (`apps/e2e-stack`)       |     ✅ (needs Docker)     |         n/a         |        n/a         |
 
 Legend: ✅ runnable now · ⏳ pending. Update this table each iteration.
+
+`apps/e2e-stack` is a local-only reconciliation harness, not a deploy target: one command
+(`pnpm --filter @matura/e2e-stack test:e2e:stack`) boots the whole stack (node + Postgres + worker +
+API), drives optimize→execute→settle through the API, and reconciles events ↔ DB projections ↔
+balances. Self-cleans (restores the zero manifest + rebuilds `@matura/chain`). Not in CI yet (Docker).
 
 ## Prerequisites
 
 - **Node 24** (keg-only): `export PATH="/opt/homebrew/opt/node@24/bin:$PATH"` (verify `node -v` → v24.x).
-- `pnpm` (Corepack), a **PostgreSQL** instance, **Docker** (only for `test:int`), a funded key +
-  RPC for testnet (faucet steps in `packages/contracts/README.md`).
+- `pnpm` (Corepack), a **PostgreSQL** instance, **Docker** (for `test:int` + the cross-stack
+  `test:e2e:stack`), a funded key + RPC for testnet (faucet steps in `packages/contracts/README.md`).
 - Secrets via Hardhat keystore / `configVariable()` — never `.env`, never committed:
   `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY` (attestation signer — most sensitive), RPC URL.
 
@@ -178,6 +184,30 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 ## Iteration log
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
+
+### 2026-09-27 — claim-source adapters + settlement + cross-stack e2e (PR #6)
+
+- **New contracts:** `MockFreelanceEscrow` + `MockStream` (source adapters, each its own issuer +
+  bound obligor). The `freelance`/`stream` **manifest source slots now point to these adapters**
+  (payroll stays a `SourceObligor`); shape unchanged, so `prisma`/manifest schemas need no change.
+  `ClaimRegistry` gained `SOURCE_REGISTRAR_ROLE` + `registerFromSource` (byte-identical `registerClaim`).
+- **Deploy/seed change:** the Ignition module deploys the 2 adapters + grants the role; **`seed`** is
+  now adapter-driven for freelance/stream (fund→approve→createPayout / createStream→assign→createClaim),
+  registers each adapter as its own issuer, and allowlists all three issuers on both vaults. It is
+  **state-aware/resumable** (probes on-chain adapter state, so a re-run after a crash resumes rather
+  than double-funding) and calls the recipient-gated `MockStream.createClaim` as Alice. Re-run
+  `deploy → seed → verify` as before; `verify` now derives each claim's issuer per-claim + enumerates
+  `SOURCE_REGISTRAR_ROLE` holders. The Ignition contract-id rename (uniform `*Source`) means a
+  redeploy needs `demo:reset` first (local + the e2e already reset). **No new env.**
+- **New ABIs** exported (`mockFreelanceEscrow`, `mockStream`) — `@matura/chain` rebuild required (as
+  always); both surfaced via `sourceAbis` on the package root.
+- **New package `apps/e2e-stack`** — one-command cross-stack reconciliation e2e (`test:e2e:stack`).
+  **Needs a Docker daemon** (Testcontainers Postgres). Boots node + PG + worker + API, drives the API
+  optimize→execute→settle flow, and reconciles on-chain events ↔ DB projections ↔ token balances; runs
+  the worker with `INDEXER_CONFIRMATIONS=1` (local EDR has no `finalized` tag). Self-cleans (restores
+  the zero manifest + rebuilds `@matura/chain`) and refuses to run with dirty manifest files. Not in
+  CI yet (Docker dependency) — see Open items. Harness gotchas:
+  `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`.
 
 ### 2026-09-27 — landing + product frontends (PR #5)
 

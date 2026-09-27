@@ -4,7 +4,14 @@ import { assertChainId } from "./lib/network-guard.js";
 import { assertWiring } from "./lib/assert-wiring.js";
 import { ROLES, CLAIM_STATE, CLAIM_TYPE } from "../config/constants.js";
 import { STABLE_MANDATE, FLEX_MANDATE, type VaultMandate } from "../config/vault-mandates.js";
-import { ALICE_CLAIMS, REQUEST_A, REQUEST_B, claimIdFor } from "../config/demo.js";
+import {
+  ALICE_CLAIMS,
+  REQUEST_A,
+  REQUEST_B,
+  expectedFace,
+  resolveClaimId,
+  type ClaimSource,
+} from "../config/demo.js";
 import { ALLOWED_CHAIN_IDS } from "./lib/constants.js";
 import { readManifest, manifestAddresses, isManifestDeployed } from "./lib/read-manifest.js";
 import { isRevertNamed } from "./lib/revert.js";
@@ -62,6 +69,7 @@ async function main(): Promise<void> {
       stableVault: manifest.namedVaults.stableVault,
       flexVault: manifest.namedVaults.flexVault,
       sources: [manifest.sources.payroll, manifest.sources.freelance, manifest.sources.stream],
+      sourceRegistrars: [manifest.sources.freelance, manifest.sources.stream],
     });
     check("wiring assertions (roles + registrations + separation spot-checks)", true);
   } catch (error: unknown) {
@@ -115,6 +123,16 @@ async function main(): Promise<void> {
   check(
     "settlementManager ROUTER_ROLE holders == {router}",
     eq(await holdersOf(settlementContract, ROLES.ROUTER_ROLE), [router]),
+  );
+  // SOURCE_REGISTRAR_ROLE holders must be EXACTLY the two adapters — a stray grant to any other
+  // address would let it mint claims (bounded to its own issuer identity, but still a second writer).
+  // assert-wiring only spot-checks the known sources; enumerate the full set here for parity.
+  check(
+    "claimRegistry SOURCE_REGISTRAR_ROLE holders == {freelance, stream}",
+    eq(await holdersOf(claimRegistry, ROLES.SOURCE_REGISTRAR_ROLE), [
+      getAddress(manifest.sources.freelance),
+      getAddress(manifest.sources.stream),
+    ]),
   );
 
   // DEFAULT_ADMIN_ROLE holders can grant/revoke the roles above at will, so the separation is only
@@ -174,11 +192,18 @@ async function main(): Promise<void> {
     check(`${name}Source funded`, (await usdt.read.balanceOf([source])) > 0n);
   }
 
-  // 5. Alice's three claims exist, ELIGIBLE, with the configured params.
-  let issuer: Address | undefined;
-  const dueDates = new Map<string, bigint>();
+  // 5. Alice's three claims exist, ELIGIBLE, with the expected face/type — and each carries its OWN
+  //    issuer (payroll = the signing issuer; freelance/stream = the adapter itself). The stream face
+  //    is read from chain (vested-at-registration), not asserted against a fixed config value.
+  interface ClaimInfo {
+    readonly claim: ClaimSource;
+    readonly issuer: Address;
+    readonly dueDate: bigint;
+    readonly face: bigint;
+  }
+  const infos = new Map<string, ClaimInfo>();
   for (const claim of ALICE_CLAIMS) {
-    const claimId = claimIdFor(claim.label);
+    const claimId = resolveClaimId(claim, manifest.sources);
     const c = await claimRegistry.read.getClaim([claimId]).catch((error: unknown) => {
       if (isRevertNamed(error, "ClaimNotFound")) return undefined;
       throw error;
@@ -187,97 +212,108 @@ async function main(): Promise<void> {
       check(`claim ${claim.label} exists`, false);
       continue;
     }
-    issuer ??= getAddress(c.issuer);
-    dueDates.set(claim.label, c.dueDate);
+    // Exact face for signed/escrow (config-fixed); for a stream the face is vested-at-registration,
+    // so assert it lands in a tolerance band around the expected vesting fraction rather than >0
+    // (catches a vesting-math/rounding regression while tolerating a few blocks of registration jitter).
+    const wantFace = expectedFace(claim);
+    let faceOk: boolean;
+    if (wantFace !== undefined) {
+      faceOk = c.faceValue === wantFace;
+    } else if (claim.kind === "stream") {
+      const expected = (claim.deposit * BigInt(claim.startOffsetDays)) / BigInt(claim.durationDays);
+      const tol = expected / 20n; // ±5% band absorbs the block-timestamp jitter at registration
+      faceOk = c.faceValue >= expected - tol && c.faceValue <= expected + tol;
+    } else {
+      faceOk = c.faceValue > 0n;
+    }
     check(
-      `claim ${claim.label} ELIGIBLE with configured face/type`,
-      c.state === CLAIM_STATE.ELIGIBLE &&
-        c.faceValue === claim.faceValue &&
-        c.claimType === claim.claimType,
+      `claim ${claim.label} ELIGIBLE with expected face/type`,
+      c.state === CLAIM_STATE.ELIGIBLE && c.claimType === claim.claimType && faceOk,
     );
+    infos.set(claim.label, {
+      claim,
+      issuer: getAddress(c.issuer),
+      dueDate: c.dueDate,
+      face: c.faceValue,
+    });
   }
 
-  // 6. Issuer allowlist (no getter → quoteAndCheck.ok) + A/B calibration feasibility.
-  if (issuer === undefined) {
-    check("calibration: issuer resolvable from Alice's claims", false);
+  // 6. Per-issuer allowlist proof + A/B feasibility. Each claim carries its OWN issuer now (payroll
+  //    = the signing issuer; freelance/stream = the adapter), so a single calibration issuer is
+  //    WRONG. `quoteAndCheck.ok` conflates allowlist + type-support + bounds, so to ISOLATE the
+  //    allowlist we probe every issuer with a canonical PAYROLL/minFace combo both vaults support
+  //    (claim-type-specific financeability is covered by the A/B calibration below).
+  const payroll = infos.get("alice-payroll");
+  const stream = infos.get("alice-stream");
+  if (payroll === undefined || stream === undefined) {
+    check("calibration: payroll + stream claims present", false);
   } else {
-    const payrollDue = dueDates.get("alice-payroll");
-    const streamDue = dueDates.get("alice-stream");
-    if (payrollDue === undefined || streamDue === undefined) {
-      check("calibration: payroll + stream claims present", false);
-    } else {
-      // Allowlist proof on both vaults.
-      const [stableOk] = await stableVault.read.quoteAndCheck([
-        issuer,
-        CLAIM_TYPE.PAYROLL,
-        STABLE_MANDATE.minFace,
-        payrollDue,
-      ]);
-      const [flexOk] = await flexVault.read.quoteAndCheck([
-        issuer,
-        CLAIM_TYPE.PAYROLL,
-        FLEX_MANDATE.minFace,
-        payrollDue,
-      ]);
-      check("issuer allowed on stableVault (quoteAndCheck.ok)", stableOk);
-      check("issuer allowed on flexVault (quoteAndCheck.ok)", flexOk);
-
-      // Request A: one partial payroll slice on Stable (<= maxTotalFace < claim face) covers target.
-      const [okA, advA] = await stableVault.read.quoteAndCheck([
-        issuer,
-        CLAIM_TYPE.PAYROLL,
-        REQUEST_A.maxTotalFace,
-        payrollDue,
-      ]);
-      check(
-        "request A: one partial payroll slice on Stable >= targetAdvance",
-        okA && advA >= REQUEST_A.targetAdvance,
-      );
-
-      // Request B: no single (claim, eligible vault) advance reaches targetB.
-      let maxSingle = 0n;
-      for (const claim of ALICE_CLAIMS) {
-        const due = dueDates.get(claim.label);
-        if (due === undefined) continue;
-        for (const vault of [stableVault, flexVault]) {
-          const [ok, adv] = await vault.read.quoteAndCheck([
-            issuer,
-            claim.claimType,
-            claim.faceValue,
-            due,
-          ]);
-          if (ok && adv > maxSingle) maxSingle = adv;
-        }
+    for (const info of infos.values()) {
+      for (const [vname, vault, minFace] of [
+        ["stableVault", stableVault, STABLE_MANDATE.minFace],
+        ["flexVault", flexVault, FLEX_MANDATE.minFace],
+      ] as const) {
+        const [ok] = await vault.read.quoteAndCheck([
+          info.issuer,
+          CLAIM_TYPE.PAYROLL,
+          minFace,
+          payroll.dueDate,
+        ]);
+        check(`issuer of ${info.claim.label} allowlisted on ${vname}`, ok);
       }
-      check(
-        "request B: no single claim advance reaches targetAdvance",
-        maxSingle < REQUEST_B.targetAdvance,
-      );
-
-      // Request B: the named payroll+stream pair on Stable is eligible, fits maxTotalFace, and
-      // together reaches targetAdvance (assert the `ok` flags + face budget, not just the advance).
-      const payrollFace = ALICE_CLAIMS[0].faceValue;
-      const streamFace = ALICE_CLAIMS[2].faceValue;
-      const [payrollOk, advPayroll] = await stableVault.read.quoteAndCheck([
-        issuer,
-        CLAIM_TYPE.PAYROLL,
-        payrollFace,
-        payrollDue,
-      ]);
-      const [streamOk, advStream] = await stableVault.read.quoteAndCheck([
-        issuer,
-        CLAIM_TYPE.STREAM,
-        streamFace,
-        streamDue,
-      ]);
-      check(
-        "request B: payroll + stream pair on Stable reaches targetAdvance within maxTotalFace",
-        payrollOk &&
-          streamOk &&
-          payrollFace + streamFace <= REQUEST_B.maxTotalFace &&
-          advPayroll + advStream >= REQUEST_B.targetAdvance,
-      );
     }
+
+    // Request A: one partial payroll slice on Stable (<= maxTotalFace < claim face) covers target.
+    const [okA, advA] = await stableVault.read.quoteAndCheck([
+      payroll.issuer,
+      CLAIM_TYPE.PAYROLL,
+      REQUEST_A.maxTotalFace,
+      payroll.dueDate,
+    ]);
+    check(
+      "request A: one partial payroll slice on Stable >= targetAdvance",
+      okA && advA >= REQUEST_A.targetAdvance,
+    );
+
+    // Request B: no single (claim, eligible vault) advance reaches targetB — each with its issuer.
+    let maxSingle = 0n;
+    for (const info of infos.values()) {
+      for (const vault of [stableVault, flexVault]) {
+        const [ok, adv] = await vault.read.quoteAndCheck([
+          info.issuer,
+          info.claim.claimType,
+          info.face,
+          info.dueDate,
+        ]);
+        if (ok && adv > maxSingle) maxSingle = adv;
+      }
+    }
+    check(
+      "request B: no single claim advance reaches targetAdvance",
+      maxSingle < REQUEST_B.targetAdvance,
+    );
+
+    // Request B: the payroll + stream pair on Stable is eligible (each under its own issuer), fits
+    // maxTotalFace, and together reaches targetAdvance.
+    const [payrollOk, advPayroll] = await stableVault.read.quoteAndCheck([
+      payroll.issuer,
+      CLAIM_TYPE.PAYROLL,
+      payroll.face,
+      payroll.dueDate,
+    ]);
+    const [streamOk, advStream] = await stableVault.read.quoteAndCheck([
+      stream.issuer,
+      CLAIM_TYPE.STREAM,
+      stream.face,
+      stream.dueDate,
+    ]);
+    check(
+      "request B: payroll + stream pair on Stable reaches targetAdvance within maxTotalFace",
+      payrollOk &&
+        streamOk &&
+        payroll.face + stream.face <= REQUEST_B.maxTotalFace &&
+        advPayroll + advStream >= REQUEST_B.targetAdvance,
+    );
   }
 
   if (failures.length > 0) {

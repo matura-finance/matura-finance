@@ -4,7 +4,7 @@ import { assertChainId } from "./lib/network-guard.js";
 import { readManifest } from "./lib/read-manifest.js";
 import { EXECUTION_ROUTE_TYPES, routerDomain } from "../config/eip712.js";
 import { CLAIM_STATE } from "../config/constants.js";
-import { ACTORS, ALICE_CLAIMS, claimIdFor } from "../config/demo.js";
+import { ACTORS, ALICE_PAYROLL, claimIdFor } from "../config/demo.js";
 import { LOCAL_CHAIN_ID, DAY_SECONDS } from "./lib/constants.js";
 
 /// LOCAL-ONLY demo: drive one seeded claim end-to-end through the obligor self-settlement path —
@@ -35,7 +35,7 @@ async function main(): Promise<void> {
   const usdt = await viem.getContractAt("MockUSDT", manifest.addresses.mockUsdt);
   const payrollObligor = await viem.getContractAt("SourceObligor", manifest.sources.payroll);
 
-  const payroll = ALICE_CLAIMS[0]; // alice-payroll
+  const payroll = ALICE_PAYROLL; // alice-payroll (the signed claim)
   const claimId = claimIdFor(payroll.label);
   const claim = await claimRegistry.read.getClaim([claimId]);
   if (claim.state !== CLAIM_STATE.ELIGIBLE) {

@@ -456,6 +456,19 @@ export const claimRegistryAbi = [
   },
   {
     "inputs": [],
+    "name": "SOURCE_REGISTRAR_ROLE",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "eip712Domain",
     "outputs": [
       {
@@ -795,6 +808,54 @@ export const claimRegistryAbi = [
       }
     ],
     "name": "registerClaim",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "claimId",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "beneficiary",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "faceValue",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "dueDate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint8",
+        "name": "claimType",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "externalIdHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "evidenceHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "registerFromSource",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
