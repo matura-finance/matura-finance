@@ -56,6 +56,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       };
     }
 
+    // Framework HTTP errors that aren't Nest HttpExceptions (e.g. body-parser's PayloadTooLargeError
+    // at 413, or a malformed-JSON 400) carry a numeric status but are NOT caught above. Preserve the
+    // client-error status so callers see a truthful 4xx instead of a misleading 500 — but derive the
+    // code/message from the status ONLY (never `error.message`), so redaction still holds.
+    const clientStatus = extractHttpStatus(exception);
+    if (clientStatus !== null && clientStatus >= 400 && clientStatus < 500) {
+      const code = this.codeForStatus(clientStatus);
+      return { status: clientStatus, code, message: genericMessageForStatus(clientStatus) };
+    }
+
     // Unknown/unexpected errors: never leak internals to the client.
     return {
       status: HttpStatus.INTERNAL_SERVER_ERROR,
@@ -76,6 +86,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         return "NOT_FOUND";
       case HttpStatus.CONFLICT:
         return "CONFLICT";
+      case HttpStatus.PAYLOAD_TOO_LARGE:
+        return "PAYLOAD_TOO_LARGE";
       case HttpStatus.UNPROCESSABLE_ENTITY:
         return "UNPROCESSABLE_ENTITY";
       case HttpStatus.TOO_MANY_REQUESTS:
@@ -83,6 +95,26 @@ export class AllExceptionsFilter implements ExceptionFilter {
       default:
         return status >= HttpStatus.INTERNAL_SERVER_ERROR ? "INTERNAL_SERVER_ERROR" : "ERROR";
     }
+  }
+}
+
+/** Read a numeric HTTP status off a non-HttpException error (`status`/`statusCode`), or null. */
+function extractHttpStatus(exception: unknown): number | null {
+  if (typeof exception !== "object" || exception === null) return null;
+  const obj = exception as Record<string, unknown>;
+  const raw = obj.status ?? obj.statusCode;
+  return typeof raw === "number" && Number.isInteger(raw) ? raw : null;
+}
+
+/** A safe, status-derived client message (never echoes the underlying error text). */
+function genericMessageForStatus(status: number): string {
+  switch (status) {
+    case HttpStatus.BAD_REQUEST:
+      return "Bad request";
+    case HttpStatus.PAYLOAD_TOO_LARGE:
+      return "Payload too large";
+    default:
+      return "Request error";
   }
 }
 
