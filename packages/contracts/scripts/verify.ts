@@ -124,6 +124,16 @@ async function main(): Promise<void> {
     "settlementManager ROUTER_ROLE holders == {router}",
     eq(await holdersOf(settlementContract, ROLES.ROUTER_ROLE), [router]),
   );
+  // SOURCE_REGISTRAR_ROLE holders must be EXACTLY the two adapters — a stray grant to any other
+  // address would let it mint claims (bounded to its own issuer identity, but still a second writer).
+  // assert-wiring only spot-checks the known sources; enumerate the full set here for parity.
+  check(
+    "claimRegistry SOURCE_REGISTRAR_ROLE holders == {freelance, stream}",
+    eq(await holdersOf(claimRegistry, ROLES.SOURCE_REGISTRAR_ROLE), [
+      getAddress(manifest.sources.freelance),
+      getAddress(manifest.sources.stream),
+    ]),
+  );
 
   // DEFAULT_ADMIN_ROLE holders can grant/revoke the roles above at will, so the separation is only
   // an invariant if admin is a single, expected EOA and no protocol contract holds it (P2-4).
@@ -202,12 +212,23 @@ async function main(): Promise<void> {
       check(`claim ${claim.label} exists`, false);
       continue;
     }
+    // Exact face for signed/escrow (config-fixed); for a stream the face is vested-at-registration,
+    // so assert it lands in a tolerance band around the expected vesting fraction rather than >0
+    // (catches a vesting-math/rounding regression while tolerating a few blocks of registration jitter).
     const wantFace = expectedFace(claim);
+    let faceOk: boolean;
+    if (wantFace !== undefined) {
+      faceOk = c.faceValue === wantFace;
+    } else if (claim.kind === "stream") {
+      const expected = (claim.deposit * BigInt(claim.startOffsetDays)) / BigInt(claim.durationDays);
+      const tol = expected / 20n; // ±5% band absorbs the block-timestamp jitter at registration
+      faceOk = c.faceValue >= expected - tol && c.faceValue <= expected + tol;
+    } else {
+      faceOk = c.faceValue > 0n;
+    }
     check(
       `claim ${claim.label} ELIGIBLE with expected face/type`,
-      c.state === CLAIM_STATE.ELIGIBLE &&
-        c.claimType === claim.claimType &&
-        (wantFace === undefined ? c.faceValue > 0n : c.faceValue === wantFace),
+      c.state === CLAIM_STATE.ELIGIBLE && c.claimType === claim.claimType && faceOk,
     );
     infos.set(claim.label, {
       claim,
