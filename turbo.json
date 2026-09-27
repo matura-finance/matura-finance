@@ -34,6 +34,9 @@
       "dependsOn": ["build"],
       "cache": false
     },
+    "test:e2e:stack": {
+      "cache": false
+    },
     "db:generate": {
       "cache": false
     },
