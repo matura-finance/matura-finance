@@ -84,7 +84,10 @@ gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/se
 `docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`; **best-execution router**
 (one shared off-chain `_validateLegs` mirror, `PinnedReads` determinism, single-use intents pruned
 expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
-`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`.
+`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`; **cross-stack
+e2e harness** (instant-mine frontier lag → nonce override + cursor gating, block-timestamp skew →
+RouteExpired, fresh-node-per-run lifecycle, `INDEXER_CONFIRMATIONS=1` + `cwd=REPO_ROOT`, poll
+projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`.
 
 ## Conventions
 
