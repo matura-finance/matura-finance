@@ -60,8 +60,8 @@ export default buildModule("MaturaProtocol", (m) => {
   const payrollSource = m.contract("SourceObligor", [usdt, settlement, claimRegistry], {
     id: "PayrollSource",
   });
-  const freelanceEscrow = m.contract("MockFreelanceEscrow", [usdt, claimRegistry, settlement], {
-    id: "FreelanceEscrow",
+  const freelanceSource = m.contract("MockFreelanceEscrow", [usdt, claimRegistry, settlement], {
+    id: "FreelanceSource",
   });
   const streamSource = m.contract("MockStream", [usdt, claimRegistry, settlement], {
     id: "StreamSource",
@@ -80,7 +80,7 @@ export default buildModule("MaturaProtocol", (m) => {
 
   // The two source adapters may register claims from their own verified state (declarative deploy
   // wiring). Issuer registration + vault allowlisting are imperative + signer-driven → seed.ts.
-  m.call(claimRegistry, "grantRole", [SOURCE_REGISTRAR_ROLE, freelanceEscrow], {
+  m.call(claimRegistry, "grantRole", [SOURCE_REGISTRAR_ROLE, freelanceSource], {
     id: "cr_grant_freelance_registrar",
   });
   m.call(claimRegistry, "grantRole", [SOURCE_REGISTRAR_ROLE, streamSource], {
@@ -102,7 +102,7 @@ export default buildModule("MaturaProtocol", (m) => {
     stableVault,
     flexVault,
     payrollSource,
-    freelanceEscrow,
+    freelanceSource,
     streamSource,
   };
 });

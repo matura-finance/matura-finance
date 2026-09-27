@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   } as const;
   const sources = {
     payroll: d.payrollSource.address,
-    freelance: d.freelanceEscrow.address,
+    freelance: d.freelanceSource.address,
     stream: d.streamSource.address,
   } as const;
 
