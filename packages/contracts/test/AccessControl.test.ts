@@ -26,6 +26,10 @@ describe("AccessControl (role separation & init)", () => {
     assert.equal(await settlement.read.hasRole([ROLES.ROUTER_ROLE, settlementAddr]), false);
   });
 
+  // NOTE: deliberately restates coverage that also exists per-contract (LiquidityVault.test.ts,
+  // ClaimRegistry.test.ts, SettlementManager.test.ts) — kept here as ONE cross-cutting matrix over
+  // every value-moving / state-mutating entrypoint, so the role boundary is asserted in a single
+  // place. Do not dedupe against the per-contract tests: this consolidated view is intentional.
   it("A4: fund / reserveSlice / registerAllocation / releaseSlice revert AccessControlUnauthorizedAccount from a random EOA", async () => {
     const { viem, claimRegistry, vault, settlement, accounts, now } = await deployProtocol();
     const account = accounts.other.account;
