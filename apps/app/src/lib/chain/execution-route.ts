@@ -1,5 +1,5 @@
 import { EXECUTION_ROUTE_TYPES, routerDomain } from "@matura/chain/eip712";
-import { hashTypedData, type Hex, type TypedDataDomain } from "viem";
+import { hashTypedData, type Address, type Hex, type TypedDataDomain } from "viem";
 import { z } from "zod";
 
 import { env } from "../env";
@@ -54,6 +54,12 @@ export interface PreparedRoute {
   domain: TypedDataDomain;
   message: ExecutionRouteStruct;
   executionId: Hex;
+  /**
+   * The pinned on-chain manifest router — the ONLY address the caller may submit `executeRoute`
+   * to. Equals `toAddress(expectedRouter)` and, by the mismatch guard above, the signed/validated
+   * target. Callers use this (never the API-claimed `verifyingContract`/`to`) as the write target.
+   */
+  router: Address;
 }
 
 /**
@@ -100,5 +106,5 @@ export function prepareRoute(step: PrepareStep, expectedRouter: string): Prepare
     message,
   });
 
-  return { domain, message, executionId };
+  return { domain, message, executionId, router };
 }

@@ -59,6 +59,12 @@ describe("prepareRoute", () => {
     expect(domain.verifyingContract?.toLowerCase()).toBe(MANIFEST_ROUTER.toLowerCase());
   });
 
+  it("returns the pinned manifest router as the submit target (never the API-claimed value)", () => {
+    const { router } = prepareRoute(step, MANIFEST_ROUTER);
+    // The write target callers must use — provably equals the (checksummed) manifest router.
+    expect(router.toLowerCase()).toBe(MANIFEST_ROUTER.toLowerCase());
+  });
+
   // ── C2: pin-to-manifest defense-in-depth ──────────────────────────────────
   // A malicious/compromised API response MUST NOT be able to redirect a signature or an
   // executeRoute submission to a contract other than the on-chain manifest router.

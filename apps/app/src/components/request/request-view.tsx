@@ -24,7 +24,6 @@ import {
   useOptimize,
   usePrepareExecution,
 } from "../../lib/queries/hooks";
-import { toAddress } from "../../lib/chain/bridge";
 import { TX_ERROR_COPY } from "../../lib/chain/errors";
 import { prepareRoute } from "../../lib/chain/execution-route";
 import { formatUsdt, parseAmountToBaseUnits } from "../../lib/chain/format";
@@ -113,19 +112,15 @@ export function RequestView() {
       const prepared = await prepare.mutateAsync(data.routeId);
       const step = prepared.steps.at(0);
       if (step === undefined) throw new Error("Empty prepare response");
-      // Defense-in-depth: never sign/submit to a contract other than the on-chain manifest
-      // router, even if the API response says otherwise.
-      const target = toAddress(step.verifyingContract ?? step.to);
-      if (target !== toAddress(getDeployment(bscTestnet.id).router)) {
-        setPrepareError(
-          "This route targets an unexpected contract and was not signed. Refresh to try again.",
-        );
-        return;
-      }
+      // Defense-in-depth: `prepareRoute` is the single authoritative enforcement of the
+      // pin-to-manifest invariant — it throws if the API-claimed target ≠ manifest router
+      // (mapped to friendly copy in the catch below), and returns the pinned `router` we
+      // submit to. We never sign or submit to the API-claimed `verifyingContract`/`to`.
       const {
         domain,
         message,
         executionId: id,
+        router,
       } = prepareRoute(step, getDeployment(bscTestnet.id).router);
       setExecutionId(id);
       await tx.run(async () => {
@@ -136,7 +131,7 @@ export function RequestView() {
           message,
         });
         return writeContractAsync({
-          address: toAddress(step.verifyingContract ?? step.to),
+          address: router,
           abi: maturaRouterAbi,
           functionName: "executeRoute",
           args: [message, signature],
@@ -148,6 +143,11 @@ export function RequestView() {
           e.code === "ROUTER_PAUSED"
             ? "Routing is paused right now. Please try again later."
             : "This route is no longer available. Refresh to compare current prices.",
+        );
+      } else if (e instanceof Error && e.message.includes("manifest router")) {
+        // The pin-to-manifest guard in `prepareRoute` rejected an unexpected target.
+        setPrepareError(
+          "This route targets an unexpected contract and was not signed. Refresh to try again.",
         );
       } else {
         setPrepareError("Could not prepare this route. Refresh to compare current prices.");
