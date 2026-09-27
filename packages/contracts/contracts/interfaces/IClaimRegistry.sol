@@ -76,6 +76,24 @@ interface IClaimRegistry {
     /// @notice Verify an issuer attestation and register the claim as ATTESTED (permissionless submit).
     function registerClaim(ClaimAttestation calldata att, bytes calldata signature) external;
 
+    /// @notice Register a claim from an on-chain source adapter's own verified state, as ATTESTED
+    ///         (SOURCE_REGISTRAR_ROLE). Re-runs every `registerClaim` invariant EXCEPT the EIP-712
+    ///         signature/nonce path; the caller's role + state is the authority.
+    /// @dev The claim's `issuer` is intrinsically `msg.sender` (the calling adapter), so provenance
+    ///      cannot be spoofed: an adapter can only mint claims attributed to itself. `msg.sender` must
+    ///      be a registered active issuer (`IssuerInactive` otherwise). Lands in the same shared
+    ///      `_writeClaim` effect+event site as `registerClaim`, so the resulting claim is identical.
+    function registerFromSource(
+        bytes32 claimId,
+        address beneficiary,
+        address token,
+        uint256 faceValue,
+        uint256 dueDate,
+        uint8 claimType,
+        bytes32 externalIdHash,
+        bytes32 evidenceHash
+    ) external;
+
     /// @notice ATTESTED -> ELIGIBLE (CLAIM_REVIEWER_ROLE).
     function markEligible(bytes32 claimId) external;
 
