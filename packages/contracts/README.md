@@ -100,5 +100,17 @@ The P0 protocol (Solidity 0.8.28, OpenZeppelin 5.6.1):
 `interfaces/` freeze the ABI boundary; `libraries/` hold enums/constants/pricing; `config/` +
 `test/helpers/` are shared TS. Design + threat model live in `docs/` and the tracked plan.
 
+### Mocks: deployed fixtures vs. test-only doubles
+
+Two distinct kinds of mock live in the tree:
+
+- **Deployed fixtures** — `token/MockUSDT.sol`, `sources/MockFreelanceEscrow.sol`,
+  `sources/MockStream.sol`. These are on the `scripts/export-abis.ts` allowlist, so their ABIs ship
+  to `@matura/chain` and they are deployed/seeded for local + testnet demos.
+- **Test-only doubles** — `contracts/mocks/MaliciousToken.sol` (reentrant token),
+  `contracts/mocks/MockNoReturnToken.sol` (non-returning ERC-20). These are **excluded** from the
+  export allowlist, never deployed, and never registered as a settlement token — they exist solely
+  to exercise the reentrancy guards and SafeERC20 handling in the test suite.
+
 Toolchain gotchas (Node 24, tsc `unknown`, ABI/prettier gate):
 `../../docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`.

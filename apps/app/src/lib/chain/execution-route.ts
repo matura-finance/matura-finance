@@ -1,5 +1,5 @@
 import { EXECUTION_ROUTE_TYPES, routerDomain } from "@matura/chain/eip712";
-import { hashTypedData, type Hex, type TypedDataDomain } from "viem";
+import { hashTypedData, type Address, type Hex, type TypedDataDomain } from "viem";
 import { z } from "zod";
 
 import { env } from "../env";
@@ -54,11 +54,34 @@ export interface PreparedRoute {
   domain: TypedDataDomain;
   message: ExecutionRouteStruct;
   executionId: Hex;
+  /**
+   * The pinned on-chain manifest router — the ONLY address the caller may submit `executeRoute`
+   * to. Equals `toAddress(expectedRouter)` and, by the mismatch guard above, the signed/validated
+   * target. Callers use this (never the API-claimed `verifyingContract`/`to`) as the write target.
+   */
+  router: Address;
 }
 
-/** Coerce + hash a prepared route. Throws if the step is not a well-formed route typed-data step. */
-export function prepareRoute(step: PrepareStep): PreparedRoute {
-  const verifying = step.verifyingContract ?? step.to;
+/**
+ * Coerce + hash a prepared route, pinning the signing/submit target to the on-chain manifest.
+ *
+ * Defense-in-depth: the API response is NEVER trusted for the contract we sign or submit to.
+ * `expectedRouter` is the manifest router address (the single source of truth). If the step's
+ * `verifyingContract`/`to` disagrees, we refuse — a compromised/malicious API cannot redirect a
+ * signature or `executeRoute` call to an attacker contract. The EIP-712 domain's
+ * `verifyingContract` is likewise pinned to the manifest router, not to the API's claimed value.
+ *
+ * Throws if the step is not a well-formed route typed-data step, or if its target does not match
+ * `expectedRouter`.
+ */
+export function prepareRoute(step: PrepareStep, expectedRouter: string): PreparedRoute {
+  const router = toAddress(expectedRouter);
+  const target = toAddress(step.verifyingContract ?? step.to);
+  if (target !== router) {
+    throw new Error(
+      `Route target ${target} does not match the on-chain manifest router ${router}; refusing to sign.`,
+    );
+  }
   const { message: raw } = WireMessage.parse(step.typedData);
 
   const message: ExecutionRouteStruct = {
@@ -75,7 +98,7 @@ export function prepareRoute(step: PrepareStep): PreparedRoute {
     })),
   };
 
-  const domain = routerDomain(env.chainId, toAddress(verifying));
+  const domain = routerDomain(env.chainId, router);
   const executionId = hashTypedData({
     domain,
     types: EXECUTION_ROUTE_TYPES,
@@ -83,5 +106,5 @@ export function prepareRoute(step: PrepareStep): PreparedRoute {
     message,
   });
 
-  return { domain, message, executionId };
+  return { domain, message, executionId, router };
 }

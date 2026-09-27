@@ -144,6 +144,9 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 
 ## Post-deploy smoke checklist
 
+> **Pre-demo operator sanity** (env/stack readiness + abort conditions): run through
+> `docs/demo-operator-checklist.md` before driving a demo.
+
 - [ ] `GET /api/v1/health` → `200 {status:"ok"}`; `GET /api/v1/health/ready` → `200` (db/rpc/cursor up).
 - [ ] Seeded claims visible: `GET /api/v1/account/:aliceWallet` returns her ELIGIBLE claims after the worker catches up.
 - [ ] `GET /api/v1/vaults` returns the two vaults with mandates.
@@ -152,7 +155,8 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 - [ ] `POST /api/v1/routes/optimize` (authed) with Alice's ELIGIBLE claim ids returns an executable route + `routeId`; `POST /api/v1/routes/:routeId/prepare-execution` returns the `ExecutionRoute` typed-data step. A second prepare of the same `routeId` → `409`.
 - [ ] Restart the worker → no duplicate rows (idempotent).
 - [ ] **Landing** loads at its URL; `/protocol` + footer show real contract links when
-      `NEXT_PUBLIC_CONTRACTS_DEPLOYED=true` (else "Contracts deploying soon"); `check:bundle` passes.
+      `NEXT_PUBLIC_CONTRACTS_DEPLOYED=true` (else "Contracts deploying soon"); `check:bundle` passes
+      (both guards: landing wallet/secret-free + product-app secret-value-free — needs `apps/app` built first).
 - [ ] **App**: connect (EIP-6963) → SIWE sign-in mints a session; `/account` shows the connected
       beneficiary's claims; `/vaults` lists Stable + Flex.
 - [ ] **Request A** (partial payroll slice) and **Request B** (≥2 claims combined) each produce an
@@ -179,11 +183,42 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
   Alice → the deployer address); required before the product `/request` demo works end-to-end.
 - **Chain-scope the demo-signing gate** (API `env.validation`): `DEMO_ISSUER_SIGNING_ENABLED` +
   `ISSUER_PRIVATE_KEY` should be permitted only for `CHAIN_ID ∈ {31337, 97}` so it can never
-  activate against mainnet (flagged in the PR #5 review; not yet implemented).
+  activate against mainnet (flagged in the PR #5 review; not yet implemented). The fail-closed
+  boot-refusal (`ISSUER_PRIVATE_KEY` set + `NODE_ENV=production` → throw at boot) is now
+  regression-tested (PR #7), but the chain-scope restriction is still pending.
+- **Fill the `SECURITY.md` disclosure contact** (`<SECURITY_CONTACT_EMAIL>` placeholder) before
+  the repo/PR is shared externally.
+- **Install `gitleaks` locally** (`brew install gitleaks`) so the pre-commit secret-scan hook is a
+  real gate, not a skipped no-op (CI's `secret-scan` job already runs).
 
 ## Iteration log
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
+
+### 2026-09-28 — security & correctness hardening pass (PR #7)
+
+- **No deploy-surface change:** no new contracts, **no ABI/manifest change** (contract source
+  untouched — all on-chain findings were proof-of-control), **no Prisma migration**, and **no new
+  env**. Re-deploy/seed/reindex steps are unchanged from PR #6. Almost entirely tests + docs + three
+  small off-chain fixes.
+- **Build/CI surface:** `check:bundle` now runs **two** guards — the existing wallet/secret-free
+  landing guard **and** a new product-app guard that scans `apps/app` client chunks for secret
+  **values** (postgres creds, JWT, private-key-adjacent hex), not just env names. Both need the
+  respective app built first (same precondition as before). No CI job added; `verify` + `secret-scan`
+  unchanged.
+- **Behavioral fixes (off-chain, no config change):** malformed money strings now return `400` (was
+  a raw `500`); oversized/malformed request bodies return `413`/`400` (was `500`); the API error
+  filter maps only body-parser errors to a client 4xx (an outbound RPC `429`/`404` now stays a
+  generic `500`, so server faults remain visible to 5xx alerting). The pin-to-manifest control on the
+  product `/request` signing path was hardened into the pure `prepareRoute` boundary (submit target +
+  EIP-712 domain both pinned to the manifest router).
+- **New docs:** `SECURITY.md` (disclosure policy + **testnet-only, never-real-funds** warning),
+  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity — now referenced from the smoke
+  checklist above), and an extended full-stack `docs/threat-model.md`. Learnings (incl. the
+  test-fidelity "a guard test must fail if the guard is removed" lesson):
+  `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`.
+- **New Open items surfaced:** fill the `SECURITY.md` disclosure-contact placeholder; install
+  `gitleaks` locally for the pre-commit hook (see Open items).
 
 ### 2026-09-27 — claim-source adapters + settlement + cross-stack e2e (PR #6)
 

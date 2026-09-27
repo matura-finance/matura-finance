@@ -254,6 +254,27 @@ describe("LiquidityVault", () => {
       );
     });
 
+    it("A3: writeOffClaim moves zero tokens — balanceOf unchanged, only exposure counters clear", async () => {
+      const { usdt, vault, router, user, dueIn } = await deployVault();
+      const face = parseUnits("1000", 6);
+      const claimId = toBytes32("claim-wo-zero");
+      await vault.write.fund(
+        [claimId, user.account.address, CLAIM_TYPE.PAYROLL, face, dueIn(30n)],
+        { account: router.account },
+      );
+
+      const vaultBalBefore = await usdt.read.balanceOf([vault.address]);
+      assert.ok((await vault.read.outstandingPrincipal()) > 0n);
+
+      await vault.write.writeOffClaim([claimId]); // admin = default account
+
+      // No token movement: the write-off is a pure accounting clear (the advance is a realized loss).
+      assert.equal(await usdt.read.balanceOf([vault.address]), vaultBalBefore);
+      assert.equal(await vault.read.outstandingPrincipal(), 0n);
+      assert.equal(await vault.read.principalByClaim([claimId]), 0n);
+      assert.equal(await vault.read.faceByClaim([claimId]), 0n);
+    });
+
     it("reverts InsufficientLiquidity when the vault is underfunded", async () => {
       const { viem, vault, router, user, dueIn } = await deployVault(
         demoMandate,

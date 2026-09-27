@@ -7,7 +7,7 @@
     "test:e2e": "playwright test",
     "e2e:install": "playwright install chromium",
     "typecheck": "tsc --noEmit",
-    "check:bundle": "node scripts/check-landing-bundle.mjs"
+    "check:bundle": "node scripts/check-landing-bundle.mjs && node scripts/check-app-secrets.mjs"
   },
   "devDependencies": {
     "@matura/typescript-config": "workspace:*",

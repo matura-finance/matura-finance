@@ -87,7 +87,11 @@ expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
 `docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`; **cross-stack
 e2e harness** (instant-mine frontier lag → nonce override + cursor gating, block-timestamp skew →
 RouteExpired, fresh-node-per-run lifecycle, `INDEXER_CONFIRMATIONS=1` + `cwd=REPO_ROOT`, poll
-projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`.
+projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`;
+**security hardening** (adversarial-tests-as-regression, proof-of-pinning vs full harness,
+pause-can't-strand-settlement, the false-green guard test — a guard test must fail if the guard is
+removed, share prod bootstrap/orchestration with tests instead of copying, scan bundles for secret
+_values_ not env names) `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`.
 
 ## Conventions
 
@@ -107,7 +111,9 @@ projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e
 - **Secrets** via Hardhat keystore / `configVariable()` (never `.env`, never committed):
   `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY` (attestation signer — most sensitive), RPC URL.
 - **Solidity:** 0.8.28 + OpenZeppelin 5.6.1; custom errors + NatSpec; CEI + SafeERC20 +
-  `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md`.
+  `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md` (full-stack
+  threat model), `SECURITY.md` (disclosure policy + testnet-only warning), and
+  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity).
 - **Boundaries:** `apps/landing` stays wallet-free (lint-guarded, incl. subpath imports);
   `@matura/shared` is framework-free Zod; `@matura/contracts` is self-contained (no `@matura/*` deps).
   `@matura/chain` ships a **tsup dual CJS/ESM build** (`dist`) so the CommonJS `apps/api` can

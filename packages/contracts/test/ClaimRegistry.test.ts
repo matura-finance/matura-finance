@@ -152,6 +152,7 @@ async function setup() {
   return {
     viem,
     networkHelpers,
+    chainId,
     accounts: { admin, issuerSigner, user, router, settlement, other, sourceAdapter },
     usdt,
     issuerRegistry,
@@ -419,6 +420,98 @@ describe("ClaimRegistry", () => {
     assert.equal(
       (await claimRegistry.read.getClaim([reattest.claimId])).state,
       CLAIM_STATE.ATTESTED,
+    );
+  });
+
+  // A6 — claimId uniqueness & externalId reuse (C4): the externalId is freed on reject/revoke so
+  // an invoice can be re-attested, but the claimId is NEVER freed (append-only existence set).
+  it("A6: re-attests the same externalIdHash under a NEW claimId after reject", async () => {
+    const { claimRegistry, makeAtt, sign } = await setup();
+    const a = makeAtt(); // externalIdHash "ext-1"
+    await claimRegistry.write.registerClaim([a, await sign(a)]);
+    await claimRegistry.write.reject([a.claimId]);
+    const reattest = makeAtt({ claimId: toBytes32("claim-1r"), nonce: 1n });
+    await claimRegistry.write.registerClaim([reattest, await sign(reattest)]);
+    assert.equal(
+      (await claimRegistry.read.getClaim([reattest.claimId])).state,
+      CLAIM_STATE.ATTESTED,
+    );
+  });
+
+  it("A6: re-attests the same externalIdHash under a NEW claimId after revoke (financedFaceValue==0)", async () => {
+    const { claimRegistry, makeAtt, sign } = await setup();
+    const a = makeAtt(); // ATTESTED, financedFaceValue == 0
+    await claimRegistry.write.registerClaim([a, await sign(a)]);
+    await claimRegistry.write.revoke([a.claimId]);
+    assert.equal((await claimRegistry.read.getClaim([a.claimId])).state, CLAIM_STATE.REVOKED);
+    // externalId freed → the invoice re-attests under a fresh claimId.
+    const reattest = makeAtt({ claimId: toBytes32("claim-1rv"), nonce: 1n });
+    await claimRegistry.write.registerClaim([reattest, await sign(reattest)]);
+    assert.equal(
+      (await claimRegistry.read.getClaim([reattest.claimId])).state,
+      CLAIM_STATE.ATTESTED,
+    );
+  });
+
+  it("A6: re-using the externalIdHash BEFORE reject/revoke reverts DuplicateExternalId", async () => {
+    const { viem, claimRegistry, makeAtt, sign } = await setup();
+    const a = makeAtt(); // externalIdHash "ext-1", still ATTESTED (not rejected/revoked)
+    await claimRegistry.write.registerClaim([a, await sign(a)]);
+    const dup = makeAtt({ claimId: toBytes32("claim-2"), nonce: 1n }); // same externalIdHash
+    await viem.assertions.revertWithCustomError(
+      claimRegistry.write.registerClaim([dup, await sign(dup)]),
+      claimRegistry,
+      "DuplicateExternalId",
+    );
+  });
+
+  it("A6: the claimId is never freed — re-using it always reverts DuplicateClaimId, even after reject", async () => {
+    const { viem, claimRegistry, makeAtt, sign } = await setup();
+    const a = makeAtt(); // claimId "claim-1", externalId "ext-1"
+    await claimRegistry.write.registerClaim([a, await sign(a)]);
+    await claimRegistry.write.reject([a.claimId]); // frees the externalId, NOT the claimId
+    // Reuse the SAME claimId with a fresh externalId + nonce → still blocked.
+    const reuseId = makeAtt({ externalIdHash: toBytes32("ext-fresh"), nonce: 1n });
+    await viem.assertions.revertWithCustomError(
+      claimRegistry.write.registerClaim([reuseId, await sign(reuseId)]),
+      claimRegistry,
+      "DuplicateClaimId",
+    );
+  });
+
+  // A1 — EIP-712 domain hardening: an attestation is bound to (chainId, verifyingContract) via the
+  // domain separator, so a signature produced under any foreign domain recovers to the wrong signer.
+  it("A1: rejects an attestation signed under a foreign chainId (InvalidSignature)", async () => {
+    const { viem, claimRegistry, chainId, makeAtt, accounts } = await setup();
+    const att = makeAtt();
+    const foreignSig = await accounts.issuerSigner.signTypedData({
+      account: accounts.issuerSigner.account,
+      domain: claimRegistryDomain(chainId + 1, claimRegistry.address), // wrong chainId
+      types: CLAIM_ATTESTATION_TYPES,
+      primaryType: "ClaimAttestation",
+      message: att,
+    });
+    await viem.assertions.revertWithCustomError(
+      claimRegistry.write.registerClaim([att, foreignSig]),
+      claimRegistry,
+      "InvalidSignature",
+    );
+  });
+
+  it("A1: rejects an attestation signed for a different verifyingContract (InvalidSignature)", async () => {
+    const { viem, claimRegistry, chainId, makeAtt, accounts } = await setup();
+    const att = makeAtt();
+    const foreignSig = await accounts.issuerSigner.signTypedData({
+      account: accounts.issuerSigner.account,
+      domain: claimRegistryDomain(chainId, getAddress(accounts.other.account.address)), // wrong verifyingContract
+      types: CLAIM_ATTESTATION_TYPES,
+      primaryType: "ClaimAttestation",
+      message: att,
+    });
+    await viem.assertions.revertWithCustomError(
+      claimRegistry.write.registerClaim([att, foreignSig]),
+      claimRegistry,
+      "InvalidSignature",
     );
   });
 });
