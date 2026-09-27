@@ -179,6 +179,23 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
 
+### 2026-09-27 — claim-source adapters + settlement + cross-stack e2e (PR #6)
+
+- **New contracts:** `MockFreelanceEscrow` + `MockStream` (source adapters, each its own issuer +
+  bound obligor). The `freelance`/`stream` **manifest source slots now point to these adapters**
+  (payroll stays a `SourceObligor`); shape unchanged, so `prisma`/manifest schemas need no change.
+  `ClaimRegistry` gained `SOURCE_REGISTRAR_ROLE` + `registerFromSource` (byte-identical `registerClaim`).
+- **Deploy/seed change:** the Ignition module deploys the 2 adapters + grants the role; **`seed`** is
+  now adapter-driven for freelance/stream (fund→approve→createPayout / createStream→assign→createClaim)
+  and registers each adapter as its own issuer + allowlists all three issuers on both vaults. Re-run
+  `deploy → seed → verify` as before; `verify` now derives each claim's issuer per-claim. **No new env.**
+- **New ABIs** exported (`mockFreelanceEscrow`, `mockStream`) — `@matura/chain` rebuild required (as always).
+- **New package `apps/e2e-stack`** — one-command cross-stack reconciliation e2e (`test:e2e:stack`).
+  **Needs a Docker daemon** (Testcontainers Postgres). Boots node + PG + worker + API, drives the API
+  optimize→execute→settle flow, and reconciles on-chain events ↔ DB projections ↔ token balances; runs
+  the worker with `INDEXER_CONFIRMATIONS=1` (local EDR has no `finalized` tag). Self-cleans (restores
+  the zero manifest + rebuilds `@matura/chain`). Not in CI yet (Docker dependency) — see Open items.
+
 ### 2026-09-27 — landing + product frontends (PR #5)
 
 - **Added to the deployable surface:** `apps/app` (wallet-connected product — SIWE, best-execution

@@ -35,6 +35,7 @@ pnpm --filter @matura/app test                       # vitest (unit: tx reducer,
 pnpm --filter @matura/e2e e2e:install                # one-time: download Playwright Chromium
 pnpm --filter @matura/e2e test:e2e                   # Playwright: landing always; product happy path needs E2E_STACK=1 + seeded stack
 pnpm --filter @matura/e2e check:bundle               # assert built landing bundle has no wallet/chain code or secrets
+pnpm --filter @matura/e2e-stack test:e2e:stack       # cross-stack reconciliation e2e (needs Docker): boots node+PG+worker+API, drives optimize→execute→settle, reconciles events↔DB↔balances
 ```
 
 Deploy/seed/verify (Hardhat Ignition + idempotent viem scripts; addresses → per-chain manifest,
