@@ -18,7 +18,9 @@ function makeService(): Mocks {
   const getClaim = jest.fn();
   const prisma = { claimProjection: { findUnique } } as unknown as PrismaService;
   const chain = { getClaim } as unknown as ChainService;
-  const cursor = { finalizedThrough: jest.fn().mockResolvedValue("100") } as unknown as CursorService;
+  const cursor = {
+    finalizedThrough: jest.fn().mockResolvedValue("100"),
+  } as unknown as CursorService;
   return { findUnique, getClaim, service: new ClaimsReadService(prisma, chain, cursor) };
 }
 
@@ -75,5 +77,17 @@ describe("ClaimsReadService", () => {
     findUnique.mockResolvedValue(null);
     getClaim.mockResolvedValue(null);
     await expect(service.getClaim(CLAIM_ID)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it("propagates a chain read-through transport error instead of masking it as a 404 (C6)", async () => {
+    // A revert (claim absent) is `getClaim === null` → 404. A transport/RPC failure must NOT be
+    // swallowed into a 404/null: the ChainService distinguishes them via BaseError.walk, so a
+    // rejected read-through propagates here (→ 5xx), never a misleading CLAIM_NOT_FOUND.
+    const { findUnique, getClaim, service } = makeService();
+    findUnique.mockResolvedValue(null);
+    const transportError = new Error("HTTP request failed: ECONNREFUSED");
+    getClaim.mockRejectedValue(transportError);
+    await expect(service.getClaim(CLAIM_ID)).rejects.toBe(transportError);
+    await expect(service.getClaim(CLAIM_ID)).rejects.not.toBeInstanceOf(NotFoundException);
   });
 });

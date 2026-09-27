@@ -81,6 +81,44 @@ describe("validateRouteLegs", () => {
     ).rejects.toThrow(/beneficiary/i);
   });
 
+  it("rejects an empty route (EMPTY_ROUTE) before any chain read", async () => {
+    await expect(validateRouteLegs(reads(), WALLET, [])).rejects.toThrow(/no legs/i);
+  });
+
+  it("rejects an inactive issuer (IssuerRegistry.isActive parity)", async () => {
+    // Proof-of-control: the off-chain mirror enforces IssuerRegistry.isActive, coded ISSUER_INACTIVE.
+    await expect(
+      validateRouteLegs(reads({ isIssuerActive: () => Promise.resolve(false) }), WALLET, [leg()]),
+    ).rejects.toThrow(/[Ii]ssuer inactive/);
+  });
+
+  it("rejects an inactive vault (vaultRegistry.isActive parity)", async () => {
+    // Proof-of-control: the off-chain mirror enforces vaultRegistry.isActive, coded VAULT_INACTIVE.
+    await expect(
+      validateRouteLegs(reads({ isVaultActive: () => Promise.resolve(false) }), WALLET, [leg()]),
+    ).rejects.toThrow(/not active/i);
+  });
+
+  it("rejects a claim in a non-financeable state (CLAIM_NOT_FINANCEABLE)", async () => {
+    // state 0 = ATTESTED (neither ELIGIBLE nor PARTIALLY_FUNDED).
+    await expect(
+      validateRouteLegs(reads({}, claim({ state: 0 })), WALLET, [leg()]),
+    ).rejects.toThrow(/financeable/i);
+  });
+
+  it("rejects when the mandate quote is not ok (MANDATE_REJECTED)", async () => {
+    await expect(
+      validateRouteLegs(
+        reads({
+          quoteAndCheck: () =>
+            Promise.resolve({ ok: false, advanceAmount: 0n, discountAmount: 0n }),
+        }),
+        WALLET,
+        [leg()],
+      ),
+    ).rejects.toThrow(/mandate/i);
+  });
+
   it("rejects a token mismatch between claim and vault", async () => {
     await expect(
       validateRouteLegs(reads({ vaultToken: () => Promise.resolve(hex("9".repeat(40))) }), WALLET, [

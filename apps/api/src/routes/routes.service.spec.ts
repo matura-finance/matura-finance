@@ -6,6 +6,7 @@ import type { ContractsService, PinnedReads, VaultMandate } from "../chain/contr
 import type { CursorService } from "../cursor/cursor.service";
 import type { RouteIntentService } from "./route-intent.service";
 import type { OnChainClaim } from "../chain/chain.service";
+import type { RouteIntent } from "../generated/prisma/client";
 
 const hex = (fill: string): Hex => `0x${fill}`;
 const WALLET = hex("a".repeat(40));
@@ -105,6 +106,45 @@ describe("RoutesService.optimize", () => {
   });
 });
 
+/** A persisted intent whose legs re-validate to advance 990 / face 1000 (cost 10) via `reads()`. */
+function intentRow(overrides: Partial<RouteIntent> = {}): RouteIntent {
+  return {
+    routeId: CLAIM,
+    user: WALLET,
+    status: "CONSUMED",
+    targetAdvance: "990",
+    maxTotalFace: null,
+    maxTotalCost: null,
+    totalAdvance: "990",
+    totalFaceAssigned: "1000",
+    totalCost: "10",
+    effectiveDiscountBps: 0,
+    legs: [
+      {
+        claimId: CLAIM,
+        vault: VAULT,
+        faceAmount: "1000",
+        advanceAmount: "990",
+        discountAmount: "10",
+      },
+    ],
+    rejected: [],
+    explanation: {
+      strategy: "bounded-exact",
+      steps: [],
+      candidatesConsidered: 0,
+      targetAdvance: "990",
+      achievedAdvance: "990",
+    },
+    quoteSnapshotHash: hex("0".repeat(64)),
+    blockNumber: 10n,
+    routeDeadlineSeconds: 300,
+    expiresAt: new Date(Date.now() + 60_000),
+    createdAt: new Date(),
+    ...overrides,
+  } as unknown as RouteIntent;
+}
+
 describe("RoutesService.prepareExecution", () => {
   it("404s when the intent does not exist", async () => {
     const { service } = makeService(reads(), {
@@ -112,5 +152,26 @@ describe("RoutesService.prepareExecution", () => {
       getForUser: () => Promise.resolve(null),
     });
     await expect(service.prepareExecution(WALLET, CLAIM)).rejects.toThrow(/No such route intent/);
+  });
+
+  it("enforces maxTotalCost at prepare against the fresh price and burns the intent (MAX_COST_EXCEEDED)", async () => {
+    const markFailed = jest.fn().mockResolvedValue(undefined);
+    // reads() re-quotes advance 990 on face 1000 → cost 10, which exceeds the user's cap of 5.
+    const { service } = makeService(reads(), {
+      consume: () => Promise.resolve(intentRow({ maxTotalCost: "5" })),
+      markFailed,
+    });
+    await expect(service.prepareExecution(WALLET, CLAIM)).rejects.toThrow(/maxTotalCost/);
+    expect(markFailed).toHaveBeenCalledWith(CLAIM);
+  });
+
+  it("rejects when liquidity/pricing moved below the target and burns the intent (TARGET_NO_LONGER_MET)", async () => {
+    const markFailed = jest.fn().mockResolvedValue(undefined);
+    const { service } = makeService(reads(), {
+      consume: () => Promise.resolve(intentRow({ targetAdvance: "5000" })),
+      markFailed,
+    });
+    await expect(service.prepareExecution(WALLET, CLAIM)).rejects.toThrow(/re-optimize/);
+    expect(markFailed).toHaveBeenCalledWith(CLAIM);
   });
 });
