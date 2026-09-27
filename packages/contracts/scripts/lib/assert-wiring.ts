@@ -14,6 +14,10 @@ export interface WiringAddresses {
   readonly stableVault: Address;
   readonly flexVault: Address;
   readonly sources: readonly Address[];
+  /// The source adapters that MUST hold SOURCE_REGISTRAR_ROLE (a named subset of `sources` — the
+  /// freelance escrow + stream; the payroll obligor holds no privileged role). Named explicitly
+  /// (not derived positionally from `sources`) so the positive role assertion is unambiguous.
+  readonly sourceRegistrars: readonly Address[];
 }
 
 /// Assert every required role grant + vault registration is in place, and that the hard
@@ -76,6 +80,25 @@ export async function assertWiring(viem: Viem, a: WiringAddresses): Promise<void
   await expect("stableVault not active", vaultRegistry.read.isActive([a.stableVault]), true);
   await expect("flexVault not registered", vaultRegistry.read.isRegistered([a.flexVault]), true);
   await expect("flexVault not active", vaultRegistry.read.isActive([a.flexVault]), true);
+
+  // Positive: each source adapter holds SOURCE_REGISTRAR_ROLE (so it can register from its state).
+  for (const registrar of a.sourceRegistrars) {
+    await expect(
+      `source adapter ${registrar} missing SOURCE_REGISTRAR_ROLE`,
+      claimRegistry.read.hasRole([ROLES.SOURCE_REGISTRAR_ROLE, registrar]),
+      true,
+    );
+  }
+  // Negative: the payroll obligor (a source that is NOT a registrar) must NOT hold the role.
+  const registrarSet = new Set(a.sourceRegistrars.map((r) => r.toLowerCase()));
+  for (const source of a.sources) {
+    if (registrarSet.has(source.toLowerCase())) continue;
+    await expect(
+      `non-adapter source ${source} unexpectedly holds SOURCE_REGISTRAR_ROLE`,
+      claimRegistry.read.hasRole([ROLES.SOURCE_REGISTRAR_ROLE, source]),
+      false,
+    );
+  }
 
   // Reserve/release separation (spot negatives; full enumeration is in verify.ts).
   if (a.router.toLowerCase() === a.settlementManager.toLowerCase()) {

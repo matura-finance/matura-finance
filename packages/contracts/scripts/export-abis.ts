@@ -19,6 +19,8 @@ const WANTED = new Set([
   "MaturaRouter",
   "SettlementManager",
   "SourceObligor",
+  "MockFreelanceEscrow",
+  "MockStream",
 ]);
 
 interface HardhatArtifact {
