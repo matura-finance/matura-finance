@@ -225,16 +225,24 @@ async function main(): Promise<void> {
     await advanceBlocks(1);
 
     // ── Settle payroll + stream, reconcile events ↔ DB projection ↔ balances ───
+    // Snapshot Alice (residual) AND both vaults (distribution) so the balance reconciliation is a
+    // fully independent witness of every leg, not just the beneficiary's.
+    const stableVault = getAddress(manifest.namedVaults.stableVault);
+    const flexVault = getAddress(manifest.namedVaults.flexVault);
     const aliceBefore = await balanceOf(getAddress(alice.address));
+    const vaultsBefore = (await balanceOf(stableVault)) + (await balanceOf(flexVault));
     await settle(deployerWallet, publicClient, payrollSource, payroll);
     await settle(deployerWallet, publicClient, streamSource, stream);
     await advanceBlocks(1);
     const aliceAfter = await balanceOf(getAddress(alice.address));
+    const vaultsAfter = (await balanceOf(stableVault)) + (await balanceOf(flexVault));
 
     let expectedResidualSum = 0n;
+    let expectedVaultSum = 0n;
     for (const claimId of [payroll, stream]) {
       const ev = await lastSettledEvent(publicClient, settlementManager, claimId);
       expectedResidualSum += ev.userResidual;
+      expectedVaultSum += ev.vaultDistribution;
       // Conservation on the emitted components.
       assert.equal(
         ev.amountReceived,
@@ -260,15 +268,31 @@ async function main(): Promise<void> {
       assert.equal(detail.settlement.vaultDistribution, ev.vaultDistribution.toString());
       assert.equal(detail.settlement.userResidual, ev.userResidual.toString());
       assert.equal(detail.settlement.protocolFee, ev.protocolFee.toString());
-      console.log(`reconciled ${claimId}: PAID, projection == event`);
+      // Independent chain cross-check: the on-chain claim state agrees with the DB projection.
+      const onChain = await publicClient.readContract({
+        address: claimRegistry,
+        abi: contractAbis.claimRegistry,
+        functionName: "getClaim",
+        args: [claimId],
+      });
+      assert.equal(onChain.state, 5, `${claimId} on-chain state != PAID(5)`); // CLAIM_STATES.PAID
+      console.log(`reconciled ${claimId}: PAID (chain + DB), projection == event`);
     }
-    // Balance delta: Alice received exactly the sum of residuals across both settlements.
+    // Balance deltas: Alice received Σ residuals and the vaults received Σ vaultDistribution —
+    // independent on-chain witnesses of both legs, cross-checked against the emitted components.
     assert.equal(
       aliceAfter - aliceBefore,
       expectedResidualSum,
       "Alice residual balance delta mismatch",
     );
-    console.log("balance reconciliation exact: Alice residual =", expectedResidualSum.toString());
+    assert.equal(
+      vaultsAfter - vaultsBefore,
+      expectedVaultSum,
+      "vault distribution balance delta mismatch",
+    );
+    console.log(
+      `balance reconciliation exact: Alice residual=${expectedResidualSum.toString()} vault dist=${expectedVaultSum.toString()}`,
+    );
 
     // ── Delayed path: freelance (already financed) matured, marked DELAYED — never PAID ──
     await writeAndWait(deployerWallet, publicClient, claimRegistry, "markMatured", freelance);
