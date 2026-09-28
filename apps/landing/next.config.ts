@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
 
 // The marketing site is static and wallet-free: it makes no API/chain calls, so connect-src
@@ -24,6 +26,11 @@ const securityHeaders = [
 ];
 
 const config: NextConfig = {
+  // Emit a self-contained server (`.next/standalone`) so the Docker runner ships only the
+  // traced files + a minimal node_modules — no pnpm install at runtime. `outputFileTracingRoot`
+  // pins tracing to the monorepo root so workspace deps (@matura/ui) are followed correctly.
+  output: "standalone",
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   transpilePackages: ["@matura/ui"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

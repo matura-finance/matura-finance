@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
 
 /** Resolve the origin of a URL env var, or null if unset/invalid. */
@@ -38,6 +40,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Emit a self-contained server (`.next/standalone`) so the Docker runner ships only the
+  // traced files + a minimal node_modules — no pnpm install at runtime. `outputFileTracingRoot`
+  // pins tracing to the monorepo root so workspace deps (@matura/*) are followed correctly.
+  output: "standalone",
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   // @matura/chain ships raw TypeScript (transpile REQUIRED); @matura/ui is a JIT
   // Tailwind package; @matura/shared is built but transpiling is harmless.
   transpilePackages: ["@matura/ui", "@matura/chain", "@matura/shared"],
