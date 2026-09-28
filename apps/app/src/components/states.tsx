@@ -72,7 +72,7 @@ export function NotDeployed() {
     <StatePanel
       tone="warning"
       title="Contracts deploying soon"
-      body="The Matura protocol is not yet deployed on this network. Live account data and execution will be available once contracts are published."
+      body="The Matura Protocol is not yet deployed on this network. Live account data and execution will be available once contracts are published."
     />
   );
 }
