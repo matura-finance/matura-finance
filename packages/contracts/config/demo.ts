@@ -140,7 +140,7 @@ export const ALICE_CLAIMS: readonly ClaimSource[] = [ALICE_PAYROLL, ALICE_FREELA
 
 /// Short maturity window (seconds) for the scripted proof claim: long enough to fund promptly after
 /// seeding, short enough to settle within the same testnet session once it elapses. Tunable.
-export const SCRIPTED_DUE_SECONDS = 900;
+export const SCRIPTED_DUE_SECONDS = 1200;
 
 /// The DEPLOYER-OWNED scripted claim driven by `demo-testnet-execute.ts` for the one real
 /// execute+settle proof. Its label is DISTINCT from every interactive (Alice / SEED_BENEFICIARY)
@@ -150,7 +150,7 @@ export const SCRIPTED_DUE_SECONDS = 900;
 /// maturity (see SCRIPTED_DUE_SECONDS) so fund-then-settle fits one session.
 export const SCRIPTED_DEPLOYER_PAYROLL: SignedClaim = {
   kind: "signed",
-  label: "matura-scripted-deployer-payroll",
+  label: "matura-scripted-deployer-payroll-2",
   claimType: CLAIM_TYPE.PAYROLL,
   faceValue: parseUnits("1000", 6),
   dueInDays: 0, // unused: dueInSeconds wins for this claim
