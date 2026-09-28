@@ -155,7 +155,7 @@ export const SCRIPTED_DEPLOYER_PAYROLL: SignedClaim = {
   faceValue: parseUnits("1000", 6),
   dueInDays: 0, // unused: dueInSeconds wins for this claim
   dueInSeconds: SCRIPTED_DUE_SECONDS,
-  attestationNonce: 1n, // ALICE_PAYROLL uses 0n; distinct nonce for the same issuer signer
+  attestationNonce: 2n, // payroll issuer signer already used 0n (ALICE_PAYROLL) and 1n (original scripted claim) — 2n is the next free nonce
 };
 
 /// Resolve the demo beneficiary for the INTERACTIVE claims (payroll attestation + escrow payout).
