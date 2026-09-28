@@ -211,7 +211,10 @@ export function expectedFace(claim: ClaimSource): bigint | undefined {
 }
 
 /// Request A calibration — a single PARTIAL payroll slice suffices (advance < face always holds).
+/// `key` is the scenario label (mirrored in the demo fixture) — carried here so the fixture and any
+/// consumer derive it from this source of truth rather than positionally.
 export const REQUEST_A = {
+  key: "A",
   targetAdvance: parseUnits("4800", 6),
   maxTotalFace: parseUnits("6000", 6),
   eligibleClaims: ["alice-payroll"],
@@ -223,6 +226,7 @@ export const REQUEST_A = {
 /// best-execution across competing pools. Uses freelance (not the recipient-gated stream claim, which
 /// the seed skips under a SEED_BENEFICIARY override) so scenario B always seeds ELIGIBLE on testnet.
 export const REQUEST_B = {
+  key: "B",
   targetAdvance: parseUnits("24000", 6),
   maxTotalFace: parseUnits("40000", 6),
   eligibleClaims: ["alice-payroll", "alice-freelance"],

@@ -108,8 +108,8 @@ const claims: FixtureClaim[] = ALICE_CLAIMS.map((claim) => {
   }
 });
 
-const requests = [REQUEST_A, REQUEST_B].map((req, index) => ({
-  key: index === 0 ? ("A" as const) : ("B" as const),
+const requests = [REQUEST_A, REQUEST_B].map((req) => ({
+  key: req.key,
   targetAdvanceUnits: assertUnits(req.targetAdvance.toString()),
   maxTotalFaceUnits: assertUnits(req.maxTotalFace.toString()),
   eligibleClaims: [...req.eligibleClaims],
