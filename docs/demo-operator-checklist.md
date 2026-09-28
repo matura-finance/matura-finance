@@ -19,11 +19,11 @@ start a demo with any **abort condition** open. This is testnet only — see
       `z.stringbool`, so `"false"` really is `false`; it fails closed, not open).
       Enable only if the demo drives the server-side issuer signer.
 - [ ] **`API_CORS_ORIGINS`** — set to the exact frontend origin **with** scheme
-      and **no trailing slash** (hosted: `https://app.matura.xyz`); **non-empty**,
+      and **no trailing slash** (hosted: `https://app.usematura.xyz`); **non-empty**,
       **no `"*"`** (a literal `*` is filtered out, and an empty allowlist blocks all
       cross-origin, which silently breaks the app).
 - [ ] **`SIWE_DOMAIN`** — set to the bare host **with no scheme** (hosted:
-      `app.matura.xyz`, not `https://app.matura.xyz`); it must match the app's
+      `app.usematura.xyz`, not `https://app.usematura.xyz`); it must match the app's
       origin or SIWE `verify` rejects every login.
 - [ ] **`JWT_SECRET`** — set (strong, not a placeholder); SIWE sessions fail
       closed without it.
@@ -82,15 +82,22 @@ start a demo with any **abort condition** open. This is testnet only — see
 
 - [ ] **API healthcheck = `/api/v1/health`** (liveness), **not** `/health/ready` —
       pointing the platform probe at `ready` restart-loops the container during a
-      cold reindex. Worker has **no HTTP probe** (process-only).
+      cold reindex.
+- [ ] **Worker: disable / override the baked `HEALTHCHECK`** — the worker runs the
+      **same image** as the API (which bakes a `GET /api/v1/health` probe) but serves
+      **no HTTP server**, so the inherited probe fails and the container
+      **restart-loops**. Set it to process-only / none.
 - [ ] **Migrate one-off job ran exactly once** for this release (gates API +
       worker); not run per-replica.
 - [ ] **Traefik owns TLS** — no in-app HTTPS redirect (Next or Nest), or you get a
-      redirect loop. Domains: apex `matura.xyz` → landing, `app.matura.xyz` → app,
+      redirect loop. Domains: apex `usematura.xyz` → landing, `app.usematura.xyz` → app,
       no wildcard.
 - [ ] **No secret baked as a build-arg** — build-args are recoverable from the
       image; only `NEXT_PUBLIC_*` are build-args, all secrets are runtime env on
       API/worker.
+- [ ] **Frontend (landing/app) services carry ZERO secret env vars** — public
+      `NEXT_PUBLIC_*` only. EasyPanel forwards service env as build-args, which are
+      recoverable from the image, so any secret placed on a frontend service leaks.
 - [ ] **Manifest committed before images were built** — images bake the real
       `97.json`, not the zero manifest.
 
