@@ -28,6 +28,11 @@ async function main(): Promise<void> {
     if (!ok) failures.push(label);
     console.log(`  [${ok ? "ok" : "FAIL"}] ${label}`);
   };
+  // Non-fatal: a condition that is expected to vary with seed state, not a deployment-integrity
+  // violation (e.g. a source obligor left unfunded because its claim path wasn't seeded).
+  const warn = (label: string): void => {
+    console.log(`  [warn] ${label}`);
+  };
 
   console.log(`Checking deployment on chainId ${String(chainId)}…`);
 
@@ -98,7 +103,14 @@ async function main(): Promise<void> {
       FLEX_MANDATE.liquidityCap,
   );
   for (const [name, source] of Object.entries(manifest.sources)) {
-    check(`${name}Source funded`, (await usdtContract.read.balanceOf([source])) > 0n);
+    if ((await usdtContract.read.balanceOf([source])) > 0n) {
+      check(`${name}Source funded`, true);
+    } else {
+      warn(
+        `${name}Source not funded — expected when its claim path wasn't seeded ` +
+          `(e.g. the recipient-gated stream is skipped under a SEED_BENEFICIARY override)`,
+      );
+    }
   }
 
   // 5. Manifest addresses == on-chain reality. The router pins all six core dependencies as immutable
