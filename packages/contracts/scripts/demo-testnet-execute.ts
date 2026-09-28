@@ -41,20 +41,26 @@ interface Receipts {
 
 function loadReceipts(claimId: Hex): Receipts {
   if (existsSync(RECEIPTS_PATH)) {
-    const parsed: unknown = JSON.parse(readFileSync(RECEIPTS_PATH, "utf8"));
-    if (typeof parsed === "object" && parsed !== null) {
-      const prior = parsed as Partial<Receipts>;
-      if (prior.claimId === claimId) {
-        return {
-          chainId: BSC_TESTNET_CHAIN_ID,
-          claimId,
-          label: SCRIPTED_DEPLOYER_PAYROLL.label,
-          executeTx: prior.executeTx,
-          settleTx: prior.settleTx,
-          finalState: prior.finalState,
-          recordedAt: new Date().toISOString(),
-        };
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(RECEIPTS_PATH, "utf8"));
+      if (typeof parsed === "object" && parsed !== null) {
+        const prior = parsed as Partial<Receipts>;
+        if (prior.claimId === claimId) {
+          return {
+            chainId: BSC_TESTNET_CHAIN_ID,
+            claimId,
+            label: SCRIPTED_DEPLOYER_PAYROLL.label,
+            executeTx: prior.executeTx,
+            settleTx: prior.settleTx,
+            finalState: prior.finalState,
+            recordedAt: new Date().toISOString(),
+          };
+        }
       }
+    } catch {
+      // A corrupt / half-written receipts file must not abort the run — degrade to a fresh Receipts
+      // so a truncated prior write never breaks resumability (worst case: execute re-submits once).
+      console.log(`  receipts: ${RECEIPTS_PATH} unreadable (corrupt JSON) — starting fresh.`);
     }
   }
   return {
@@ -159,7 +165,24 @@ async function main(): Promise<void> {
   // 1. EXECUTE (fund) — only from a financeable state; a resumed run past this point skips it.
   const financeable =
     claim.state === CLAIM_STATE.ELIGIBLE || claim.state === CLAIM_STATE.PARTIALLY_FUNDED;
-  if (financeable) {
+  // Re-run-while-in-flight guard: a public RPC can still report the claim ELIGIBLE right after a
+  // prior run's execute tx landed (read-after-write lag). If we already recorded an executeTx,
+  // resolve its receipt FIRST — a confirmed success means execute already happened, so signing +
+  // submitting a NEW route here would just burn gas on a route that reverts on the now-consumed
+  // route nonce AND overwrite the good hash with the reverting one. Only submit a fresh route when
+  // there is no prior tx or the prior one didn't succeed (its route nonce was never consumed).
+  const priorExecuteReceipt =
+    receipts.executeTx === undefined
+      ? undefined
+      : await publicClient
+          .waitForTransactionReceipt({ hash: receipts.executeTx })
+          .catch(() => undefined);
+  if (financeable && priorExecuteReceipt?.status === "success") {
+    console.log(
+      `  execute: recorded tx ${String(receipts.executeTx)} already confirmed on-chain — ` +
+        "skipping re-submit (stale ELIGIBLE read); proceeding to settle.",
+    );
+  } else if (financeable) {
     const now = (await publicClient.getBlock()).timestamp;
     const routeNonce = await router.read.nonces([user]);
     const stableVault: Address = getAddress(manifest.namedVaults.stableVault);
@@ -248,9 +271,7 @@ async function main(): Promise<void> {
   // lag), so poll for the terminal PAID state a few times before treating it as a failure.
   let settled = await getClaim();
   for (let i = 0; i < 5 && (settled === undefined || settled.state !== CLAIM_STATE.PAID); i += 1) {
-    await new Promise<void>((resolve) => {
-      setTimeout(resolve, 3000);
-    });
+    await sleep(3000);
     settled = await getClaim();
   }
   if (settled === undefined || settled.state !== CLAIM_STATE.PAID) {
