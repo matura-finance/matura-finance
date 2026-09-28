@@ -58,7 +58,6 @@ describe("demo fixture", () => {
     expect(b.eligibleClaims).toContain("alice-payroll");
     expect(b.eligibleClaims).toContain("alice-freelance");
     expect(b.eligibleClaims).not.toContain("alice-stream"); // retargeted off the gated stream claim
-    expect(b.eligibleClaims.length).toBeGreaterThanOrEqual(2);
 
     const claims = b.eligibleClaims.map(getClaim);
     const target = BigInt(b.targetAdvanceUnits);
