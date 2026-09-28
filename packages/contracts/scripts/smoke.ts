@@ -42,25 +42,17 @@ async function main(): Promise<void> {
   const flexVault = await viem.getContractAt("LiquidityVault", manifest.namedVaults.flexVault);
   const sources = { freelance: manifest.sources.freelance, stream: manifest.sources.stream };
 
-  // Best-execution vault per claim type: the cheapest (lowest base discount) vault whose mandate
-  // supports the type. Payroll → Stable (supported + cheaper); freelance (FREELANCE_ESCROW) → Flex
-  // (the only vault that supports it). Derived from the mandates so it can't drift from config.
+  // The vaults, for best-execution leg selection below. Which vault finances a given claim is NOT
+  // hardcoded: for each Request B claim (from REQUEST_B.eligibleClaims) we quote every vault whose
+  // mandate supports its type and keep the highest actual advance — the real best-execution leg, using
+  // the on-chain quote rather than a discount-rate heuristic — so this stays correct if the mandates
+  // or the request change.
   const vaultsByType = [
     { name: "stable" as const, contract: stableVault, mandate: STABLE_MANDATE },
     { name: "flex" as const, contract: flexVault, mandate: FLEX_MANDATE },
   ];
   const supports = (bitmap: number, claimType: number): boolean =>
     (bitmap & (1 << claimType)) !== 0;
-  const cheapestVaultFor = (claimType: number): (typeof vaultsByType)[number] | undefined => {
-    const eligible = vaultsByType.filter((v) =>
-      supports(v.mandate.supportedTypesBitmap, claimType),
-    );
-    return eligible.reduce<(typeof vaultsByType)[number] | undefined>(
-      (best, v) =>
-        best === undefined || v.mandate.baseDiscountBps < best.mandate.baseDiscountBps ? v : best,
-      undefined,
-    );
-  };
 
   const claimByLabel = new Map<string, ClaimSource>(ALICE_CLAIMS.map((c) => [c.label, c]));
 
@@ -83,8 +75,11 @@ async function main(): Promise<void> {
     }
     const claimId = resolveClaimId(claim, sources);
 
+    // Retry only while the claim reads as ABSENT — the public-RPC read-after-write lag case (a lagging
+    // node hasn't seen the seed block yet). A claim that EXISTS but isn't ELIGIBLE is a terminal
+    // precondition failure, so don't burn the retry budget on it.
     let onChain = await readClaim(claimId);
-    for (let attempt = 0; attempt < 3 && onChain?.state !== CLAIM_STATE.ELIGIBLE; attempt++) {
+    for (let attempt = 0; attempt < 3 && onChain === undefined; attempt++) {
       await sleep(2000);
       onChain = await readClaim(claimId);
     }
@@ -92,26 +87,37 @@ async function main(): Promise<void> {
       check(`claim ${label} exists on-chain`, false);
       continue;
     }
-    check(`claim ${label} is ELIGIBLE`, onChain.state === CLAIM_STATE.ELIGIBLE);
+    const claimState = onChain;
+    check(`claim ${label} is ELIGIBLE`, claimState.state === CLAIM_STATE.ELIGIBLE);
 
-    const vault = cheapestVaultFor(claim.claimType);
-    if (vault === undefined) {
-      check(`claim ${label} has an eligible vault`, false);
+    // Best-execution leg: quote every vault whose mandate supports this claim type and keep the highest
+    // actual advance, then verify that vault can fund it.
+    const eligibleVaults = vaultsByType.filter((v) =>
+      supports(v.mandate.supportedTypesBitmap, claim.claimType),
+    );
+    let bestLeg: { name: string; contract: typeof stableVault; advance: bigint } | undefined;
+    for (const v of eligibleVaults) {
+      const [ok, advance] = await v.contract.read.quoteAndCheck([
+        getAddress(claimState.issuer),
+        claim.claimType,
+        claimState.faceValue,
+        claimState.dueDate,
+      ]);
+      if (ok && (bestLeg === undefined || advance > bestLeg.advance)) {
+        bestLeg = { name: v.name, contract: v.contract, advance };
+      }
+    }
+    if (bestLeg === undefined) {
+      check(`claim ${label} financeable on an allowed vault`, false);
       continue;
     }
-    const [ok, advance] = await vault.contract.read.quoteAndCheck([
-      getAddress(onChain.issuer),
-      claim.claimType,
-      onChain.faceValue,
-      onChain.dueDate,
-    ]);
-    check(`claim ${label} financeable on ${vault.name} vault`, ok);
+    check(`claim ${label} financeable on ${bestLeg.name} vault (best execution)`, true);
 
-    const fundable = await vault.contract.read.fundableLiquidity();
+    const fundable = await bestLeg.contract.read.fundableLiquidity();
     check(
-      `${vault.name} vault fundable liquidity >= ${label} leg advance ` +
-        `(${fundable.toString()} >= ${advance.toString()})`,
-      fundable >= advance,
+      `${bestLeg.name} vault fundable liquidity >= ${label} leg advance ` +
+        `(${fundable.toString()} >= ${bestLeg.advance.toString()})`,
+      fundable >= bestLeg.advance,
     );
   }
 
