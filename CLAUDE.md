@@ -40,9 +40,12 @@ pnpm --filter @matura/e2e-stack test:e2e:stack       # cross-stack reconciliatio
 
 Deploy/seed/verify (Hardhat Ignition + idempotent viem scripts; addresses → per-chain manifest,
 never hand-edited). Local: `hardhat node` in one terminal, then `pnpm --filter @matura/contracts
-demo:local` (deploy→seed→verify) in another; `demo:settle` (local-only e2e), `demo:reset`. Testnet:
-`deploy:bsc-testnet` then `seed:bsc-testnet` (uses the seed-only `bscTestnetSeed` network so the
-issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/README.md`.
+demo:local` (deploy→seed→verify) in another; `demo:settle` (local-only e2e), `demo:reset` (bare wipe),
+`demo:reset:full` (wipe→deploy→seed = clean seeded rehearsal state). `smoke:bsc-testnet`/`smoke:local`
+is a read-only **pre-demo readiness gate** (Request B claims ELIGIBLE, per-leg vault liquidity, operator
+gas). Testnet: `deploy:bsc-testnet` then `seed:bsc-testnet` (uses the seed-only `bscTestnetSeed` network
+so the issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/README.md`.
+Judge/demo assets: `README.md`, `docs/demo-script.md` (≤3-min live script), `docs/test-report.md`.
 
 **`apps/api`** — orchestration + read-model service. A separate-process **indexer worker**
 (`worker.ts`; `finalized`-tag polling, block-hash-mismatch → full-wipe+reindex, idempotent upserts
@@ -59,14 +62,14 @@ issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/
   `_validateLegs` mirror (`common/leg-mirror.ts`) before emitting the signable `ExecutionRoute`.
   Design + gotchas: `docs/routing.md`.
 
-**`apps/app`** (Next 15, `app.matura.xyz`) — the wallet-connected product. wagmi + viem (BSC
+**`apps/app`** (Next 15, `app.usematura.xyz`) — the wallet-connected product. wagmi + viem (BSC
 Testnet only, EIP-6963 discovery) + TanStack Query; a thin typed API client (`src/lib/api`,
 Zod-validated, reuses `@matura/shared` `OptimizeResult`); **SIWE** session (header-bearer JWT,
 in-memory + `sessionStorage`, subject-bound, cleared on 401/switch); a `bridge.ts` brand→viem
 boundary; a per-tx reducer + `useTxFlow`. Routes: `/account`, `/request` (the best-execution
 optimize→review→sign→submit→index flow), `/activity`, `/vaults`, `/issuer` (demo simulator). The
 signing money boundary is `BigInt(str)` (never `toBaseUnits`), one coerced message feeds
-sign+hash+`executeRoute`, and targets are pinned to the manifest. **`apps/landing`** (`matura.xyz`)
+sign+hash+`executeRoute`, and targets are pinned to the manifest. **`apps/landing`** (`usematura.xyz`)
 — static, wallet-free marketing site (approved copy, SEO/OG/sitemap/robots/JSON-LD; a CI grep keeps
 the bundle wallet/secret-free). **`apps/e2e`** — Playwright: an always-on landing suite + a
 gated (`E2E_STACK=1`) product happy-path using a Node-side viem signer injected as an EIP-6963
@@ -76,8 +79,12 @@ unstable-hook refetch loop, SIWE rehydrate race, EIP-712 boundary, e2e wallet in
 build: `docs/plans/2026-09-26-feat-matura-frontends-landing-and-product-plan.md`.
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
-ABI-freshness gate → manifest-freshness gate. Gotchas: toolchain (Node, tsc `unknown`, ABI/prettier
-gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`; deploy/seed pipeline
+ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate. Gotchas: toolchain (Node,
+tsc `unknown`, ABI/prettier gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`;
+**demo-fixture codegen** (contracts→shared generator; `as const satisfies` needs `.readonly()` Zod
+arrays; `.js` specifiers since contracts lacks `allowImportingTsExtensions`; generator can't import
+`@matura/shared`; emit typed `.ts` not JSON; ephemeral local `31337.json`)
+`docs/solutions/build-errors/demo-fixture-codegen-contracts-to-shared.md`; deploy/seed pipeline
 (event-scan block, `.js`→`.ts` script imports, `noUncheckedIndexedAccess`+viem)
 `docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`; **apps/api toolchain**
 (CJS↔ESM chain consumption, `prisma-client` types, strict viem, `z.stringbool`, DB-less migrations)

@@ -83,5 +83,5 @@ greedy fallback) · **unaudited contracts** · **BSC-Testnet only**. **Not produ
   `icon.png` asset exists in `apps/landing/public` (the brand is a flat text wordmark, per the decision
   to add no logo asset). The structured-data logo reference is therefore unresolved. Left as-is to
   respect "add no asset"; a future pass can either add an icon or drop the JSON-LD `logo` field.
-- `CLAUDE.md` still refers to `matura.xyz` / `app.matura.xyz`; the live code and this pass use
-  `usematura.xyz` / `app.usematura.xyz`. Flagged for a follow-up docs edit.
+- ~~`CLAUDE.md` still refers to `matura.xyz` / `app.matura.xyz`~~ — **resolved**: CLAUDE.md now uses
+  `usematura.xyz` / `app.usematura.xyz`, matching the live code.
