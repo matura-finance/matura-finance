@@ -16,10 +16,21 @@ const EnvSchema = z.object({
 
 export type PublicEnv = z.infer<typeof EnvSchema>;
 
+/**
+ * A Docker build-arg that's declared-but-unset bakes an EMPTY string into the `NEXT_PUBLIC_*`
+ * literal — and `??` only falls back on `undefined`, never on `""`, while `z.url()` rejects `""`.
+ * Left unguarded, an omitted URL var makes `EnvSchema.parse` throw a ZodError and the app 500s on
+ * every render. Treat empty-after-trim as absent so the `??` fallbacks fire and optionals stay
+ * undefined. (`||` is banned here by `@typescript-eslint/prefer-nullish-coalescing`.)
+ */
+function orUndefined(value: string | undefined): string | undefined {
+  return value !== undefined && value.trim() !== "" ? value : undefined;
+}
+
 export const env: PublicEnv = EnvSchema.parse({
-  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api/v1",
-  chainId: process.env.NEXT_PUBLIC_CHAIN_ID ?? "97",
-  appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002",
-  landingUrl: process.env.NEXT_PUBLIC_LANDING_URL ?? "http://localhost:3001",
-  rpcUrl: process.env.NEXT_PUBLIC_RPC_URL,
+  apiUrl: orUndefined(process.env.NEXT_PUBLIC_API_URL) ?? "http://localhost:3000/api/v1",
+  chainId: orUndefined(process.env.NEXT_PUBLIC_CHAIN_ID) ?? "97",
+  appUrl: orUndefined(process.env.NEXT_PUBLIC_APP_URL) ?? "http://localhost:3002",
+  landingUrl: orUndefined(process.env.NEXT_PUBLIC_LANDING_URL) ?? "http://localhost:3001",
+  rpcUrl: orUndefined(process.env.NEXT_PUBLIC_RPC_URL),
 });
