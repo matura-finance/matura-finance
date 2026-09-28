@@ -1,7 +1,8 @@
 import { network } from "hardhat";
 import { formatEther, getAddress } from "viem";
 import { assertChainId } from "./lib/network-guard.js";
-import { meetsMinBalance, MIN_DEPLOYER_BALANCE_WEI } from "./lib/preflight.js";
+import { MIN_DEPLOYER_BALANCE_WEI } from "./lib/preflight.js";
+import { createChecklist } from "./lib/checklist.js";
 import { readManifest, isManifestDeployed } from "./lib/read-manifest.js";
 import { BSC_TESTNET_CHAIN_ID } from "./lib/constants.js";
 import { USDT_DECIMALS } from "../config/constants.js";
@@ -23,11 +24,7 @@ async function main(): Promise<void> {
   // hard-refuses 56 and anything not in the allowed set). We keep 97 as the sole allowed chain.
   const chainId = await assertChainId(publicClient, [BSC_TESTNET_CHAIN_ID]);
 
-  const failures: string[] = [];
-  const check = (label: string, ok: boolean): void => {
-    if (!ok) failures.push(label);
-    console.log(`  [${ok ? "ok" : "FAIL"}] ${label}`);
-  };
+  const { check, failures } = createChecklist();
 
   console.log(`Pre-flight for chainId ${String(chainId)} (BSC Testnet)…\n`);
   console.log("Config variables (presence only — values are NEVER printed):");
@@ -58,7 +55,7 @@ async function main(): Promise<void> {
 
   // Deployer gas balance vs the operational minimum.
   const balanceWei = await publicClient.getBalance({ address: deployerAddr });
-  const enough = meetsMinBalance(balanceWei, MIN_DEPLOYER_BALANCE_WEI);
+  const enough = balanceWei >= MIN_DEPLOYER_BALANCE_WEI;
   console.log(
     `\nDeployer balance: ${formatEther(balanceWei)} tBNB ` +
       `(minimum ${formatEther(MIN_DEPLOYER_BALANCE_WEI)} tBNB)`,
@@ -71,7 +68,8 @@ async function main(): Promise<void> {
   // MockUSDT assumptions the protocol + pricing depend on. MockUSDT is a standard OpenZeppelin ERC20
   // with a fixed 6-dp `decimals()`, no transfer fee, and no rebasing/elastic supply — so faceValue
   // base units, vault mandates, and settlement surcharge math are all exact. If a full deployment is
-  // already recorded we READ `decimals()` back on-chain; pre-deploy we assert the in-package constant.
+  // already recorded we READ `decimals()` back on-chain (the only meaningful runtime check); pre-deploy
+  // there is nothing on-chain to read yet, so this pre-flight leaves the assumption to the post-deploy run.
   const manifest = readManifest(chainId);
   if (manifest !== undefined && isManifestDeployed(manifest)) {
     const usdt = await viem.getContractAt("MockUSDT", manifest.addresses.mockUsdt);
@@ -79,11 +77,6 @@ async function main(): Promise<void> {
     check(
       `MockUSDT.decimals() == ${String(USDT_DECIMALS)} on-chain (non-fee, non-rebasing ERC20)`,
       onChainDecimals === USDT_DECIMALS,
-    );
-  } else {
-    check(
-      `MockUSDT assumption: ${String(USDT_DECIMALS)}-dp, non-fee, non-rebasing (asserted post-deploy)`,
-      USDT_DECIMALS === 6,
     );
   }
 

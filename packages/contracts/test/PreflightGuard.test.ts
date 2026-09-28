@@ -2,16 +2,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import type { PublicClient } from "viem";
 import { assertChainId } from "../scripts/lib/network-guard.js";
-import { meetsMinBalance, MIN_DEPLOYER_BALANCE_WEI } from "../scripts/lib/preflight.js";
 import {
   ALLOWED_CHAIN_IDS,
   BSC_TESTNET_CHAIN_ID,
   LOCAL_CHAIN_ID,
 } from "../scripts/lib/constants.js";
 
-/// Pure unit coverage for the pre-flight guards — no chain, no node. The chain guard is the single
-/// invariant every raw-key sender relies on ("chain 97 only; hard-refuse 56/unknown"); the balance
-/// helper is the tBNB threshold pre-flight reports against.
+/// Pure unit coverage for the pre-flight chain guard — no chain, no node. This is the single
+/// invariant every raw-key sender relies on ("chain 97 only; hard-refuse 56/unknown").
 
 /// Minimal PublicClient double: `assertChainId` only ever calls `getChainId()`.
 function clientReporting(chainId: number): PublicClient {
@@ -41,19 +39,5 @@ describe("assertChainId (network guard)", () => {
       () => assertChainId(clientReporting(1), [BSC_TESTNET_CHAIN_ID]),
       /not in the allowed set/,
     );
-  });
-});
-
-describe("meetsMinBalance (tBNB threshold)", () => {
-  it("passes exactly at the boundary (balance === min)", () => {
-    assert.equal(meetsMinBalance(MIN_DEPLOYER_BALANCE_WEI, MIN_DEPLOYER_BALANCE_WEI), true);
-  });
-
-  it("fails one wei below the boundary", () => {
-    assert.equal(meetsMinBalance(MIN_DEPLOYER_BALANCE_WEI - 1n, MIN_DEPLOYER_BALANCE_WEI), false);
-  });
-
-  it("passes above the boundary", () => {
-    assert.equal(meetsMinBalance(MIN_DEPLOYER_BALANCE_WEI + 1n, MIN_DEPLOYER_BALANCE_WEI), true);
   });
 });

@@ -3,7 +3,9 @@ import { getAddress, type Address, type Hex } from "viem";
 import { assertChainId } from "./lib/network-guard.js";
 import { assertWiring } from "./lib/assert-wiring.js";
 import { ROLES, CLAIM_STATE, CLAIM_TYPE } from "../config/constants.js";
-import { STABLE_MANDATE, FLEX_MANDATE, type VaultMandate } from "../config/vault-mandates.js";
+import { STABLE_MANDATE, FLEX_MANDATE } from "../config/vault-mandates.js";
+import { compareMandate } from "./lib/assert-mandate.js";
+import { createChecklist } from "./lib/checklist.js";
 import {
   ALICE_CLAIMS,
   REQUEST_A,
@@ -53,11 +55,7 @@ async function main(): Promise<void> {
   );
   const vaultRegistry = await viem.getContractAt("VaultRegistry", manifest.addresses.vaultRegistry);
 
-  const failures: string[] = [];
-  const check = (label: string, ok: boolean): void => {
-    if (!ok) failures.push(label);
-    console.log(`  [${ok ? "ok" : "FAIL"}] ${label}`);
-  };
+  const { check, failures } = createChecklist();
 
   // 1. Wiring + reserve/release separation (spot checks; enumeration below).
   try {
@@ -159,25 +157,16 @@ async function main(): Promise<void> {
     }
   }
 
-  // 3. Mandates match the typed config exactly. Derive the on-chain shape from viem's inferred
-  // getMandate() return (no hand-written shadow interface that could silently drift — P2-6).
-  type MandateView = Awaited<ReturnType<typeof stableVault.read.getMandate>>;
-  const compareMandate = (name: string, onChain: MandateView, want: VaultMandate): void => {
-    check(
-      `${name} mandate matches config`,
-      onChain.supportedTypesBitmap === want.supportedTypesBitmap &&
-        onChain.baseDiscountBps === want.baseDiscountBps &&
-        onChain.durationBpsPerDay === want.durationBpsPerDay &&
-        onChain.maxDurationDays === want.maxDurationDays &&
-        onChain.minFace === want.minFace &&
-        onChain.maxFace === want.maxFace &&
-        onChain.liquidityCap === want.liquidityCap &&
-        onChain.claimTypePremiumBps.length === want.claimTypePremiumBps.length &&
-        want.claimTypePremiumBps.every((v, i) => onChain.claimTypePremiumBps[i] === v),
-    );
-  };
-  compareMandate("stableVault", await stableVault.read.getMandate(), STABLE_MANDATE);
-  compareMandate("flexVault", await flexVault.read.getMandate(), FLEX_MANDATE);
+  // 3. Mandates match the typed config exactly (deployed config == tested config). The field-by-field
+  //    comparison lives in `lib/assert-mandate.ts`, shared with `check-deployment.ts`.
+  check(
+    "stableVault mandate matches config",
+    compareMandate(await stableVault.read.getMandate(), STABLE_MANDATE),
+  );
+  check(
+    "flexVault mandate matches config",
+    compareMandate(await flexVault.read.getMandate(), FLEX_MANDATE),
+  );
 
   // 4. Balances funded.
   check(
