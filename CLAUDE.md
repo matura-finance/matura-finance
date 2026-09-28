@@ -91,7 +91,12 @@ projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e
 **security hardening** (adversarial-tests-as-regression, proof-of-pinning vs full harness,
 pause-can't-strand-settlement, the false-green guard test — a guard test must fail if the guard is
 removed, share prod bootstrap/orchestration with tests instead of copying, scan bundles for secret
-_values_ not env names) `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`.
+_values_ not env names) `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`;
+**BSC-testnet live deploy + EasyPanel** (public-RPC drops a confirmation → unrecoverable Ignition
+journal → wipe+redeploy; committed real manifest vs zero-manifest guard tests; BSCScan V1→V2 verify;
+scripted proof-claim time/nonce/label; post-settle read-lag → poll; Prisma engine not copied into
+`dist` → nest-cli assets + `node dist` smoke; local `test` ≠ CI `verify` incl. Playwright; SIWE/CORS
+exact-match on baked domains) `docs/solutions/deployment-issues/bsc-testnet-live-deploy-easypanel.md`.
 
 ## Conventions
 
