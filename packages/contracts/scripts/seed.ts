@@ -12,9 +12,11 @@ import {
   ISSUER_METADATA_HASH,
   REQUEST_A,
   REQUEST_B,
+  SCRIPTED_DEPLOYER_PAYROLL,
   STREAM_METADATA_HASH,
   claimIdFor,
   externalIdFor,
+  resolveBeneficiary,
   resolveClaimId,
   type ClaimSource,
 } from "../config/demo.js";
@@ -61,9 +63,19 @@ async function main(): Promise<void> {
   }
   const deployerAccount = deployer.account;
   const issuerEntity = getAddress(issuerSigner.account.address);
-  // Alice: a deterministic local account when present (index 2), else the deployer on testnet.
-  const aliceWallet = wallets[ACTORS.alice] ?? deployer;
-  const aliceAddr = getAddress(aliceWallet.account.address);
+  type SeedWallet = (typeof wallets)[number];
+
+  // Interactive-claim beneficiary. `SEED_BENEFICIARY` (an arbitrary, operator-funded wallet they'll
+  // connect for the demo) overrides the default; else Alice (local index 2) / the deployer (testnet)
+  // via `resolveBeneficiary`. We can only drive the RECIPIENT-GATED stream (`MockStream.createClaim`
+  // is callable only by the recipient — see the stream branch below) when we HOLD the beneficiary's
+  // key, i.e. only for the fallback wallet, never for an arbitrary override → `beneficiaryWallet` is
+  // undefined in the override case and the stream claim is skipped.
+  const fallbackWallet = wallets[ACTORS.alice] ?? deployer;
+  const fallbackAddr = getAddress(fallbackWallet.account.address);
+  const beneficiary = resolveBeneficiary(process.env.SEED_BENEFICIARY, fallbackAddr);
+  const beneficiaryWallet: SeedWallet | undefined =
+    beneficiary === fallbackAddr ? fallbackWallet : undefined;
 
   const usdt = await viem.getContractAt("MockUSDT", manifest.addresses.mockUsdt);
   const issuerRegistry = await viem.getContractAt(
@@ -158,8 +170,21 @@ async function main(): Promise<void> {
   const signerEpoch = await issuerRegistry.read.currentEpoch([issuerEntity]);
   const sources = { freelance: manifest.sources.freelance, stream: manifest.sources.stream };
 
-  /// Ensure a claim reaches ELIGIBLE. Returns early if it already exists (idempotent).
-  const ensureEligible = async (claim: ClaimSource): Promise<void> => {
+  /// Ensure a claim reaches ELIGIBLE for `beneficiary`. Returns early if it already exists
+  /// (idempotent). A recipient-gated stream claim with no controllable beneficiary wallet is
+  /// skipped (can't be created for an arbitrary SEED_BENEFICIARY — documented at the stream branch).
+  const ensureEligible = async (
+    claim: ClaimSource,
+    beneficiary: Address,
+    beneficiaryWallet: SeedWallet | undefined,
+  ): Promise<void> => {
+    if (claim.kind === "stream" && beneficiaryWallet === undefined) {
+      console.log(
+        `  claim ${claim.label.padEnd(22)} skipped — stream is recipient-gated and ` +
+          "SEED_BENEFICIARY is not a wallet we hold a key for",
+      );
+      return;
+    }
     const claimId = resolveClaimId(claim, sources);
     const existing = await claimRegistry.read.getClaim([claimId]).catch((error: unknown) => {
       if (isRevertNamed(error, "ClaimNotFound")) return undefined;
@@ -180,28 +205,39 @@ async function main(): Promise<void> {
         `Claim ${claim.label} in unexpected state ${String(existing.state)} — refusing.`,
       );
     }
-    await registerClaim(claim, now);
+    await registerClaim(claim, now, beneficiary, beneficiaryWallet);
     await exec(`markEligible ${claim.label}`, () =>
       claimRegistry.write.markEligible([claimId], { account: deployerAccount }),
     );
   };
 
-  /// Register a claim from its source (ATTESTED). Dispatches on the source kind.
-  const registerClaim = async (claim: ClaimSource, nowTs: bigint): Promise<void> => {
+  /// Register a claim from its source (ATTESTED) for `beneficiary`. Dispatches on the source kind.
+  const registerClaim = async (
+    claim: ClaimSource,
+    nowTs: bigint,
+    beneficiary: Address,
+    beneficiaryWallet: SeedWallet | undefined,
+  ): Promise<void> => {
     switch (claim.kind) {
       case "signed": {
+        // `dueInSeconds` (short, second-granularity) wins when present — the scripted proof claim
+        // uses it so fund-then-settle fits one session; every other signed claim uses `dueInDays`.
+        const dueOffset =
+          claim.dueInSeconds !== undefined
+            ? BigInt(claim.dueInSeconds)
+            : BigInt(claim.dueInDays) * DAY_SECONDS;
         const attestation = {
           claimId: claimIdFor(claim.label),
           issuer: issuerEntity,
-          beneficiary: aliceAddr,
+          beneficiary,
           token: getAddress(manifest.addresses.mockUsdt),
           faceValue: claim.faceValue,
-          dueDate: nowTs + BigInt(claim.dueInDays) * DAY_SECONDS,
+          dueDate: nowTs + dueOffset,
           claimType: claim.claimType,
           externalIdHash: externalIdFor(claim.label),
           evidenceHash: keccak256(toHex(`ev:${claim.label}`)),
           signerEpoch,
-          nonce: 0n, // payroll is the only signed claim → a fixed, non-colliding nonce
+          nonce: claim.attestationNonce ?? 0n, // distinct per signed claim (same issuer signer)
           deadline: nowTs + 3_600n,
         };
         const signature = await issuerSigner.signTypedData({
@@ -228,7 +264,7 @@ async function main(): Promise<void> {
             usdt.write.approve([escrowIssuer, claim.amount], { account: deployerAccount }),
           );
           await exec(`fundEngagement ${claim.label}`, () =>
-            escrow.write.fundEngagement([aliceAddr, claim.amount, releaseDate], {
+            escrow.write.fundEngagement([beneficiary, claim.amount, releaseDate], {
               account: deployerAccount,
             }),
           );
@@ -246,9 +282,17 @@ async function main(): Promise<void> {
         return;
       }
       case "stream": {
-        // Funder (deployer) deposits the stream to Alice; Alice assigns it to the protocol; the
-        // stream freezes the claimable-at-registration as the claim face (issuer == the stream).
-        // State-aware resume (mirrors the escrow branch): a fresh stream has funder == 0.
+        // Funder (deployer) deposits the stream to the beneficiary; the beneficiary assigns it to
+        // the protocol; the stream freezes the claimable-at-registration as the claim face (issuer
+        // == the stream). State-aware resume (mirrors the escrow branch): a fresh stream has funder
+        // == 0. `ensureEligible` already skipped this branch when no beneficiary wallet is held; the
+        // guard here re-narrows the type (createStream's recipient + the recipient-gated assign /
+        // createClaim all need a key we control).
+        if (beneficiaryWallet === undefined) {
+          throw new Error(
+            `Stream claim ${claim.label} requires a controllable beneficiary wallet.`,
+          );
+        }
         const start = nowTs - BigInt(claim.startOffsetDays) * DAY_SECONDS;
         const stop = start + BigInt(claim.durationDays) * DAY_SECONDS;
         if (
@@ -260,20 +304,21 @@ async function main(): Promise<void> {
             usdt.write.approve([streamIssuer, claim.deposit], { account: deployerAccount }),
           );
           await exec(`createStream ${claim.label}`, () =>
-            stream.write.createStream([aliceAddr, claim.deposit, start, stop], {
+            stream.write.createStream([beneficiary, claim.deposit, start, stop], {
               account: deployerAccount,
             }),
           );
         }
         if (!(await stream.read.getStream([claim.streamId])).assigned) {
           await exec(`assignToProtocol ${claim.label}`, () =>
-            stream.write.assignToProtocol([claim.streamId], { account: aliceWallet.account }),
+            stream.write.assignToProtocol([claim.streamId], { account: beneficiaryWallet.account }),
           );
         }
-        // createClaim is recipient-gated (prevents front-running the frozen face) → call as Alice.
+        // createClaim is recipient-gated (prevents front-running the frozen face) → call as the
+        // beneficiary (only reachable when we hold their key).
         if ((await stream.read.getStream([claim.streamId])).claimId === zeroHash) {
           await exec(`createClaim ${claim.label}`, () =>
-            stream.write.createClaim([claim.streamId], { account: aliceWallet.account }),
+            stream.write.createClaim([claim.streamId], { account: beneficiaryWallet.account }),
           );
         }
         return;
@@ -282,8 +327,14 @@ async function main(): Promise<void> {
   };
 
   for (const claim of ALICE_CLAIMS) {
-    await ensureEligible(claim);
+    await ensureEligible(claim, beneficiary, beneficiaryWallet);
   }
+
+  // Deployer-owned scripted proof claim — ALWAYS the deployer (independent of SEED_BENEFICIARY), a
+  // distinct label so its id never collides with the interactive payroll claim. This is the claim
+  // `demo-testnet-execute.ts` drives through the one real execute+settle.
+  const deployerAddr = getAddress(deployerAccount.address);
+  await ensureEligible(SCRIPTED_DEPLOYER_PAYROLL, deployerAddr, deployer);
 
   // 5. Report the exported A/B calibration.
   console.log("\nSeed complete. Calibration requests (for the optimizer, not executed):");
@@ -298,7 +349,13 @@ async function main(): Promise<void> {
   }
   console.log(`  payrollIssuer=${issuerEntity}`);
   console.log(`  escrowIssuer=${escrowIssuer}  streamIssuer=${streamIssuer}`);
-  console.log(`  beneficiary(alice)=${aliceAddr}`);
+  console.log(
+    `  interactiveBeneficiary=${beneficiary}` +
+      (beneficiaryWallet === undefined
+        ? " (SEED_BENEFICIARY override — stream claim skipped)"
+        : " (fallback wallet — all three claims seeded)"),
+  );
+  console.log(`  scriptedClaimBeneficiary(deployer)=${deployerAddr}`);
 }
 
 main().catch((error: unknown) => {
