@@ -233,9 +233,8 @@ async function main(): Promise<void> {
   //    allowlist we probe every issuer with a canonical PAYROLL/minFace combo both vaults support
   //    (claim-type-specific financeability is covered by the A/B calibration below).
   const payroll = infos.get("alice-payroll");
-  const stream = infos.get("alice-stream");
-  if (payroll === undefined || stream === undefined) {
-    check("calibration: payroll + stream claims present", false);
+  if (payroll === undefined) {
+    check("calibration: payroll claim present", false);
   } else {
     for (const info of infos.values()) {
       for (const [vname, vault, minFace] of [
@@ -282,27 +281,45 @@ async function main(): Promise<void> {
       maxSingle < REQUEST_B.targetAdvance,
     );
 
-    // Request B: the payroll + stream pair on Stable is eligible (each under its own issuer), fits
-    // maxTotalFace, and together reaches targetAdvance.
-    const [payrollOk, advPayroll] = await stableVault.read.quoteAndCheck([
-      payroll.issuer,
-      CLAIM_TYPE.PAYROLL,
-      payroll.face,
-      payroll.dueDate,
-    ]);
-    const [streamOk, advStream] = await stableVault.read.quoteAndCheck([
-      stream.issuer,
-      CLAIM_TYPE.STREAM,
-      stream.face,
-      stream.dueDate,
-    ]);
-    check(
-      "request B: payroll + stream pair on Stable reaches targetAdvance within maxTotalFace",
-      payrollOk &&
-        streamOk &&
-        payroll.face + stream.face <= REQUEST_B.maxTotalFace &&
-        advPayroll + advStream >= REQUEST_B.targetAdvance,
-    );
+    // Request B: the eligible claim set (derived from REQUEST_B.eligibleClaims — payroll + freelance)
+    // each financed on its cheapest ALLOWED vault (payroll → Stable is cheapest; freelance is
+    // FREELANCE_ESCROW, so Flex-only), fits maxTotalFace, and together reaches targetAdvance. The route
+    // spans two vaults — the best-execution story. Derived from config so it can't drift from the request.
+    const bClaims = REQUEST_B.eligibleClaims
+      .map((label) => infos.get(label))
+      .filter((info): info is ClaimInfo => info !== undefined);
+    if (bClaims.length !== REQUEST_B.eligibleClaims.length) {
+      check("request B: all eligible claims present", false);
+    } else {
+      let totalFace = 0n;
+      let totalAdvance = 0n;
+      let allFinanceable = true;
+      for (const info of bClaims) {
+        let bestAdvance = 0n;
+        let financeable = false;
+        for (const vault of [stableVault, flexVault]) {
+          const [ok, adv] = await vault.read.quoteAndCheck([
+            info.issuer,
+            info.claim.claimType,
+            info.face,
+            info.dueDate,
+          ]);
+          if (ok && adv > bestAdvance) {
+            bestAdvance = adv;
+            financeable = true;
+          }
+        }
+        if (!financeable) allFinanceable = false;
+        totalFace += info.face;
+        totalAdvance += bestAdvance;
+      }
+      check(
+        "request B: eligible claims each financeable on an allowed vault, within maxTotalFace, reaching targetAdvance",
+        allFinanceable &&
+          totalFace <= REQUEST_B.maxTotalFace &&
+          totalAdvance >= REQUEST_B.targetAdvance,
+      );
+    }
   }
 
   if (failures.length > 0) {
