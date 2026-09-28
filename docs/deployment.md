@@ -165,8 +165,8 @@ images. Images must bake from the committed real manifest, never the zero manife
 Dockerfile path** (`apps/{landing,app,api}/Dockerfile`); each is a `turbo prune`-based multi-stage
 build on `node:24-slim`.
 
-- **API + worker = the same image, two start commands** — API `node dist/main.js`, worker
-  `node dist/worker.js`. Build once, deploy twice.
+- **API + worker = the same image, role chosen by env** — the entrypoint runs `dist/worker.js` when
+  `SERVICE_ROLE=worker`, else `dist/main.js`. Two services, one Dockerfile, **no command override**.
 - **Migrate = a ONE-OFF job** (`prisma migrate deploy`), run **exactly once per release** and
   **gating BOTH** the API and the worker — never per-replica, or migrations race.
 - **Healthcheck:** API = `GET /api/v1/health` (liveness only) with a startup grace ≥ reindex time;
@@ -184,17 +184,18 @@ build on `node:24-slim`.
 
 #### Indexer worker — SAME image, its OWN service (not the same running instance)
 
-The indexer is a **separate EasyPanel service** deployed from the **same API image**, with the start
-command overridden to `node apps/api/dist/worker.js` (the HTTP API is a _different_ service running
-`node apps/api/dist/main.js`). One build, two services. They are **not** the same process — the worker
-is a headless polling loop (`createApplicationContext`, no HTTP server), so running it inside the API
-would couple their lifecycles/restarts; keep them as two services off the one image.
+The indexer is a **separate EasyPanel service** deployed from the **same API image**, selected at
+runtime by **`SERVICE_ROLE=worker`** (the HTTP API is a _different_ service that leaves `SERVICE_ROLE`
+unset → runs `dist/main.js`). One build, one Dockerfile, two services — **no per-service command
+override needed**. They are **not** the same process — the worker is a headless polling loop
+(`createApplicationContext`, no HTTP server), so running it inside the API would couple their
+lifecycles/restarts; keep them as two services off the one image.
 
-- **Command:** override the image CMD to `node apps/api/dist/worker.js`.
+- **Role:** set env **`SERVICE_ROLE=worker`** — the image entrypoint then runs `node apps/api/dist/worker.js`.
 - **Replicas: exactly 1.** A `pg_advisory_xact_lock` already guarantees a single writer, but run one
   replica anyway to avoid lock contention / restart churn.
-- **Healthcheck: none / process-only** — the worker serves no HTTP port, so an HTTP probe would fail
-  and restart-loop it. It drains on `SIGTERM`.
+- **Healthcheck: handled** — the baked `HEALTHCHECK` short-circuits to success when `SERVICE_ROLE=worker`
+  (the worker serves no HTTP port), so it won't be marked unhealthy / restart-looped. It drains on `SIGTERM`.
 - **Runtime env it needs:** `DATABASE_URL`, `CHAIN_ID=97`, `RPC_URL`, `INDEXER_CONFIRMATIONS=0`
   (+ optional `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `CURSOR_*`). It does **not** need
   `JWT_SECRET` / `SIWE_DOMAIN` / `API_CORS_ORIGINS` (HTTP-API-only), and carries **no issuer key** —
@@ -234,34 +235,32 @@ Each service's Dockerfile must COPY the root `pnpm-lock.yaml` + `packages/*`, so
 `/`** on every app service and put the per-service Dockerfile at `apps/<svc>/Dockerfile`. Do **not**
 set Build Path to `apps/api` (the context would lose the root lockfile/workspaces).
 
-| Service      | New Service type        | Source                       | Build Path | Dockerfile path           | Command override (Deploy → Advanced) | Domain → target port           | Replicas | Env                             |
-| ------------ | ----------------------- | ---------------------------- | ---------- | ------------------------- | ------------------------------------ | ------------------------------ | -------- | ------------------------------- |
-| **postgres** | **Postgres** (template) | —                            | —          | —                         | —                                    | none (internal)                | 1        | —                               |
-| **api**      | **App**                 | GitHub `owner/repo` @ `main` | `/`        | `apps/api/Dockerfile`     | none (image CMD = `main.js`)         | `api.usematura.xyz` → **3000** | ≥1       | runtime secrets (DB/JWT/RPC)    |
-| **worker**   | **App**                 | same repo/branch             | `/`        | `apps/api/Dockerfile`     | **`node apps/api/dist/worker.js`**   | none                           | **1**    | same runtime env (DB/CHAIN/RPC) |
-| **landing**  | **App**                 | same repo/branch             | `/`        | `apps/landing/Dockerfile` | none                                 | `usematura.xyz` → **3001**     | ≥1       | **only** public `NEXT_PUBLIC_*` |
-| **app**      | **App**                 | same repo/branch             | `/`        | `apps/app/Dockerfile`     | none                                 | `app.usematura.xyz` → **3002** | ≥1       | only public `NEXT_PUBLIC_*`     |
+| Service      | New Service type        | Source                       | Build Path | Dockerfile path           | Role selector (env)       | Domain → target port           | Replicas | Env                             |
+| ------------ | ----------------------- | ---------------------------- | ---------- | ------------------------- | ------------------------- | ------------------------------ | -------- | ------------------------------- |
+| **postgres** | **Postgres** (template) | —                            | —          | —                         | —                         | none (internal)                | 1        | —                               |
+| **api**      | **App**                 | GitHub `owner/repo` @ `main` | `/`        | `apps/api/Dockerfile`     | (unset → `main.js`)       | `api.usematura.xyz` → **3000** | ≥1       | runtime secrets (DB/JWT/RPC)    |
+| **worker**   | **App**                 | same repo/branch             | `/`        | `apps/api/Dockerfile`     | **`SERVICE_ROLE=worker`** | none                           | **1**    | same runtime env (DB/CHAIN/RPC) |
+| **landing**  | **App**                 | same repo/branch             | `/`        | `apps/landing/Dockerfile` | —                         | `usematura.xyz` → **3001**     | ≥1       | **only** public `NEXT_PUBLIC_*` |
+| **app**      | **App**                 | same repo/branch             | `/`        | `apps/app/Dockerfile`     | —                         | `app.usematura.xyz` → **3002** | ≥1       | only public `NEXT_PUBLIC_*`     |
 
 Order + how-to:
 
 1. **Postgres:** New Service → Postgres → name it → deploy → copy the **internal** `DATABASE_URL` from the **Credentials** tab (internal host, port `5432`, `sslmode=disable`).
 2. **API service:** New Service → App → **Source** = GitHub repo + branch, **Build Path `/`**; **Build** = Dockerfile builder, path `apps/api/Dockerfile`; **Environment** = the runtime vars (secrets live here); **Domains** = `api.usematura.xyz` → port **3000**, HTTPS on (Traefik auto-issues Let's Encrypt); Deploy.
 3. **Migrate once:** open the **api service → Shell** and run `pnpm --filter @matura/api exec prisma migrate deploy` against the internal DB (there is **no** native run-once job — the Shell is the documented path; running it from any machine with DB access also works, as we did). Do this **before** the API/worker serve traffic.
-4. **Worker service:** New Service → App → **same** repo/branch/Build Path/Dockerfile (`apps/api/Dockerfile`) → set the **command override** (Deploy → Advanced) to `node apps/api/dist/worker.js`; **no domain**; **replicas = 1**; same runtime env.
+4. **Worker service:** New Service → App → **same** repo/branch/Build Path/Dockerfile (`apps/api/Dockerfile`) → in **Environment** add **`SERVICE_ROLE=worker`** (the image entrypoint then runs `dist/worker.js` — **no command override needed**); **no domain**; **replicas = 1**; same runtime env as the API.
 5. **Landing + app services:** App, `apps/landing/Dockerfile` / `apps/app/Dockerfile`; the `NEXT_PUBLIC_*` go in **Environment** (EasyPanel passes service env as **build args**, so they reach `next build`); domains `usematura.xyz` → 3001 / `app.usematura.xyz` → 3002.
 6. **Deploy trigger:** the **Deploy** button; enable the GitHub webhook for auto-deploy on push; use **Force Rebuild** when only a build-arg changed (skips the Docker cache).
 
-**Healthcheck caveat (verify in your panel).** EasyPanel exposes **no documented first-class
-healthcheck field**, so the probe is the Dockerfile `HEALTHCHECK` (baked on the API image → `/api/v1/health`).
-Because the **worker runs the same image**, that baked HTTP probe will report _unhealthy_ on the
-worker (no HTTP server). If your EasyPanel version restart-loops unhealthy containers, either give the
-worker a Dockerfile with `HEALTHCHECK NONE` or drop the baked `HEALTHCHECK` and let Traefik health the
-API by its domain. It's mapped to **no domain**, so nothing routes HTTP to it regardless.
+**Healthcheck (handled by the image).** EasyPanel exposes no documented first-class healthcheck field,
+so the probe is the Dockerfile `HEALTHCHECK`. It's **role-aware**: it short-circuits to success when
+`SERVICE_ROLE=worker` (the headless worker serves no HTTP), and keeps the real `/api/v1/health` check
+for the API — so the worker is never marked unhealthy / restart-looped, and no per-service healthcheck
+config is required.
 
-**Could NOT confirm from docs (verify in-panel):** exact label of the command-override field
-(docs say "a command override") + string-vs-argv format; the internal Postgres hostname spelling (copy
-it from Credentials, don't construct it); any first-class healthcheck field; any native run-once/job or
-pre-deploy hook; the exact "primary domain" toggle + default Traefik HTTP→HTTPS middleware.
+**Could NOT confirm from docs (verify in-panel):** the internal Postgres hostname spelling (copy it
+from the Credentials tab, don't construct it); any native run-once/job or pre-deploy hook (we use the
+service **Shell** for migrate); the exact "primary domain" toggle + default Traefik HTTP→HTTPS middleware.
 
 ## Post-deploy smoke checklist
 

@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
 #
 # @matura/api — orchestration + read-model service AND the indexer worker.
-# ONE image, TWO start commands (do NOT build a second image):
-#   API    → node apps/api/dist/main.js    (default CMD; HTTP + HEALTHCHECK)
-#   worker → node apps/api/dist/worker.js   (override CMD; NO HTTP server, NO healthcheck)
+# ONE image, ONE Dockerfile, role selected at RUNTIME by the SERVICE_ROLE env var (so a platform
+# like EasyPanel needs no per-service command override — both services point at THIS Dockerfile):
+#   SERVICE_ROLE unset/"api" → node apps/api/dist/main.js    (HTTP API + real HEALTHCHECK)
+#   SERVICE_ROLE="worker"    → node apps/api/dist/worker.js   (headless indexer; HEALTHCHECK no-ops)
 #
 # Build context = repo ROOT (EasyPanel: Build Path = repo root, Dockerfile = apps/api/Dockerfile).
 # node:24-slim (Debian/glibc) on BOTH stages — Prisma engines need glibc (NOT alpine/musl).
@@ -55,12 +56,11 @@ COPY --from=builder --chown=nodejs:nodejs /app ./
 USER nodejs
 
 EXPOSE 3000
-# API liveness only (never /health/ready — that gates on indexer catch-up and would restart-loop
-# during reindex). Uses Node's built-in fetch (no wget/curl needed).
-# NOTE: the WORKER shares this image but has NO HTTP server — its service MUST disable this baked
-# HEALTHCHECK (EasyPanel: no healthcheck / `docker run --no-healthcheck`) and rely on a process probe.
+# Liveness only (never /health/ready — that gates on indexer catch-up and would restart-loop during
+# reindex). Role-aware: the WORKER shares this image but has NO HTTP server, so its probe short-
+# circuits to success when SERVICE_ROLE=worker; the API keeps the real HTTP check. Node built-in fetch.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "if(process.env.SERVICE_ROLE==='worker')process.exit(0);fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-# Default = API. Worker service overrides this CMD with: node apps/api/dist/worker.js
-CMD ["node", "apps/api/dist/main.js"]
+# Role selected at runtime: SERVICE_ROLE=worker → indexer worker; otherwise the HTTP API.
+CMD ["sh", "-c", "if [ \"$SERVICE_ROLE\" = worker ]; then exec node apps/api/dist/worker.js; else exec node apps/api/dist/main.js; fi"]

@@ -175,13 +175,13 @@ API_CORS_ORIGINS=https://app.usematura.xyz   # scheme, no trailing slash
   for a testnet demo.
 - **Verify:** service healthy on `/api/v1/health`.
 
-### Step 8d — Worker service (SAME image, override command)
+### Step 8d — Worker service (SAME image + Dockerfile, role via env)
 
-- Command: `node apps/api/dist/worker.js`. Same runtime env as 8c.
-- [ ] **Disable / override the baked `HEALTHCHECK` on the worker service** (it inherits the API
-      image's `GET /api/v1/health` probe, but the worker serves **no HTTP** → the probe fails and the
-      container **restart-loops**). Set it to process-only / none.
-- **Verify:** logs show the indexer polling + advancing the cursor.
+- Second App service, same repo/Build-Path/Dockerfile (`apps/api/Dockerfile`); in **Environment** add
+  **`SERVICE_ROLE=worker`** — the image entrypoint runs `dist/worker.js` (**no command override**), and
+  the baked `HEALTHCHECK` short-circuits to success for the worker (no restart-loop). Same runtime env
+  as 8c, **no domain**, **replicas = 1**.
+- **Verify:** logs show the indexer polling + advancing the cursor (no "listening on port" line).
 
 ### Step 8e — Landing service (Dockerfile `apps/landing/Dockerfile`)
 
