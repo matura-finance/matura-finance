@@ -120,7 +120,7 @@ RPC or any secret). Declared in `turbo.json` `build.env`; see `.env.example`.
 
 ```bash
 NEXT_PUBLIC_API_URL=<api>/api/v1  NEXT_PUBLIC_CHAIN_ID=97 \
-NEXT_PUBLIC_RPC_URL=<public BSC-testnet RPC>  NEXT_PUBLIC_LANDING_URL=https://matura.xyz \
+NEXT_PUBLIC_RPC_URL=<public BSC-testnet RPC>  NEXT_PUBLIC_LANDING_URL=https://usematura.xyz \
 pnpm --filter @matura/app build && pnpm --filter @matura/app start   # :3002
 ```
 
@@ -133,7 +133,7 @@ injected/EIP-6963, BSC-testnet only; SIWE session is a header-bearer JWT (in-mem
 **`apps/landing`** — static + wallet-free; no chain/API:
 
 ```bash
-NEXT_PUBLIC_APP_URL=https://app.matura.xyz  NEXT_PUBLIC_CONTRACTS_DEPLOYED=<true|false> \
+NEXT_PUBLIC_APP_URL=https://app.usematura.xyz  NEXT_PUBLIC_CONTRACTS_DEPLOYED=<true|false> \
 pnpm --filter @matura/landing build && pnpm --filter @matura/landing start   # :3001
 ```
 
@@ -177,7 +177,7 @@ build on `node:24-slim`.
   redirect (Next or Nest) — the proxy already terminates TLS and forwards HTTP, so an in-app force
   produces an infinite redirect loop. Keep the API's `trust proxy` hop count correct for the real
   client IP (per-wallet throttling falls back to IP on public routes).
-- **Domains (Traefik):** apex `matura.xyz` → **landing**; `app.matura.xyz` → **app**. **No
+- **Domains (Traefik):** apex `usematura.xyz` → **landing**; `app.usematura.xyz` → **app**. **No
   wildcard** and no overlapping host rules (avoids route collisions / redirect loops). Keep
   `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_LANDING_URL` consistent across both frontends so the
   cross-domain CTA resolves.
@@ -191,16 +191,16 @@ hosted API runs with **no issuer key** (`ISSUER_PRIVATE_KEY` absent, `DEMO_ISSUE
 
 #### Environment matrix (build-arg vs runtime; per service)
 
-| Var(s)                                                                                                                                                                                                                                          | Service                             | Build-arg / Runtime | Notes                                                                              |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`                                                                                                                          | **app**                             | **build-arg**       | Inlined at `next build`; also derive the CSP `connect-src`. Rebuild on any change. |
-| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED`                                                                                                                                                              | **landing**                         | **build-arg**       | Only these — **no** wallet/chain/secret vars (keeps landing wallet-free).          |
-| `DATABASE_URL`, `JWT_SECRET`                                                                                                                                                                                                                    | **api + worker**                    | **runtime**         | Secrets — never a build-arg.                                                       |
-| `RPC_URL`, `CHAIN_ID=97`, `INDEXER_CONFIRMATIONS=0`, `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `SIWE_DOMAIN=app.matura.xyz`, `API_CORS_ORIGINS=https://app.matura.xyz`, `NODE_ENV=production`, `DEMO_ISSUER_SIGNING_ENABLED=false` | **api (+ worker where applicable)** | **runtime**         | `ISSUER_PRIVATE_KEY` **absent** (prod refuses it).                                 |
-| `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`, `BSCSCAN_API_KEY`                                                                                                                                                          | **local/CI deploy only**            | Hardhat keystore    | Never present in any hosted service image or env.                                  |
+| Var(s)                                                                                                                                                                                                                                                | Service                             | Build-arg / Runtime | Notes                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`                                                                                                                                | **app**                             | **build-arg**       | Inlined at `next build`; also derive the CSP `connect-src`. Rebuild on any change. |
+| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED`                                                                                                                                                                    | **landing**                         | **build-arg**       | Only these — **no** wallet/chain/secret vars (keeps landing wallet-free).          |
+| `DATABASE_URL`, `JWT_SECRET`                                                                                                                                                                                                                          | **api + worker**                    | **runtime**         | Secrets — never a build-arg.                                                       |
+| `RPC_URL`, `CHAIN_ID=97`, `INDEXER_CONFIRMATIONS=0`, `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `SIWE_DOMAIN=app.usematura.xyz`, `API_CORS_ORIGINS=https://app.usematura.xyz`, `NODE_ENV=production`, `DEMO_ISSUER_SIGNING_ENABLED=false` | **api (+ worker where applicable)** | **runtime**         | `ISSUER_PRIVATE_KEY` **absent** (prod refuses it).                                 |
+| `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`, `BSCSCAN_API_KEY`                                                                                                                                                                | **local/CI deploy only**            | Hardhat keystore    | Never present in any hosted service image or env.                                  |
 
-`SIWE_DOMAIN` is a bare host (**no scheme**) — `app.matura.xyz`, not `https://…`. `API_CORS_ORIGINS`
-must be the exact origin **with** scheme and **no trailing slash** (`https://app.matura.xyz`); empty
+`SIWE_DOMAIN` is a bare host (**no scheme**) — `app.usematura.xyz`, not `https://…`. `API_CORS_ORIGINS`
+must be the exact origin **with** scheme and **no trailing slash** (`https://app.usematura.xyz`); empty
 or `*` silently breaks all cross-origin calls.
 
 ## Post-deploy smoke checklist
@@ -316,7 +316,7 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
   and rebuild `@matura/chain` **before** building any image — images must bake the real manifest, not
   the zero manifest.
 - **Env:** no new persisted env; the hosting env split (build-arg `NEXT_PUBLIC_*` vs runtime secrets;
-  `SIWE_DOMAIN=app.matura.xyz`, `API_CORS_ORIGINS=https://app.matura.xyz`, `INDEXER_CONFIRMATIONS=0`)
+  `SIWE_DOMAIN=app.usematura.xyz`, `API_CORS_ORIGINS=https://app.usematura.xyz`, `INDEXER_CONFIRMATIONS=0`)
   is documented in the env matrix. Live addresses + tx hashes captured in `docs/deployment-runbook.md`
   (gitignored) during Track B.
 - **Status:** authoring (Track A) done; live standup (Track B) pending an EasyPanel instance + DNS +
