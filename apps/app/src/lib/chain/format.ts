@@ -29,10 +29,18 @@ export function formatBps(bps: number): string {
   return `${(bps / 100).toFixed(2)}%`;
 }
 
-/** Truncate an address for compact display (0x1234…abcd). */
+/**
+ * Truncate ANY hex string for compact display (0x1234…abcd). Use for values that are NOT 20-byte
+ * addresses — tx hashes and bytes32 ids (claimId) are 32 bytes, and running them through
+ * `getAddress` (as `shortenAddress` does) throws `InvalidAddressError`.
+ */
+export function shortenHex(value: string): string {
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
+/** Truncate a 20-byte address for compact display, EIP-55 checksummed (0x1234…abCd). */
 export function shortenAddress(address: string): string {
-  const a = getAddress(address);
-  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+  return shortenHex(getAddress(address));
 }
 
 /** BSC-testnet explorer base, or null on chains without an explorer (local hardhat). */

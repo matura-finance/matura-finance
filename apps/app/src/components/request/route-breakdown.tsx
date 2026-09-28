@@ -8,7 +8,7 @@ import { Table, TBody, TD, TH, THead, TR } from "@matura/ui/components/table";
 import { useMemo } from "react";
 
 import type { FilteredOut } from "../../lib/api/schemas";
-import { formatBps, formatUsdt, shortenAddress } from "../../lib/chain/format";
+import { formatBps, formatUsdt, shortenHex } from "../../lib/chain/format";
 import { useVaultLabel } from "../../lib/chain/vault-label";
 import { REASON_COPY, sortByPrecedence } from "../../lib/reasons";
 
@@ -138,7 +138,7 @@ export function RouteBreakdown({
               <ReasonRow
                 key={`f-${f.claimId}-${f.vault ?? "claim"}`}
                 reason={f.reason}
-                label={f.vault !== null ? vaultLabel(f.vault) : shortenAddress(f.claimId)}
+                label={f.vault !== null ? vaultLabel(f.vault) : shortenHex(f.claimId)}
               />
             ))}
           </div>

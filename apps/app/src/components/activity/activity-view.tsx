@@ -8,7 +8,7 @@ import { Stack } from "@matura/ui/components/stack";
 import { useAccount } from "wagmi";
 
 import { useActivity } from "../../lib/queries/hooks";
-import { shortenAddress, txExplorerUrl } from "../../lib/chain/format";
+import { shortenHex, txExplorerUrl } from "../../lib/chain/format";
 import { Disconnected, NotDeployed, RpcUnavailable, WrongChain } from "../states";
 
 /** Turn an event `kind` (e.g. "ROUTE_EXECUTED") into a readable label. */
@@ -54,7 +54,7 @@ export function ActivityView() {
                 <p className="font-medium text-foreground">{humanizeKind(event.kind)}</p>
                 <p className="text-xs text-muted-foreground">
                   Block {event.blockNumber}
-                  {event.claimId !== null && ` · claim ${shortenAddress(event.claimId)}`}
+                  {event.claimId !== null && ` · claim ${shortenHex(event.claimId)}`}
                 </p>
               </div>
               {url !== null ? (
@@ -64,11 +64,11 @@ export function ActivityView() {
                   rel="noopener noreferrer"
                   className="font-mono text-xs text-foreground underline underline-offset-2 hover:opacity-80"
                 >
-                  {shortenAddress(event.txHash)} ↗
+                  {shortenHex(event.txHash)} ↗
                 </a>
               ) : (
                 <span className="font-mono text-xs text-muted-foreground">
-                  {shortenAddress(event.txHash)}
+                  {shortenHex(event.txHash)}
                 </span>
               )}
             </CardContent>
