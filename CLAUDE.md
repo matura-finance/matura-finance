@@ -110,6 +110,9 @@ _values_ not env names) `docs/solutions/integration-issues/security-hardening-ad
   hand-copied, prettier-ignored). `@matura/chain/contracts` binds each address slot to its ABI.
 - **Secrets** via Hardhat keystore / `configVariable()` (never `.env`, never committed):
   `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY` (attestation signer — most sensitive), RPC URL.
+  The keystore stays the default; the BSC-testnet deploy uses a **gitignored
+  `packages/contracts/.env`** (sourced inline at runtime — `configVariable` reads it) as a
+  deliberate MVP operator escape hatch. See `docs/deployment-trackb-runbook.md`.
 - **Solidity:** 0.8.28 + OpenZeppelin 5.6.1; custom errors + NatSpec; CEI + SafeERC20 +
   `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md` (full-stack
   threat model), `SECURITY.md` (disclosure policy + testnet-only warning), and
