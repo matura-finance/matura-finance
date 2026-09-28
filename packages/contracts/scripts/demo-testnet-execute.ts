@@ -244,10 +244,19 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const settled = await getClaim();
+  // A public RPC can serve a stale read immediately after the settle tx confirms (read-after-write
+  // lag), so poll for the terminal PAID state a few times before treating it as a failure.
+  let settled = await getClaim();
+  for (let i = 0; i < 5 && (settled === undefined || settled.state !== CLAIM_STATE.PAID); i += 1) {
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 3000);
+    });
+    settled = await getClaim();
+  }
   if (settled === undefined || settled.state !== CLAIM_STATE.PAID) {
     throw new Error(
-      `Expected PAID after settle, got state ${String(settled?.state)} — inspect on the explorer.`,
+      `Expected PAID after settle, got state ${String(settled?.state)} — the settle tx confirmed, ` +
+        `so this is likely public-RPC read lag; verify the claim on the explorer.`,
     );
   }
   receipts.finalState = settled.state;
