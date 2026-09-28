@@ -29,8 +29,8 @@ describe("committed deployment manifests", () => {
     expect(DeploymentManifest.parse(readCommittedManifest(31337))).toEqual(zeroManifest(31337));
   });
 
-  it("97.json deep-equals zeroManifest(97)", () => {
-    expect(DeploymentManifest.parse(readCommittedManifest(97))).toEqual(zeroManifest(97));
+  it("97.json is a deployed manifest (BSC Testnet is live — not the zero manifest)", () => {
+    expect(DeploymentManifest.parse(readCommittedManifest(97))).not.toEqual(zeroManifest(97));
   });
 });
 

@@ -66,12 +66,21 @@ export const ESCROW_METADATA_HASH = keccak256(toHex("matura-freelance-escrow"));
 export const STREAM_METADATA_HASH = keccak256(toHex("matura-stream"));
 
 /// A SIGNED claim (payroll): registered via an issuer EIP-712 attestation. `faceValue` is exact.
+/// `dueInDays` is the normal (day-granularity) maturity offset; `dueInSeconds`, when present, wins
+/// and expresses a SHORT second-granularity maturity — used only by the scripted proof claim so a
+/// single testnet session can fund (needs `dueDate` in the future) and, after the window elapses,
+/// settle (needs `dueDate` reached) the same claim without waiting whole days.
 export interface SignedClaim {
   readonly kind: "signed";
   readonly label: string;
   readonly claimType: number;
   readonly faceValue: bigint;
   readonly dueInDays: number;
+  readonly dueInSeconds?: number;
+  /// EIP-712 attestation nonce (per-signer, single-use). Defaults to 0. Every signed claim SHARES
+  /// the payroll issuer signer, so multiple signed claims MUST carry distinct nonces or the second
+  /// registerClaim reverts NonceAlreadyUsed.
+  readonly attestationNonce?: bigint;
 }
 
 /// An ESCROW claim: a `MockFreelanceEscrow` engagement funded by the client and paid to Alice. The
@@ -128,6 +137,49 @@ export const ALICE_STREAM: StreamClaim = {
 };
 
 export const ALICE_CLAIMS: readonly ClaimSource[] = [ALICE_PAYROLL, ALICE_FREELANCE, ALICE_STREAM];
+
+/// Short maturity window (seconds) for the scripted proof claim: long enough to fund promptly after
+/// seeding, short enough to settle within the same testnet session once it elapses. Tunable.
+export const SCRIPTED_DUE_SECONDS = 1200;
+
+/// The DEPLOYER-OWNED scripted claim driven by `demo-testnet-execute.ts` for the one real
+/// execute+settle proof. Its label is DISTINCT from every interactive (Alice / SEED_BENEFICIARY)
+/// claim so the two id spaces never collide even when both resolve to the deployer as beneficiary
+/// (testnet with SEED_BENEFICIARY unset). A signed payroll attestation so the payroll SourceObligor
+/// can self-settle it; a small face the pre-funded obligor easily covers; a short seconds-granularity
+/// maturity (see SCRIPTED_DUE_SECONDS) so fund-then-settle fits one session.
+export const SCRIPTED_DEPLOYER_PAYROLL: SignedClaim = {
+  kind: "signed",
+  label: "matura-scripted-deployer-payroll-2",
+  claimType: CLAIM_TYPE.PAYROLL,
+  faceValue: parseUnits("1000", 6),
+  dueInDays: 0, // unused: dueInSeconds wins for this claim
+  dueInSeconds: SCRIPTED_DUE_SECONDS,
+  attestationNonce: 2n, // payroll issuer signer already used 0n (ALICE_PAYROLL) and 1n (original scripted claim) — 2n is the next free nonce
+};
+
+/// Resolve the demo beneficiary for the INTERACTIVE claims (payroll attestation + escrow payout).
+/// `SEED_BENEFICIARY` (a 0x address; accepted lower/upper/checksummed, normalized here) overrides
+/// the default so an operator can point the interactive demo at the wallet they will connect. When
+/// unset or blank it falls back to `fallback` — Alice (wallet index 2) locally, the deployer on
+/// testnet — preserving the existing 31337 behavior. Throws on a malformed / bad-checksum address
+/// so a fat-fingered env fails fast at seed rather than minting a claim to an unusable address.
+export function resolveBeneficiary(
+  seedBeneficiary: string | undefined,
+  fallback: Address,
+): Address {
+  if (seedBeneficiary === undefined) return fallback;
+  const trimmed = seedBeneficiary.trim();
+  if (trimmed === "") return fallback;
+  try {
+    return getAddress(trimmed);
+  } catch {
+    throw new Error(
+      `SEED_BENEFICIARY is not a valid address: ${JSON.stringify(seedBeneficiary)}. ` +
+        "Provide a 0x-prefixed 40-hex-digit address (lower-case, upper-case, or EIP-55 checksummed).",
+    );
+  }
+}
 
 /// Resolve a claim's on-chain claimId: label-derived for the signed payroll claim, adapter-derived
 /// (from the manifest source address + engagement/stream id) for the escrow/stream adapters.

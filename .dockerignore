@@ -1,0 +1,43 @@
+# Docker build-context excludes. Keep this lean: the context is sent to the daemon before
+# `turbo prune` runs, so trimming build artifacts + deps speeds every image build.
+#
+# IMPORTANT: this must NOT exclude the committed chain manifest
+# (packages/chain/src/deployments/97.json) or the codegen'd deployments.generated.ts —
+# images MUST build from the committed manifest, never a zero/stale one. They live under
+# packages/chain/src (never matched below), so no negation is required; documented here so a
+# future broad `packages/**/generated` rule doesn't silently drop them.
+
+# Dependencies — reinstalled in the builder via `pnpm install --frozen-lockfile`
+**/node_modules
+
+# Build outputs — regenerated in the builder
+**/.next
+**/dist
+**/.turbo
+.turbo
+
+# Contracts / Hardhat artifacts — not needed by any app image
+packages/contracts/artifacts
+packages/contracts/cache
+packages/contracts/types
+packages/contracts/ignition/deployments
+
+# Test + coverage output
+**/coverage
+**/test-results
+**/playwright-report
+**/.playwright
+
+# Local env + secrets — never bake into an image (runtime-only)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Editor / OS / VCS noise
+.git
+.github
+**/.DS_Store
+**/*.log
+
+# Docs + planning (not needed at build time)
+docs

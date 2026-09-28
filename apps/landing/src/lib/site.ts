@@ -5,16 +5,16 @@
  */
 
 /** The product app origin. Linked via a plain `<a>` (cross-origin). */
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.matura.xyz";
+export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.usematura.xyz";
 
 /** The canonical marketing origin — used for `metadataBase`, sitemap, robots. */
-export const SITE_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "https://matura.xyz";
+export const SITE_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "https://usematura.xyz";
 
 /** Public source repository (docs live here too). */
 export const GITHUB_URL = "https://github.com/matura-finance/matura-finance";
 
 /** Honest contact target for issuer / team enquiries. */
-export const CONTACT_EMAIL = "team@matura.xyz";
+export const CONTACT_EMAIL = "team@usematura.xyz";
 
 /**
  * Deployment status arrives as a build-time constant (landing cannot import

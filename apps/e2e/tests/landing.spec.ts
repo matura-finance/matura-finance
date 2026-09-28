@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-/** Marketing site (matura.xyz) — static, wallet-free. These run in CI without any chain/API. */
+/** Marketing site (usematura.xyz) — static, wallet-free. These run in CI without any chain/API. */
 
 test.describe("landing", () => {
   test("hero renders the approved headline and a single h1", async ({ page }) => {
@@ -16,7 +16,7 @@ test.describe("landing", () => {
   test("primary CTA is a cross-domain link to the product app", async ({ page }) => {
     await page.goto("/");
     const openApp = page.getByRole("link", { name: "Open Matura" }).first();
-    await expect(openApp).toHaveAttribute("href", /app\.matura\.xyz|localhost:3002/);
+    await expect(openApp).toHaveAttribute("href", /app\.usematura\.xyz|localhost:3002/);
   });
 
   test("landing → how it works → protocol path", async ({ page }) => {

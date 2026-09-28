@@ -29,8 +29,11 @@ describe("getManifest", () => {
 });
 
 describe("isDeployed", () => {
+  it("is true for a deployed chain (BSC Testnet is live)", () => {
+    expect(isDeployed(BSC_TESTNET_CHAIN_ID)).toBe(true);
+  });
+
   it("is false for a zero-seeded chain", () => {
-    expect(isDeployed(BSC_TESTNET_CHAIN_ID)).toBe(false);
     expect(isDeployed(LOCAL_CHAIN_ID)).toBe(false);
   });
 
@@ -40,8 +43,12 @@ describe("isDeployed", () => {
 });
 
 describe("getDeployment", () => {
+  it("returns the deployment for a deployed chain", () => {
+    expect(() => getDeployment(BSC_TESTNET_CHAIN_ID)).not.toThrow();
+  });
+
   it("throws for a zero-seeded chain (not yet deployed)", () => {
-    expect(() => getDeployment(BSC_TESTNET_CHAIN_ID)).toThrow(/zero-seeded/);
+    expect(() => getDeployment(LOCAL_CHAIN_ID)).toThrow(/zero-seeded/);
   });
 
   it("throws for a chain with no manifest", () => {
@@ -51,14 +58,23 @@ describe("getDeployment", () => {
 
 describe("getNamedVaults / getSources", () => {
   it("resolve zero-seed sub-maps without enforcing the deployed check", () => {
-    expect(getNamedVaults(BSC_TESTNET_CHAIN_ID).stableVault).toBe(ZERO_ADDRESS);
-    expect(getSources(BSC_TESTNET_CHAIN_ID).payroll).toBe(ZERO_ADDRESS);
+    expect(getNamedVaults(LOCAL_CHAIN_ID).stableVault).toBe(ZERO_ADDRESS);
+    expect(getSources(LOCAL_CHAIN_ID).payroll).toBe(ZERO_ADDRESS);
+  });
+
+  it("resolve real addresses for a deployed chain", () => {
+    expect(getNamedVaults(BSC_TESTNET_CHAIN_ID).stableVault).not.toBe(ZERO_ADDRESS);
+    expect(getSources(BSC_TESTNET_CHAIN_ID).payroll).not.toBe(ZERO_ADDRESS);
   });
 });
 
 describe("getDeploymentBlock", () => {
   it("returns the zero-seed block as a bigint", () => {
     expect(getDeploymentBlock(LOCAL_CHAIN_ID)).toBe(0n);
+  });
+
+  it("returns a positive deployment block for a deployed chain", () => {
+    expect(getDeploymentBlock(BSC_TESTNET_CHAIN_ID)).toBeGreaterThan(0n);
   });
 
   it("throws for a chain with no manifest", () => {

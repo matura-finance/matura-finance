@@ -9,14 +9,18 @@
     "typecheck": "hardhat compile && tsc --noEmit",
     "clean": "hardhat clean",
     "node": "hardhat node",
+    "preflight:bsc-testnet": "hardhat run scripts/preflight.ts --network bscTestnetSeed",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:bsc-testnet": "hardhat run scripts/deploy.ts --network bscTestnet",
     "seed:local": "hardhat run scripts/seed.ts --network localhost",
     "seed:bsc-testnet": "hardhat run scripts/seed.ts --network bscTestnetSeed",
     "verify:local": "hardhat run scripts/verify.ts --network localhost",
     "verify:bsc-testnet": "hardhat run scripts/verify.ts --network bscTestnet",
+    "verify:bsc-testnet:explorer": "hardhat run scripts/verify-explorer.ts --network bscTestnet",
+    "check-deployment:bsc-testnet": "hardhat run scripts/check-deployment.ts --network bscTestnet",
     "demo:local": "pnpm run deploy:local && pnpm run seed:local && pnpm run verify:local",
     "demo:settle": "hardhat run scripts/demo-settle.ts --network localhost",
+    "demo:testnet-execute": "hardhat run scripts/demo-testnet-execute.ts --network bscTestnet",
     "demo:reset": "node scripts/demo-reset.ts"
   },
   "devDependencies": {
