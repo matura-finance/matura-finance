@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# @matura/app — wallet-connected product (app.matura.xyz).
+# @matura/app — wallet-connected product (app.usematura.xyz).
 # Build context = repo ROOT (EasyPanel: Build Path = repo root, Dockerfile = apps/app/Dockerfile).
 #
 # 3 stages via `turbo prune --docker`:

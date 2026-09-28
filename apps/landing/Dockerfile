@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# @matura/landing — static, wallet-free marketing site (matura.xyz).
+# @matura/landing — static, wallet-free marketing site (usematura.xyz).
 # Build context = repo ROOT (EasyPanel: Build Path = repo root, Dockerfile = apps/landing/Dockerfile).
 #
 # 3 stages via `turbo prune --docker`:
