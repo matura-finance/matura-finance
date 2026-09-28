@@ -53,12 +53,9 @@ function typeName(ordinal: number): "PAYROLL" | "FREELANCE_ESCROW" | "STREAM" {
   }
 }
 
-/** Every value below is derived from a `parseUnits(x, 6)` bigint, so `.toString()` is always a
- *  canonical base-unit integer string — the fixture schema's `/^\d+$/` can never fail by construction. */
-const assertUnits = (value: string): string => {
-  if (!/^\d+$/.test(value)) throw new Error(`non-canonical base-unit amount: ${value}`);
-  return value;
-};
+// Every money field below is a `parseUnits(x, 6)` bigint, so `.toString()` is always a canonical
+// base-unit integer string; the fixture's `as const satisfies DemoFixture` (compile time) and the
+// shared `demo-fixture.test.ts` Zod parse (CI) enforce the `/^\d+$/` shape, so no local guard is needed.
 
 /** Bitmap → the list of supported claim-type names (bit i ⇔ ordinal i). */
 function supportedTypes(bitmap: number): ("PAYROLL" | "FREELANCE_ESCROW" | "STREAM")[] {
@@ -82,7 +79,7 @@ const claims: FixtureClaim[] = ALICE_CLAIMS.map((claim) => {
         label: claim.label,
         kind: "signed" as const,
         claimType: typeName(claim.claimType),
-        faceUnits: assertUnits(claim.faceValue.toString()),
+        faceUnits: claim.faceValue.toString(),
         dueInDays: claim.dueInDays,
       };
     case "escrow":
@@ -90,7 +87,7 @@ const claims: FixtureClaim[] = ALICE_CLAIMS.map((claim) => {
         label: claim.label,
         kind: "escrow" as const,
         claimType: typeName(claim.claimType),
-        faceUnits: assertUnits(claim.amount.toString()),
+        faceUnits: claim.amount.toString(),
         dueInDays: claim.dueInDays,
       };
     case "stream": {
@@ -101,7 +98,7 @@ const claims: FixtureClaim[] = ALICE_CLAIMS.map((claim) => {
         label: claim.label,
         kind: "stream" as const,
         claimType: typeName(claim.claimType),
-        faceUnits: assertUnits(vested.toString()),
+        faceUnits: vested.toString(),
         dueInDays: claim.durationDays - claim.startOffsetDays,
       };
     }
@@ -110,8 +107,8 @@ const claims: FixtureClaim[] = ALICE_CLAIMS.map((claim) => {
 
 const requests = [REQUEST_A, REQUEST_B].map((req) => ({
   key: req.key,
-  targetAdvanceUnits: assertUnits(req.targetAdvance.toString()),
-  maxTotalFaceUnits: assertUnits(req.maxTotalFace.toString()),
+  targetAdvanceUnits: req.targetAdvance.toString(),
+  maxTotalFaceUnits: req.maxTotalFace.toString(),
   eligibleClaims: [...req.eligibleClaims],
 }));
 
@@ -124,9 +121,9 @@ const vaults = [
   baseDiscountBps: mandate.baseDiscountBps,
   durationBpsPerDay: mandate.durationBpsPerDay,
   maxDurationDays: mandate.maxDurationDays,
-  minFaceUnits: assertUnits(mandate.minFace.toString()),
-  maxFaceUnits: assertUnits(mandate.maxFace.toString()),
-  liquidityCapUnits: assertUnits(mandate.liquidityCap.toString()),
+  minFaceUnits: mandate.minFace.toString(),
+  maxFaceUnits: mandate.maxFace.toString(),
+  liquidityCapUnits: mandate.liquidityCap.toString(),
   claimTypePremiumBps: [...mandate.claimTypePremiumBps],
 }));
 
