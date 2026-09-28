@@ -13,3 +13,4 @@ packages/contracts/cache
 packages/contracts/types
 packages/chain/src/abis
 packages/chain/src/deployments.generated.ts
+packages/shared/src/fixtures/demo.generated.ts

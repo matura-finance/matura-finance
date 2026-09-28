@@ -64,6 +64,11 @@ jobs:
           pnpm --filter @matura/chain gen:deployments
           git diff --exit-code packages/chain/src/deployments.generated.ts
 
+      - name: Demo fixture is fresh
+        run: |
+          pnpm --filter @matura/contracts contracts:export-demo-fixture
+          git diff --exit-code packages/shared/src/fixtures/demo.generated.ts
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:

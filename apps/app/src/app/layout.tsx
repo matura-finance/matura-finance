@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { cookieToInitialState } from "wagmi";
 
+import { env } from "../lib/env";
 import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
 
@@ -18,8 +19,26 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.appUrl),
   title: "Matura",
   description: "Matura product app — accounts, liquidity requests, and vault mandates.",
+  applicationName: "Matura",
+  alternates: {
+    canonical: "/",
+  },
+  // The wallet-connected product app is not a search entry point — the landing
+  // site (usematura.xyz) is the indexed surface. Keep this app out of the index.
+  robots: {
+    index: false,
+    follow: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Matura",
+    url: env.appUrl,
+    title: "Matura",
+    description: "Matura product app — accounts, liquidity requests, and vault mandates.",
+  },
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

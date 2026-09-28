@@ -10,7 +10,7 @@ import { BSCSCAN_TESTNET_URL, CONTRACTS_DEPLOYED } from "../../lib/site";
 export const metadata: Metadata = {
   title: "Protocol",
   description:
-    "The Matura protocol architecture: issuer-authorized claims, isolated vaults, the Best-Execution Claim Router, trust boundaries, and testnet deployment status.",
+    "The Matura Protocol architecture: issuer-authorized claims, isolated vaults, the Best-Execution Claim Router, trust boundaries, and testnet deployment status.",
   alternates: { canonical: "/protocol" },
 };
 

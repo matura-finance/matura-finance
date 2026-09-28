@@ -109,7 +109,7 @@ export default function HomePage() {
       <Section tone="mist">
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-gutter lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col gap-5">
-            <Eyebrow>Matura account</Eyebrow>
+            <Eyebrow>Matura Account</Eyebrow>
             <DisplayHeading className="text-midnight">
               Every verified payment. One liquidity account.
             </DisplayHeading>

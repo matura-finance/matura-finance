@@ -6,6 +6,7 @@
     "contracts:compile": "hardhat compile",
     "contracts:test": "hardhat test",
     "contracts:export-abis": "hardhat compile && node scripts/export-abis.ts",
+    "contracts:export-demo-fixture": "node scripts/export-demo-fixture.ts",
     "typecheck": "hardhat compile && tsc --noEmit",
     "clean": "hardhat clean",
     "node": "hardhat node",
@@ -18,7 +19,10 @@
     "verify:bsc-testnet": "hardhat run scripts/verify.ts --network bscTestnet",
     "verify:bsc-testnet:explorer": "hardhat run scripts/verify-explorer.ts --network bscTestnet",
     "check-deployment:bsc-testnet": "hardhat run scripts/check-deployment.ts --network bscTestnet",
+    "smoke:local": "hardhat run scripts/smoke.ts --network localhost",
+    "smoke:bsc-testnet": "hardhat run scripts/smoke.ts --network bscTestnet",
     "demo:local": "pnpm run deploy:local && pnpm run seed:local && pnpm run verify:local",
+    "demo:reset:full": "pnpm run demo:reset && pnpm run demo:local",
     "demo:settle": "hardhat run scripts/demo-settle.ts --network localhost",
     "demo:testnet-execute": "hardhat run scripts/demo-testnet-execute.ts --network bscTestnet",
     "demo:reset": "node scripts/demo-reset.ts"
