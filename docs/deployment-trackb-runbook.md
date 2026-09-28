@@ -20,21 +20,26 @@ Live addresses + tx hashes get recorded in `docs/deployment-runbook.md` (gitigno
 - [ ] **Deployer** account funded with tBNB (pays deploy + seed + scripted tx gas).
 - [ ] Decide the git branch EasyPanel builds from (recommend: merge Track A → `main`, run Steps 1–4 on a `deploy/bsc-testnet-live` branch off main, point EasyPanel at that branch — or merge to `main` after Step 4).
 
-### 0.1 Set keystore secrets **[YOU or CLAUDE, interactively]**
+### 0.1 Provide the secrets **[YOU]**
 
-These use Hardhat's encrypted keystore (never `.env`). Run each and paste the value when prompted
-(prefix with `! ` in this session so I can see the flow, or run in your own terminal):
+Secrets are resolved by Hardhat 3 `configVariable(NAME)` from the **environment**. This deploy uses a
+**gitignored `.env`** (operator's choice; the repo convention is the encrypted keystore — `.env` is
+plaintext on disk, so keep it ignored and rotate/delete after the hackathon). No dotenv is wired, so
+each CLI step **sources the file inline**.
 
-```bash
-export PATH="/opt/homebrew/opt/node@24/bin:$PATH"
-cd packages/contracts
-npx hardhat keystore set DEPLOYER_PRIVATE_KEY     # 0x… funded deployer
-npx hardhat keystore set ISSUER_PRIVATE_KEY       # 0x… attestation signer
-npx hardhat keystore set BSC_TESTNET_RPC_URL      # e.g. https://bsc-testnet-rpc.publicnode.com
-npx hardhat keystore set BSCSCAN_API_KEY          # for explorer verify
+**You** create `packages/contracts/.env` (never commit it) with:
+
+```
+DEPLOYER_PRIVATE_KEY=0x<funded deployer key>
+ISSUER_PRIVATE_KEY=0x<attestation signer key>
+BSC_TESTNET_RPC_URL=https://bsc-testnet-rpc.publicnode.com
+BSCSCAN_API_KEY=<bscscan key>
 ```
 
-- **Verify:** `npx hardhat keystore list` shows all four names (values never printed).
+- **Verify:** `git check-ignore packages/contracts/.env` prints the path (ignored ✓). Never paste key values into chat.
+- **How steps run:** each command is prefixed `set -a && source packages/contracts/.env && set +a && …` so `configVariable` reads the vars from the environment; secrets are never printed.
+
+> Alternative (repo default): `npx hardhat keystore set <NAME>` per var — encrypted at rest, but the CLI then prompts for the keystore password (set `HARDHAT_KEYSTORE_PASSWORD` for non-interactive runs).
 
 ---
 
