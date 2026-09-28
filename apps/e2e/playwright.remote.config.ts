@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  *
  * Unlike `playwright.config.ts` (which boots local servers via `webServer`), this config has
  * **no `webServer` block**: it never builds or starts anything. It drives the live
- * `matura.xyz` / `app.matura.xyz` deployments (Track B, step 10) over their public HTTPS URLs.
+ * `usematura.xyz` / `app.usematura.xyz` deployments (Track B, step 10) over their public HTTPS URLs.
  *
  * Both `E2E_LANDING_URL` and `E2E_APP_URL` are **required** and must be `https://` — we fail fast
  * at config load rather than silently smoking `http://localhost` defaults against production.
@@ -15,7 +15,7 @@ import { defineConfig, devices } from "@playwright/test";
  * fixture (a Node-side viem signer, key `E2E_PRIVATE_KEY` = the seeded claim beneficiary), so it is
  * opt-in even against remote origins.
  *
- * Run: `E2E_LANDING_URL=https://matura.xyz E2E_APP_URL=https://app.matura.xyz \
+ * Run: `E2E_LANDING_URL=https://usematura.xyz E2E_APP_URL=https://app.usematura.xyz \
  *        pnpm --filter @matura/e2e test:e2e:remote`
  */
 

@@ -1,7 +1,7 @@
 import { expect, MOCK_WALLET_NAME, test } from "../support/mock-wallet";
 
 /**
- * Product happy paths (app.matura.xyz). GATED behind `E2E_STACK=1` — requires a seeded
+ * Product happy paths (app.usematura.xyz). GATED behind `E2E_STACK=1` — requires a seeded
  * local hardhat node + the local API + a running indexer worker. Signing is handled by the
  * `mock-wallet` fixture: a Node-side viem signer exposed to an in-page EIP-6963 provider,
  * so connect + SIWE + EIP-712 run deterministically and popup-free with NO wallet code in
