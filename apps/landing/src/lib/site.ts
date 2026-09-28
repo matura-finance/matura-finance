@@ -4,11 +4,21 @@
  * site stays fully static — no runtime env access, no cookies, no headers.
  */
 
+/**
+ * Resolve a public URL env var, falling back when it is absent OR an empty string. A Docker
+ * build-arg that's declared-but-unset bakes an EMPTY string into ENV — which `??` would NOT fall
+ * back on — and an empty `SITE_URL` makes `new URL("")` (metadataBase/sitemap/robots) crash the
+ * build. Treat empty-after-trim as absent. (`||` is banned by `prefer-nullish-coalescing`.)
+ */
+function envUrl(value: string | undefined, fallback: string): string {
+  return value !== undefined && value.trim() !== "" ? value : fallback;
+}
+
 /** The product app origin. Linked via a plain `<a>` (cross-origin). */
-export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.usematura.xyz";
+export const APP_URL = envUrl(process.env.NEXT_PUBLIC_APP_URL, "https://app.usematura.xyz");
 
 /** The canonical marketing origin — used for `metadataBase`, sitemap, robots. */
-export const SITE_URL = process.env.NEXT_PUBLIC_LANDING_URL ?? "https://usematura.xyz";
+export const SITE_URL = envUrl(process.env.NEXT_PUBLIC_LANDING_URL, "https://usematura.xyz");
 
 /** Public source repository (docs live here too). */
 export const GITHUB_URL = "https://github.com/matura-finance/matura-finance";

@@ -5,6 +5,7 @@ import {
   formatBps,
   parseAmountToBaseUnits,
   shortenAddress,
+  shortenHex,
   txExplorerUrl,
 } from "./format";
 
@@ -27,6 +28,13 @@ describe("format", () => {
 
   it("shortenAddress truncates", () => {
     expect(shortenAddress("0x000000000000000000000000000000000000dEaD")).toBe("0x0000…dEaD");
+  });
+
+  it("shortenHex truncates a 32-byte value (claimId/txHash) WITHOUT throwing InvalidAddressError", () => {
+    // A bytes32 is 64 hex chars — feeding it to shortenAddress (getAddress) would throw.
+    const claimId = "0x2d3d03ac9da7991cf017493734a1e09856242ca3f90280458f4fab9229932945";
+    expect(() => shortenHex(claimId)).not.toThrow();
+    expect(shortenHex(claimId)).toBe("0x2d3d…2945");
   });
 
   it("txExplorerUrl points at bscscan on chain 97", () => {

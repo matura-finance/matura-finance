@@ -31,10 +31,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     const { status, code, message } = this.resolve(exception);
 
-    this.logger.error(
-      `${request.method} ${request.url} -> ${String(status)} ${code}: ${message}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    const line = `${request.method} ${request.url} -> ${String(status)} ${code}: ${message}`;
+    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
+      // Server-side faults (5xx): log at ERROR with the stack for diagnosis.
+      this.logger.error(line, exception instanceof Error ? exception.stack : undefined);
+    } else {
+      // Client errors (404/401/413/429/…) are expected and noisy — health/uptime probes hit `/` or
+      // /favicon.ico, unknown routes 404, etc. Log at WARN without a stack; they are not server faults.
+      this.logger.warn(line);
+    }
 
     const body: ApiErrorResponse = {
       error: { code, message },
