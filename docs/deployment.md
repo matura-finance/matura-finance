@@ -4,8 +4,11 @@
 > standing up the **whole** Matura stack (contracts → chain manifests → API DB + indexer worker +
 > HTTP API → web app). Live addresses and secrets stay in the **gitignored**
 > `docs/deployment-runbook.md`; contract-deploy detail lives in `packages/contracts/README.md`.
-> Full production hosting is not wired yet — see [Open items](#open-items). Append an entry to the
-> [Iteration log](#iteration-log) whenever the deploy surface changes.
+> Hosting is documented (EasyPanel/Docker — see [EasyPanel / Docker hosting](#7-easypanel--docker-hosting))
+> but not yet executed against a live instance — that lands with Track B of
+> `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md`; remaining gaps in
+> [Open items](#open-items). Append an entry to the [Iteration log](#iteration-log) whenever the
+> deploy surface changes.
 
 ## Deployable surface (status by iteration)
 
@@ -13,15 +16,17 @@
 | ---------------------------------------- | :-----------------------: | :-----------------: | :----------------: |
 | Contracts (deploy + seed + verify)       |            ✅             |         ✅          |        n/a         |
 | Chain manifests (`@matura/chain`, built) |            ✅             |         ✅          |        n/a         |
-| API DB (Postgres + Prisma migrations)    |            ✅             |     ✅ (manual)     |    ⏳ not wired    |
-| Indexer worker                           |            ✅             |     ✅ (manual)     |    ⏳ not wired    |
-| HTTP API (reads + prepares + SIWE)       |            ✅             |     ✅ (manual)     |    ⏳ not wired    |
-| Web app (`apps/app`)                     | ✅ (dev vs seeded stack)  | ⏳ env flip pending |    ⏳ not wired    |
-| Marketing (`apps/landing`)               |            ✅             |     ✅ (static)     |    ⏳ not wired    |
-| E2E (`apps/e2e`, Playwright)             | ✅ landing; product gated |         n/a         |        n/a         |
+| API DB (Postgres + Prisma migrations)    |            ✅             |     ✅ (manual)     | ⏳ pending Track B |
+| Indexer worker                           |            ✅             |     ✅ (manual)     | ⏳ pending Track B |
+| HTTP API (reads + prepares + SIWE)       |            ✅             |     ✅ (manual)     | ⏳ pending Track B |
+| Web app (`apps/app`)                     | ✅ (dev vs seeded stack)  | ⏳ env flip pending | ⏳ pending Track B |
+| Marketing (`apps/landing`)               |            ✅             |     ✅ (static)     | ⏳ pending Track B |
+| E2E (`apps/e2e`, Playwright)             | ✅ landing; product gated |  ⏳ remote (WS-6)   |        n/a         |
 | Cross-stack E2E (`apps/e2e-stack`)       |     ✅ (needs Docker)     |         n/a         |        n/a         |
 
-Legend: ✅ runnable now · ⏳ pending. Update this table each iteration.
+Legend: ✅ runnable now · ⏳ pending. **"pending Track B"** = Dockerfiles + hosting procedure
+authored (WS-5/WS-7 below), not yet stood up against a live EasyPanel instance. Update this table
+each iteration.
 
 `apps/e2e-stack` is a local-only reconciliation harness, not a deploy target: one command
 (`pnpm --filter @matura/e2e-stack test:e2e:stack`) boots the whole stack (node + Postgres + worker +
@@ -142,6 +147,62 @@ real origins at build or API/RPC calls are blocked.
 `test:e2e`); the product happy-path needs `E2E_STACK=1` + a seeded local stack + the signer key set
 to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NOT_OWNED_BY_WALLET`.
 
+### 7. EasyPanel / Docker hosting
+
+> Target hosting for the testnet deploy: all four services (landing, product app, API, indexer
+> worker) + Postgres on **EasyPanel via Docker**. Authored in
+> `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md` (Track B is the live runbook with
+> GO gates); this section is the standing per-service reference.
+
+**Ordering (non-negotiable):** deploy contracts → write `97.json` → **commit the manifest +
+regenerated `deployments.generated.ts`** → rebuild `@matura/chain` → **then** build the app/api
+images. Images must bake from the committed real manifest, never the zero manifest; the root
+`.dockerignore` excludes build junk but **keeps** `packages/chain/src/deployments/97.json` +
+`deployments.generated.ts`. Any address change means re-baking BOTH frontends (see
+[Reindex / rollback](#reindex--rollback)).
+
+**Per-service config** (all four services): **Build Path = repo ROOT** with a **per-service
+Dockerfile path** (`apps/{landing,app,api}/Dockerfile`); each is a `turbo prune`-based multi-stage
+build on `node:24-slim`.
+
+- **API + worker = the same image, two start commands** — API `node dist/main.js`, worker
+  `node dist/worker.js`. Build once, deploy twice.
+- **Migrate = a ONE-OFF job** (`prisma migrate deploy`), run **exactly once per release** and
+  **gating BOTH** the API and the worker — never per-replica, or migrations race.
+- **Healthcheck:** API = `GET /api/v1/health` (liveness only) with a startup grace ≥ reindex time;
+  **worker = no HTTP probe** (it serves no port — use a process-only probe). Do **not** point the
+  healthcheck at `/health/ready` — during a cold reindex `ready` is false and the platform will
+  restart-loop the container. `ready` is a GO gate you poll by hand (smoke), not a liveness probe.
+- **TLS / Traefik:** the EasyPanel proxy (Traefik) **owns TLS**. Do **not** enable any in-app HTTPS
+  redirect (Next or Nest) — the proxy already terminates TLS and forwards HTTP, so an in-app force
+  produces an infinite redirect loop. Keep the API's `trust proxy` hop count correct for the real
+  client IP (per-wallet throttling falls back to IP on public routes).
+- **Domains (Traefik):** apex `matura.xyz` → **landing**; `app.matura.xyz` → **app**. **No
+  wildcard** and no overlapping host rules (avoids route collisions / redirect loops). Keep
+  `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_LANDING_URL` consistent across both frontends so the
+  cross-domain CTA resolves.
+
+**Secrets boundary — build-args are NOT secret.** EasyPanel build-args are baked into the image
+layer and are recoverable; treat them as public. So **only `NEXT_PUBLIC_*` go in as build-args**
+(Next inlines them at `next build` and they also drive the app's CSP `connect-src`). Every real
+secret (`DATABASE_URL`, `JWT_SECRET`, `RPC_URL`) is a **runtime** env on the API/worker only. The
+hosted API runs with **no issuer key** (`ISSUER_PRIVATE_KEY` absent, `DEMO_ISSUER_SIGNING_ENABLED=false`,
+`NODE_ENV=production` — the env schema refuses to boot otherwise); claims are signed at seed time.
+
+#### Environment matrix (build-arg vs runtime; per service)
+
+| Var(s)                                                                                                                                                                                                                                          | Service                             | Build-arg / Runtime | Notes                                                                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`                                                                                                                          | **app**                             | **build-arg**       | Inlined at `next build`; also derive the CSP `connect-src`. Rebuild on any change. |
+| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED`                                                                                                                                                              | **landing**                         | **build-arg**       | Only these — **no** wallet/chain/secret vars (keeps landing wallet-free).          |
+| `DATABASE_URL`, `JWT_SECRET`                                                                                                                                                                                                                    | **api + worker**                    | **runtime**         | Secrets — never a build-arg.                                                       |
+| `RPC_URL`, `CHAIN_ID=97`, `INDEXER_CONFIRMATIONS=0`, `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `SIWE_DOMAIN=app.matura.xyz`, `API_CORS_ORIGINS=https://app.matura.xyz`, `NODE_ENV=production`, `DEMO_ISSUER_SIGNING_ENABLED=false` | **api (+ worker where applicable)** | **runtime**         | `ISSUER_PRIVATE_KEY` **absent** (prod refuses it).                                 |
+| `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`, `BSCSCAN_API_KEY`                                                                                                                                                          | **local/CI deploy only**            | Hardhat keystore    | Never present in any hosted service image or env.                                  |
+
+`SIWE_DOMAIN` is a bare host (**no scheme**) — `app.matura.xyz`, not `https://…`. `API_CORS_ORIGINS`
+must be the exact origin **with** scheme and **no trailing slash** (`https://app.matura.xyz`); empty
+or `*` silently breaks all cross-origin calls.
+
 ## Post-deploy smoke checklist
 
 > **Pre-demo operator sanity** (env/stack readiness + abort conditions): run through
@@ -166,21 +227,54 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 ## Reindex / rollback
 
 - **Reindex:** `node apps/api/dist/admin/reindex.cli.js [fromBlock]` — wipes projections + resets the
-  cursor; the next worker run rebuilds from the deployment block (idempotent). CLI-only; no prod HTTP surface.
-- **Contracts rollback / testnet notes:** see `docs/deployment-runbook.md` (gitignored) and
-  `packages/contracts/README.md`.
+  cursor; the next worker run rebuilds from the deployment block (idempotent). CLI-only; no prod HTTP
+  surface. **Over public BSC-testnet RPC this is a long, rate-limited scan** (bounded by
+  `INDEXER_MAX_BLOCK_RANGE` per batch) — expect **minutes**, not seconds. Size the API healthcheck
+  startup grace ≥ this window so a cold reindex doesn't trip a restart loop.
+- **Reseed (no contract change):** contracts are **immutable — never "deleted."** Just re-run
+  `seed:bsc-testnet` (state-aware / resumable — it probes on-chain adapter state, so a re-run after a
+  crash resumes rather than double-funding).
+- **Full contract rollback = a cascade** (a redeploy mints new addresses, and the frontends bake
+  addresses at build time — so it fans out):
+  1. **Redeploy** contracts → new `97.json` addresses.
+  2. **Reseed** the new deployment.
+  3. **Commit** the new manifest + regenerated `deployments.generated.ts` (satisfies the freshness/ABI gate).
+  4. **Rebuild `@matura/chain`** (tsup dual build the CJS API consumes).
+  5. **Rebuild BOTH frontends** — `NEXT_PUBLIC_*` + the manifest are baked at build time, so stale
+     images point at dead addresses.
+  6. **Redeploy all images** on EasyPanel.
+  7. Re-run the **migrate one-off job only if the schema changed** (address changes don't touch it).
+- **Contracts rollback / testnet notes:** live addresses + tx hashes are captured in
+  `docs/deployment-runbook.md` (gitignored) during Track B; also `packages/contracts/README.md`.
+
+## Public RPC limitations
+
+The hosted stack points at a public BSC-testnet RPC. Key constraints:
+
+- **`finalized` tag is supported** on `bsc-testnet-rpc.publicnode.com` (probed: chainId `0x61`), so
+  keep **`INDEXER_CONFIRMATIONS=0`** (finalized-tag cursor — the correct default).
+- **`RPC_URL` is replaceable.** If you swap to an endpoint **without** the `finalized` tag, set
+  `INDEXER_CONFIRMATIONS=N` (>0) to fall back to a confirmations-based cursor.
+- **Polling is bounded** (`INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`) to stay within
+  public-node rate limits; this is why reindex is slow (above).
+- **Rate-limit hardening on the scripted proof tx:** the execute+settle script uses
+  `waitForTransactionReceipt` with retry/backoff and explicit nonce management, and is resumable
+  (re-drive settle if the route already executed).
 
 ## Open items (before a real production deploy)
 
-- Hosting/orchestration for the API + worker (containers, process manager, `terminationGracePeriodSeconds` ≥ max batch time).
+- Hosting/orchestration for the API + worker — **now authored** (EasyPanel/Docker; see
+  [EasyPanel / Docker hosting](#7-easypanel--docker-hosting)) but **not yet stood up live** (Track B);
+  still confirm `terminationGracePeriodSeconds` ≥ max batch time on the platform.
 - CI migration-freshness gate (`prisma migrate diff` schema-vs-migrations) + running `prisma migrate deploy` from a locked pipeline.
 - Managed Postgres + per-process `connection_limit`; Redis for the shared throttler store.
 - Monitoring/alerting on cursor freshness (readiness), RPC health, and error rates.
-- **Frontend hosting** for `apps/app` + `apps/landing` (static/SSR host, per-env `NEXT_PUBLIC_*`,
-  `NEXT_PUBLIC_CONTRACTS_DEPLOYED` flip); the app's CSP `connect-src` must match the deployed
-  API/RPC origins.
-- **Seed the claim beneficiary to a wallet you control** on testnet (the seed currently hard-codes
-  Alice → the deployer address); required before the product `/request` demo works end-to-end.
+- **Frontend hosting** for `apps/app` + `apps/landing` — **now authored** (EasyPanel/Docker
+  build-arg `NEXT_PUBLIC_*`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED` flip; the app's CSP `connect-src` must
+  match the deployed API/RPC origins) but **not yet stood up live** (Track B).
+- **Seed the claim beneficiary to a wallet you control** on testnet — **addressed** via the
+  `SEED_BENEFICIARY` override (payroll + escrow; the stream claim is recipient-gated so it stays a
+  key we hold); required before the product `/request` demo works end-to-end.
 - **Chain-scope the demo-signing gate** (API `env.validation`): `DEMO_ISSUER_SIGNING_ENABLED` +
   `ISSUER_PRIVATE_KEY` should be permitted only for `CHAIN_ID ∈ {31337, 97}` so it can never
   activate against mainnet (flagged in the PR #5 review; not yet implemented). The fail-closed
@@ -194,6 +288,39 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 ## Iteration log
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
+
+### 2026-09-28 — BSC-testnet deploy + EasyPanel/Docker hosting
+
+- **No contract change:** no new contracts, **no ABI/manifest schema change**, no Prisma migration.
+  This is an infra/ops iteration — deploy chain **97 only**, host on EasyPanel, and land **≥1 real
+  BSC-testnet execute + settle**; the local (31337) env stays untouched. Driven by
+  `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md` (Track A = parallel authoring,
+  Track B = the sequential live runbook with GO gates).
+- **New tooling (Track A):** `scripts/preflight.ts` (chainId-97 + config-vars-present + tBNB-balance
+  guard, prints addresses never values) and `scripts/check-deployment.ts` (bytecode / role-wiring /
+  vault-config / balances / `manifest == on-chain`); `hardhat-verify` wired for chain 97
+  (`etherscan.customChains`) + `verify-explorer.ts` (per-contract commands, BSCScan key optional);
+  a **`SEED_BENEFICIARY`** override so the interactive demo wallet owns payroll + escrow claims
+  (stream stays recipient-gated → skipped for an arbitrary beneficiary); `demo-testnet-execute.ts`
+  drives a **deployer-owned** claim through a scripted execute + settle (public-RPC-hardened:
+  retry/backoff, explicit nonce, resumable settle); and a **remote smoke** suite
+  (`playwright.remote.config.ts` + `scripts/smoke-api.mjs`, URLs from env, no `webServer`).
+- **New build/hosting surface:** per-app `turbo prune` multi-stage **Dockerfiles**
+  (`apps/{landing,app,api}/Dockerfile`, `node:24-slim`, Next `output: "standalone"`), **API + worker
+  share one image** (two start commands), a **migrate one-off job** (`prisma migrate deploy`,
+  gates both), a root `.dockerignore` that **keeps `97.json` + `deployments.generated.ts`**, and a
+  positive-bake assertion (`NEXT_PUBLIC_*` present in the built app chunks). See the new
+  [EasyPanel / Docker hosting](#7-easypanel--docker-hosting) section for per-service config +
+  env matrix.
+- **Ordering guarantee:** commit the real `97.json` manifest (+ regenerated `deployments.generated.ts`)
+  and rebuild `@matura/chain` **before** building any image — images must bake the real manifest, not
+  the zero manifest.
+- **Env:** no new persisted env; the hosting env split (build-arg `NEXT_PUBLIC_*` vs runtime secrets;
+  `SIWE_DOMAIN=app.matura.xyz`, `API_CORS_ORIGINS=https://app.matura.xyz`, `INDEXER_CONFIRMATIONS=0`)
+  is documented in the env matrix. Live addresses + tx hashes captured in `docs/deployment-runbook.md`
+  (gitignored) during Track B.
+- **Status:** authoring (Track A) done; live standup (Track B) pending an EasyPanel instance + DNS +
+  operator GO gates — hosting rows in the surface table are **⏳ pending Track B**, not ✅.
 
 ### 2026-09-28 — security & correctness hardening pass (PR #7)
 
