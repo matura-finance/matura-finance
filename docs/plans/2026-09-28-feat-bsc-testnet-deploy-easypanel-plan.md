@@ -70,49 +70,49 @@ add tests where they add signal; keep the local env working.
 
 ### WS-1 · Pre-flight + `check-deployment.ts` `[packages/contracts/scripts]`
 
-- [ ] `scripts/preflight.ts` — assert **chainId 97** (`assertChainId`, `lib/network-guard.ts`); assert required config vars **present** (`DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`) **without printing values**; print deployer + issuer **addresses** (derived) and **tBNB balance** with a min threshold; assert MockUSDT assumptions (6-dp, non-fee/non-rebasing — documented). Refuse to proceed on any failure.
-- [ ] `scripts/check-deployment.ts` — for the chain-97 manifest: **bytecode present** at every address (`getCode`), **role wiring** (reuse `lib/assert-wiring.ts`), **vault config** vs `config/vault-mandates.ts`, deployer/vault **balances**, `manifest.chainId === 97`, and **manifest addresses == on-chain** (guards the redeploy/stale-manifest hazard). Exit non-zero + human-readable report on any mismatch.
-- [ ] Test: `test/PreflightGuard.test.ts` — the chain guard **refuses 56 and unknown**, accepts 97/31337 (pure `assertChainId`); balance-threshold helper boundary. (No `any`; `node:test`+`assert/strict` idiom.)
+- [x] `scripts/preflight.ts` — assert **chainId 97** (`assertChainId`, `lib/network-guard.ts`); assert required config vars **present** (`DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`) **without printing values**; print deployer + issuer **addresses** (derived) and **tBNB balance** with a min threshold; assert MockUSDT assumptions (6-dp, non-fee/non-rebasing — documented). Refuse to proceed on any failure.
+- [x] `scripts/check-deployment.ts` — for the chain-97 manifest: **bytecode present** at every address (`getCode`), **role wiring** (reuse `lib/assert-wiring.ts`), **vault config** vs `config/vault-mandates.ts`, deployer/vault **balances**, `manifest.chainId === 97`, and **manifest addresses == on-chain** (guards the redeploy/stale-manifest hazard). Exit non-zero + human-readable report on any mismatch.
+- [x] Test: `test/PreflightGuard.test.ts` — the chain guard **refuses 56 and unknown**, accepts 97/31337 (pure `assertChainId`); balance-threshold helper boundary. (No `any`; `node:test`+`assert/strict` idiom.)
 - **Done:** `contracts:test` + `typecheck` green; both scripts run against the local 31337 stack as a dry-run.
 
 ### WS-2 · Explorer verification wiring `[packages/contracts/hardhat.config.ts + package.json + scripts]`
 
-- [ ] Enable `@nomicfoundation/hardhat-verify` (import in `hardhat.config.ts`); add `verify` config: `etherscan.apiKey = configVariable("BSCSCAN_API_KEY")` + `customChains` for chainId **97** (api + browser URLs for the testnet explorer).
-- [ ] `scripts/verify-explorer.ts` + `verify:bsc-testnet:explorer` script — read `97.json`, run explorer verify **per contract with its constructor args** (6 core + 2 source adapters + 2 vaults; constructor-arg mismatch is the usual failure). Emit the exact **manual `hardhat verify` commands** to the report as a fallback.
+- [x] Enable `@nomicfoundation/hardhat-verify` (import in `hardhat.config.ts`); add `verify` config: `etherscan.apiKey = configVariable("BSCSCAN_API_KEY")` + `customChains` for chainId **97** (api + browser URLs for the testnet explorer).
+- [x] `scripts/verify-explorer.ts` + `verify:bsc-testnet:explorer` script — read `97.json`, run explorer verify **per contract with its constructor args** (6 core + 2 source adapters + 2 vaults; constructor-arg mismatch is the usual failure). Emit the exact **manual `hardhat verify` commands** to the report as a fallback.
 - **Done:** `typecheck` green; dry-run prints the per-contract command set (no key needed to author).
 
 ### WS-3 · `SEED_BENEFICIARY` override `[packages/contracts/scripts/seed.ts + config/demo.ts]`
 
-- [ ] Optional `SEED_BENEFICIARY` (checksummed address) → used as beneficiary for **payroll (attestation) + escrow (`createPayout`)**. **Skip/guard the stream claim** for an arbitrary beneficiary (`MockStream.createClaim` is recipient-gated `seed.ts:268-278`; can only be created by a key we hold) — document.
-- [ ] Distinct **claim labels** for the interactive set vs. the deployer-owned scripted set (`config/demo.ts` `resolveClaimId` labels) so ids don't collide.
-- [ ] Test: `test/SeedBeneficiary.test.ts` — beneficiary resolver returns `SEED_BENEFICIARY` when set (valid checksummed), else deployer fallback; rejects malformed input (no `any`).
+- [x] Optional `SEED_BENEFICIARY` (checksummed address) → used as beneficiary for **payroll (attestation) + escrow (`createPayout`)**. **Skip/guard the stream claim** for an arbitrary beneficiary (`MockStream.createClaim` is recipient-gated `seed.ts:268-278`; can only be created by a key we hold) — document.
+- [x] Distinct **claim labels** for the interactive set vs. the deployer-owned scripted set (`config/demo.ts` `resolveClaimId` labels) so ids don't collide.
+- [x] Test: `test/SeedBeneficiary.test.ts` — beneficiary resolver returns `SEED_BENEFICIARY` when set (valid checksummed), else deployer fallback; rejects malformed input (no `any`).
 - **Done:** `contracts:test` green; seed dry-run against 31337 with/without the env behaves as specified.
 
 ### WS-4 · Scripted execute+settle proof `[packages/contracts/scripts]`
 
-- [ ] `scripts/demo-testnet-execute.ts` — `assertChainId(97)` first; drive a **deployer-owned** claim through optimize→build route→sign(deployer)→`executeRoute`→`settleClaim`. **Public-RPC hardening:** wide route deadline; explicit nonce management; `waitForTransactionReceipt` with retry/backoff; **resumable settle** (re-drive settle if the route already executed); **record each tx hash as it confirms** to `docs/deployment-runbook.md` (gitignored) or a receipts file.
+- [x] `scripts/demo-testnet-execute.ts` — `assertChainId(97)` first; drive a **deployer-owned** claim through optimize→build route→sign(deployer)→`executeRoute`→`settleClaim`. **Public-RPC hardening:** wide route deadline; explicit nonce management; `waitForTransactionReceipt` with retry/backoff; **resumable settle** (re-drive settle if the route already executed); **record each tx hash as it confirms** to `docs/deployment-runbook.md` (gitignored) or a receipts file.
 - **Done:** `typecheck` green; logic reviewed against `demo-settle.ts` idioms (adapts, doesn't duplicate the on-chain path).
 
 ### WS-5 · Dockerfiles + build config `[apps/{landing,app,api} + root]`
 
-- [ ] `apps/app/next.config.ts` + `apps/landing/next.config.ts`: add `output: "standalone"` + `outputFileTracingRoot` = repo root.
-- [ ] `apps/landing/Dockerfile`, `apps/app/Dockerfile`, `apps/api/Dockerfile` — 3-stage `turbo prune @scope --docker` → install(`--frozen-lockfile`)→build→slim runner (`node:24-slim`, `corepack enable`, non-root user). Next runners copy `.next/standalone` + **`.next/static` + `public`**; API runner copies the pruned tree (keeps prisma engines + generated client). API build runs `prisma generate` then `turbo run build --filter=@matura/api` (builds `@matura/chain` first via the task graph). `NEXT_PUBLIC_*` as `ARG`→`ENV` **before** build. Dockerfile `HEALTHCHECK` → `GET /api/v1/health` (API only).
-- [ ] Root `.dockerignore` — exclude `node_modules`/`.next`/`.turbo`/`artifacts` but **NOT** `packages/chain/src/deployments/97.json` or `deployments.generated.ts`.
-- [ ] `apps/api/package.json`: add `migrate:deploy` (`prisma migrate deploy`); a **migration one-off** command/Dockerfile target (run once on release, gates BOTH API + worker; never per-replica).
-- [ ] Positive-bake assertion: extend `apps/e2e/scripts/check-app-secrets.mjs` (or a new `assert-public-config.mjs`) to **assert the built app chunks contain the expected API origin, RPC origin, and `CHAIN_ID=97`** (a wrong/empty `NEXT_PUBLIC_*` is silently empty + breaks the build-time CSP `connect-src`).
+- [x] `apps/app/next.config.ts` + `apps/landing/next.config.ts`: add `output: "standalone"` + `outputFileTracingRoot` = repo root.
+- [x] `apps/landing/Dockerfile`, `apps/app/Dockerfile`, `apps/api/Dockerfile` — 3-stage `turbo prune @scope --docker` → install(`--frozen-lockfile`)→build→slim runner (`node:24-slim`, `corepack enable`, non-root user). Next runners copy `.next/standalone` + **`.next/static` + `public`**; API runner copies the pruned tree (keeps prisma engines + generated client). API build runs `prisma generate` then `turbo run build --filter=@matura/api` (builds `@matura/chain` first via the task graph). `NEXT_PUBLIC_*` as `ARG`→`ENV` **before** build. Dockerfile `HEALTHCHECK` → `GET /api/v1/health` (API only).
+- [x] Root `.dockerignore` — exclude `node_modules`/`.next`/`.turbo`/`artifacts` but **NOT** `packages/chain/src/deployments/97.json` or `deployments.generated.ts`.
+- [x] `apps/api/package.json`: add `migrate:deploy` (`prisma migrate deploy`); a **migration one-off** command/Dockerfile target (run once on release, gates BOTH API + worker; never per-replica).
+- [x] Positive-bake assertion: extend `apps/e2e/scripts/check-app-secrets.mjs` (or a new `assert-public-config.mjs`) to **assert the built app chunks contain the expected API origin, RPC origin, and `CHAIN_ID=97`** (a wrong/empty `NEXT_PUBLIC_*` is silently empty + breaks the build-time CSP `connect-src`).
 - **Done:** `pnpm --filter @matura/app build` + landing build succeed with standalone output; a local `docker build` of each image succeeds (or documented if Docker-build is operator-run).
 
 ### WS-6 · Remote smoke `[apps/e2e]`
 
-- [ ] `playwright.remote.config.ts` — **no `webServer` block**; reads `E2E_LANDING_URL`/`E2E_APP_URL` (assert both `https://`); reuse `landing.spec.ts` + `product.spec.ts`.
-- [ ] `scripts/smoke-api.mjs` — curl `/api/v1/health` (200 ok), `/api/v1/health/ready` (poll until `cursor.up`), SIWE `nonce → verify → bearer`, one authed read.
+- [x] `playwright.remote.config.ts` — **no `webServer` block**; reads `E2E_LANDING_URL`/`E2E_APP_URL` (assert both `https://`); reuse `landing.spec.ts` + `product.spec.ts`.
+- [x] `scripts/smoke-api.mjs` — curl `/api/v1/health` (200 ok), `/api/v1/health/ready` (poll until `cursor.up`), SIWE `nonce → verify → bearer`, one authed read.
 - **Done:** scripts lint clean; dry-run against the local stack.
 
 ### WS-7 · Docs sync `[docs/]`
 
-- [ ] Extend **`docs/deployment.md`** (living): EasyPanel/Docker section (per-service Build Path = repo root + Dockerfile path; build-args-not-secret warning; migrate one-off job; healthcheck = `/health` liveness, worker = none; Traefik TLS/no-app-redirect; domains apex→landing, `app.`→app, no wildcard), **env matrix**, rollback **cascade**, public-RPC limitations + iteration entry.
-- [ ] Update **`docs/demo-operator-checklist.md`**: `SIWE_DOMAIN=app.matura.xyz`, `API_CORS_ORIGINS=https://app.matura.xyz`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED=true` flip, RouteIntent **120s window** ("optimize→sign promptly"), operator wallet needs **tBNB for gas**.
-- [ ] `docs/deployment-runbook.md` (gitignored) — live 97 addresses + tx hashes captured during execution.
+- [x] Extend **`docs/deployment.md`** (living): EasyPanel/Docker section (per-service Build Path = repo root + Dockerfile path; build-args-not-secret warning; migrate one-off job; healthcheck = `/health` liveness, worker = none; Traefik TLS/no-app-redirect; domains apex→landing, `app.`→app, no wildcard), **env matrix**, rollback **cascade**, public-RPC limitations + iteration entry.
+- [x] Update **`docs/demo-operator-checklist.md`**: `SIWE_DOMAIN=app.matura.xyz`, `API_CORS_ORIGINS=https://app.matura.xyz`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED=true` flip, RouteIntent **120s window** ("optimize→sign promptly"), operator wallet needs **tBNB for gas**.
+- [x] `docs/deployment-runbook.md` (gitignored) — live 97 addresses + tx hashes captured during execution.
 - **Done:** docs build/lint clean; env matrix complete.
 
 ---
