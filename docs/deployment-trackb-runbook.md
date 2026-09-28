@@ -14,7 +14,7 @@ Live addresses + tx hashes get recorded in `docs/deployment-runbook.md` (gitigno
 ## Phase 0 — Prerequisites (do these first) **[YOU]**
 
 - [ ] **EasyPanel instance** reachable; you can create services + a Postgres.
-- [ ] **DNS** control for `matura.xyz` (apex) and `app.matura.xyz`.
+- [ ] **DNS** control for `usematura.xyz` (apex), `app.usematura.xyz`, and `api.usematura.xyz`.
 - [ ] **Free BSCScan API key** — https://bscscan.com/myapikey.
 - [ ] **Demo wallet** (the one you'll connect in the app) address **funded with tBNB** (faucet: https://www.bnbchain.org/en/testnet-faucet). This is `SEED_BENEFICIARY`; it signs `executeRoute`, so it needs gas.
 - [ ] **Deployer** account funded with tBNB (pays deploy + seed + scripted tx gas).
@@ -116,6 +116,22 @@ pnpm --filter @matura/contracts demo:testnet-execute
 - **Verify:** `executeRoute` + settle tx receipts confirmed; hashes recorded to `.testnet-receipts/` and copied into `docs/deployment-runbook.md`. Satisfies "≥1 real execute+settle recorded."
 - **Note:** the scripted claim has a short maturity window — the script waits for maturity, then settles; it's resumable if it lands execute but not settle.
 
+### Step 7.5 — Smoke the compiled API image (pre-go-live) **[YOU]**
+
+Before the go-live gate, prove the **compiled** runtime + Prisma engine resolve on the target
+platform (dev/tests only ever run the TS source, not `dist`). Build the API image and boot it once
+against a throwaway Postgres:
+
+```bash
+docker run --rm -e DATABASE_URL=<throwaway PG> <api-image> node apps/api/dist/main.js
+```
+
+- **Verify:** it boots and **Prisma connects** (no `MODULE_NOT_FOUND` / "Query engine not found").
+  This proves the compiled `dist` runtime + the query-engine `.so` resolve on linux before real traffic.
+- **On fail:** the compiled output or the Prisma engine isn't resolving — do **not** go live; fix the
+  image (e.g. a `nest-cli.json` assets copy of `src/generated` → `dist/generated`, incl. the `.so`)
+  and re-smoke.
+
 ---
 
 ## Phase 2 — Hosting on EasyPanel **[YOU]** 🔴 (go-live)
@@ -123,6 +139,10 @@ pnpm --filter @matura/contracts demo:testnet-execute
 > For each service: **Source = your git repo**, **Build Path = repo root `/`**, **Dockerfile path** as
 > noted. EasyPanel passes service env as **both build args and runtime** — so put **only public**
 > vars on the frontends, and **never** a secret as a frontend var (build args are recoverable).
+>
+> **Canonical env matrix:** `docs/deployment.md` → [EasyPanel / Docker hosting] holds the living
+> build-arg-vs-runtime env matrix (per service). The values below mirror it — if they drift, treat
+> `docs/deployment.md` as the source of truth and reconcile back to it.
 
 ### Step 8a — Postgres service
 
@@ -144,17 +164,23 @@ RPC_URL=https://bsc-testnet-rpc.publicnode.com
 INDEXER_CONFIRMATIONS=0
 DATABASE_URL=<from 8a>
 JWT_SECRET=<32+ char random>
-SIWE_DOMAIN=app.matura.xyz            # bare host, no scheme/port
-API_CORS_ORIGINS=https://app.matura.xyz   # scheme, no trailing slash
+SIWE_DOMAIN=app.usematura.xyz            # bare host, no scheme/port
+API_CORS_ORIGINS=https://app.usematura.xyz   # scheme, no trailing slash
 # NO ISSUER_PRIVATE_KEY, DEMO_ISSUER_SIGNING_ENABLED unset/false
 ```
 
 - Healthcheck = **`GET /api/v1/health`** (liveness). Startup grace ≥ reindex time.
+- **Reorg note:** with `INDEXER_CONFIRMATIONS=0` (finalized-tag cursor) reorg safety leans on the
+  indexer's block-hash-mismatch **full-wipe+reindex** rather than a confirmations buffer — acceptable
+  for a testnet demo.
 - **Verify:** service healthy on `/api/v1/health`.
 
 ### Step 8d — Worker service (SAME image, override command)
 
-- Command: `node apps/api/dist/worker.js`. Same runtime env as 8c. **No HTTP healthcheck** (worker has no HTTP server — use process/none).
+- Command: `node apps/api/dist/worker.js`. Same runtime env as 8c.
+- [ ] **Disable / override the baked `HEALTHCHECK` on the worker service** (it inherits the API
+      image's `GET /api/v1/health` probe, but the worker serves **no HTTP** → the probe fails and the
+      container **restart-loops**). Set it to process-only / none.
 - **Verify:** logs show the indexer polling + advancing the cursor.
 
 ### Step 8e — Landing service (Dockerfile `apps/landing/Dockerfile`)
@@ -162,8 +188,8 @@ API_CORS_ORIGINS=https://app.matura.xyz   # scheme, no trailing slash
 Build-arg env only (public):
 
 ```
-NEXT_PUBLIC_LANDING_URL=https://matura.xyz
-NEXT_PUBLIC_APP_URL=https://app.matura.xyz
+NEXT_PUBLIC_LANDING_URL=https://usematura.xyz
+NEXT_PUBLIC_APP_URL=https://app.usematura.xyz
 NEXT_PUBLIC_CONTRACTS_DEPLOYED=true
 ```
 
@@ -172,16 +198,16 @@ NEXT_PUBLIC_CONTRACTS_DEPLOYED=true
 Build-arg env only (public):
 
 ```
-NEXT_PUBLIC_API_URL=https://<api-host>/api/v1
+NEXT_PUBLIC_API_URL=https://api.usematura.xyz/api/v1
 NEXT_PUBLIC_RPC_URL=https://bsc-testnet-rpc.publicnode.com
 NEXT_PUBLIC_CHAIN_ID=97
-NEXT_PUBLIC_APP_URL=https://app.matura.xyz
-NEXT_PUBLIC_LANDING_URL=https://matura.xyz
+NEXT_PUBLIC_APP_URL=https://app.usematura.xyz
+NEXT_PUBLIC_LANDING_URL=https://usematura.xyz
 ```
 
 ### Step 8g — Domains (Traefik)
 
-- Map `matura.xyz` → landing (target port 3001), `app.matura.xyz` → app (3002); API on its own host/subdomain (3000). Mark primaries; **let Traefik own TLS** — do **not** force HTTPS in-app (avoids redirect loop). No wildcard rule that collides with `app.`.
+- Map `usematura.xyz` → landing (target port 3001), `app.usematura.xyz` → app (3002), `api.usematura.xyz` → API (3000). Mark primaries; **let Traefik own TLS** — do **not** force HTTPS in-app (avoids redirect loop). No wildcard rule that collides with `app.`.
 - **Verify:** both hosts serve over HTTPS; no redirect loop.
 
 ---
@@ -204,13 +230,13 @@ curl -s https://<api-host>/api/v1/health/ready   # wait for checks.cursor.status
 SMOKE_API_URL=https://<api-host> pnpm --filter @matura/e2e smoke:api
 EXPECT_API_URL=https://<api-host>/api/v1 EXPECT_RPC_URL=bsc-testnet-rpc.publicnode.com \
   EXPECT_CHAIN_ID=97 pnpm --filter @matura/e2e assert:public-config   # (needs the built app bundle)
-E2E_LANDING_URL=https://matura.xyz E2E_APP_URL=https://app.matura.xyz \
+E2E_LANDING_URL=https://usematura.xyz E2E_APP_URL=https://app.usematura.xyz \
   pnpm --filter @matura/e2e test:e2e:remote
 ```
 
 - **Landing smoke:** canonical/metadata, nav, cross-domain "Open Matura" CTA, static assets, responsive.
 - **Product smoke [YOU]:** connect wallet (network = BSC Testnet 97) → SIWE sign-in → `/account` shows your seeded claims → optimize a route → review/simulate → **sign within ~120s** (RouteIntent TTL) → `executeRoute` → "Liquidity received" → execution on `/activity` with a working explorer link.
-- **On fail:** empty `/account` ⇒ worker not caught up (Step 9) or wrong `SEED_BENEFICIARY`; dead API calls ⇒ `API_CORS_ORIGINS`/`SIWE_DOMAIN` mismatch (Step 8c); login fails ⇒ `SIWE_DOMAIN` ≠ `app.matura.xyz`.
+- **On fail:** empty `/account` ⇒ worker not caught up (Step 9) or wrong `SEED_BENEFICIARY`; dead API calls ⇒ `API_CORS_ORIGINS`/`SIWE_DOMAIN` mismatch (Step 8c); login fails ⇒ `SIWE_DOMAIN` ≠ `app.usematura.xyz`.
 
 ### Step 11 — Final report **[CLAUDE]**
 
@@ -223,7 +249,7 @@ gitignored `docs/deployment-runbook.md`.
 ## Acceptance checklist (from the plan)
 
 - [ ] Addresses from `97.json` consumed by API + app; landing only public metadata.
-- [ ] `matura.xyz`→landing, `app.matura.xyz`→app; no redirect loop / route collision; CTA works.
+- [ ] `usematura.xyz`→landing, `app.usematura.xyz`→app; no redirect loop / route collision; CTA works.
 - [ ] `/account` + route optimize/simulate work on chain 97.
 - [ ] ≥1 real execute + settlement recorded with tx hashes.
 - [ ] No mainnet (56) tx (every sender asserts 97).
