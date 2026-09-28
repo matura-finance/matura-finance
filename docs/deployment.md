@@ -182,6 +182,27 @@ build on `node:24-slim`.
   `NEXT_PUBLIC_APP_URL` / `NEXT_PUBLIC_LANDING_URL` consistent across both frontends so the
   cross-domain CTA resolves.
 
+#### Indexer worker — SAME image, its OWN service (not the same running instance)
+
+The indexer is a **separate EasyPanel service** deployed from the **same API image**, with the start
+command overridden to `node apps/api/dist/worker.js` (the HTTP API is a _different_ service running
+`node apps/api/dist/main.js`). One build, two services. They are **not** the same process — the worker
+is a headless polling loop (`createApplicationContext`, no HTTP server), so running it inside the API
+would couple their lifecycles/restarts; keep them as two services off the one image.
+
+- **Command:** override the image CMD to `node apps/api/dist/worker.js`.
+- **Replicas: exactly 1.** A `pg_advisory_xact_lock` already guarantees a single writer, but run one
+  replica anyway to avoid lock contention / restart churn.
+- **Healthcheck: none / process-only** — the worker serves no HTTP port, so an HTTP probe would fail
+  and restart-loop it. It drains on `SIGTERM`.
+- **Runtime env it needs:** `DATABASE_URL`, `CHAIN_ID=97`, `RPC_URL`, `INDEXER_CONFIRMATIONS=0`
+  (+ optional `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `CURSOR_*`). It does **not** need
+  `JWT_SECRET` / `SIWE_DOMAIN` / `API_CORS_ORIGINS` (HTTP-API-only), and carries **no issuer key** —
+  reusing the API's runtime env set is harmless.
+- **Ordering:** start it **after** the migrate-once job (it upserts projections immediately — an
+  unmigrated DB crash-loops it), and let it **catch up** before product smoke (poll the API's
+  `/health/ready` until the cursor is `up`, else `/account` reads empty).
+
 **Secrets boundary — build-args are NOT secret.** EasyPanel build-args are baked into the image
 layer and are recoverable; treat them as public. So **only `NEXT_PUBLIC_*` go in as build-args**
 (Next inlines them at `next build` and they also drive the app's CSP `connect-src`). Every real
@@ -202,6 +223,45 @@ hosted API runs with **no issuer key** (`ISSUER_PRIVATE_KEY` absent, `DEMO_ISSUE
 `SIWE_DOMAIN` is a bare host (**no scheme**) — `app.usematura.xyz`, not `https://…`. `API_CORS_ORIGINS`
 must be the exact origin **with** scheme and **no trailing slash** (`https://app.usematura.xyz`); empty
 or `*` silently breaks all cross-origin calls.
+
+#### EasyPanel setup (per-service click-path)
+
+Docs: [App service](https://easypanel.io/docs/services/app) · [Builders](https://easypanel.io/docs/builders) · [Postgres](https://easypanel.io/docs/services/postgres).
+
+**The crux — Build Path = repo ROOT.** EasyPanel resolves the Dockerfile path from the **Build Path**,
+and that dir **is** the Docker build context ("a Dockerfile cannot COPY files outside that context").
+Each service's Dockerfile must COPY the root `pnpm-lock.yaml` + `packages/*`, so **set Build Path =
+`/`** on every app service and put the per-service Dockerfile at `apps/<svc>/Dockerfile`. Do **not**
+set Build Path to `apps/api` (the context would lose the root lockfile/workspaces).
+
+| Service      | New Service type        | Source                       | Build Path | Dockerfile path           | Command override (Deploy → Advanced) | Domain → target port           | Replicas | Env                             |
+| ------------ | ----------------------- | ---------------------------- | ---------- | ------------------------- | ------------------------------------ | ------------------------------ | -------- | ------------------------------- |
+| **postgres** | **Postgres** (template) | —                            | —          | —                         | —                                    | none (internal)                | 1        | —                               |
+| **api**      | **App**                 | GitHub `owner/repo` @ `main` | `/`        | `apps/api/Dockerfile`     | none (image CMD = `main.js`)         | `api.usematura.xyz` → **3000** | ≥1       | runtime secrets (DB/JWT/RPC)    |
+| **worker**   | **App**                 | same repo/branch             | `/`        | `apps/api/Dockerfile`     | **`node apps/api/dist/worker.js`**   | none                           | **1**    | same runtime env (DB/CHAIN/RPC) |
+| **landing**  | **App**                 | same repo/branch             | `/`        | `apps/landing/Dockerfile` | none                                 | `usematura.xyz` → **3001**     | ≥1       | **only** public `NEXT_PUBLIC_*` |
+| **app**      | **App**                 | same repo/branch             | `/`        | `apps/app/Dockerfile`     | none                                 | `app.usematura.xyz` → **3002** | ≥1       | only public `NEXT_PUBLIC_*`     |
+
+Order + how-to:
+
+1. **Postgres:** New Service → Postgres → name it → deploy → copy the **internal** `DATABASE_URL` from the **Credentials** tab (internal host, port `5432`, `sslmode=disable`).
+2. **API service:** New Service → App → **Source** = GitHub repo + branch, **Build Path `/`**; **Build** = Dockerfile builder, path `apps/api/Dockerfile`; **Environment** = the runtime vars (secrets live here); **Domains** = `api.usematura.xyz` → port **3000**, HTTPS on (Traefik auto-issues Let's Encrypt); Deploy.
+3. **Migrate once:** open the **api service → Shell** and run `pnpm --filter @matura/api exec prisma migrate deploy` against the internal DB (there is **no** native run-once job — the Shell is the documented path; running it from any machine with DB access also works, as we did). Do this **before** the API/worker serve traffic.
+4. **Worker service:** New Service → App → **same** repo/branch/Build Path/Dockerfile (`apps/api/Dockerfile`) → set the **command override** (Deploy → Advanced) to `node apps/api/dist/worker.js`; **no domain**; **replicas = 1**; same runtime env.
+5. **Landing + app services:** App, `apps/landing/Dockerfile` / `apps/app/Dockerfile`; the `NEXT_PUBLIC_*` go in **Environment** (EasyPanel passes service env as **build args**, so they reach `next build`); domains `usematura.xyz` → 3001 / `app.usematura.xyz` → 3002.
+6. **Deploy trigger:** the **Deploy** button; enable the GitHub webhook for auto-deploy on push; use **Force Rebuild** when only a build-arg changed (skips the Docker cache).
+
+**Healthcheck caveat (verify in your panel).** EasyPanel exposes **no documented first-class
+healthcheck field**, so the probe is the Dockerfile `HEALTHCHECK` (baked on the API image → `/api/v1/health`).
+Because the **worker runs the same image**, that baked HTTP probe will report _unhealthy_ on the
+worker (no HTTP server). If your EasyPanel version restart-loops unhealthy containers, either give the
+worker a Dockerfile with `HEALTHCHECK NONE` or drop the baked `HEALTHCHECK` and let Traefik health the
+API by its domain. It's mapped to **no domain**, so nothing routes HTTP to it regardless.
+
+**Could NOT confirm from docs (verify in-panel):** exact label of the command-override field
+(docs say "a command override") + string-vs-argv format; the internal Postgres hostname spelling (copy
+it from Credentials, don't construct it); any first-class healthcheck field; any native run-once/job or
+pre-deploy hook; the exact "primary domain" toggle + default Traefik HTTP→HTTPS middleware.
 
 ## Post-deploy smoke checklist
 
