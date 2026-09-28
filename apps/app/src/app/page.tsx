@@ -34,10 +34,10 @@ export default function HomePage() {
         ))}
       </Stack>
       <a
-        href={process.env.NEXT_PUBLIC_LANDING_URL ?? "https://matura.xyz"}
+        href={process.env.NEXT_PUBLIC_LANDING_URL ?? "https://usematura.xyz"}
         className={buttonVariants({ variant: "outline", size: "default" })}
       >
-        Learn more at matura.xyz
+        Learn more at usematura.xyz
       </a>
     </Screen>
   );

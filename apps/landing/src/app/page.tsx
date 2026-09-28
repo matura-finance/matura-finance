@@ -232,7 +232,7 @@ export default function HomePage() {
             </Lede>
             <div className="pt-1">
               <a
-                href="mailto:team@matura.xyz"
+                href="mailto:team@usematura.xyz"
                 className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
               >
                 Talk to the team
