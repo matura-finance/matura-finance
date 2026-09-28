@@ -281,10 +281,11 @@ async function main(): Promise<void> {
       maxSingle < REQUEST_B.targetAdvance,
     );
 
-    // Request B: the eligible claim set (derived from REQUEST_B.eligibleClaims — payroll + freelance)
-    // each financed on its cheapest ALLOWED vault (payroll → Stable is cheapest; freelance is
-    // FREELANCE_ESCROW, so Flex-only), fits maxTotalFace, and together reaches targetAdvance. The route
-    // spans two vaults — the best-execution story. Derived from config so it can't drift from the request.
+    // Request B: the eligible claim set (derived from REQUEST_B.eligibleClaims) — each financed on the
+    // ALLOWED vault giving the highest advance (equivalently the cheapest, since higher advance ⇔ lower
+    // discount), fits maxTotalFace, and together reaches targetAdvance. Because at least one eligible
+    // claim type is Flex-only while another is cheapest on Stable, the route spans two vaults — the
+    // best-execution story. Config-derived, so it can't drift if the request is retargeted.
     const bClaims = REQUEST_B.eligibleClaims
       .map((label) => infos.get(label))
       .filter((info): info is ClaimInfo => info !== undefined);
