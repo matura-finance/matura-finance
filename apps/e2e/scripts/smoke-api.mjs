@@ -45,9 +45,23 @@ if (parsed.protocol !== "https:" && !isLocalhost) {
 const base = rawUrl.replace(/\/+$/, "").replace(/\/api\/v1$/, "");
 const api = (path) => `${base}/api/v1${path}`;
 
-const READY_TIMEOUT_MS = Number(process.env.SMOKE_READY_TIMEOUT_MS ?? "120000");
-const POLL_INTERVAL_MS = Number(process.env.SMOKE_POLL_INTERVAL_MS ?? "3000");
-const REQUEST_TIMEOUT_MS = Number(process.env.SMOKE_REQUEST_TIMEOUT_MS ?? "10000");
+/** Parse a positive-integer ms env var; fall back to `fallback` on missing/garbage/non-positive. */
+function envMs(name, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) {
+    console.error(
+      `smoke-api: ${name}=${raw} is not a positive number — falling back to ${fallback}.`,
+    );
+    return fallback;
+  }
+  return n;
+}
+
+const READY_TIMEOUT_MS = envMs("SMOKE_READY_TIMEOUT_MS", 120000);
+const POLL_INTERVAL_MS = envMs("SMOKE_POLL_INTERVAL_MS", 3000);
+const REQUEST_TIMEOUT_MS = envMs("SMOKE_REQUEST_TIMEOUT_MS", 10000);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
