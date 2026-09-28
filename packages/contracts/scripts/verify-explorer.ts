@@ -23,8 +23,13 @@ async function main(): Promise<void> {
     throw new Error(`No complete deployment for chainId ${String(chainId)} — run deploy first.`);
   }
 
-  // admin + treasury default to the deployer (accounts[0]); the testnet deploy passes no
-  // --parameters override, so every `admin` constructor slot is the deployer address.
+  // Every verified contract takes `admin` as its FIRST constructor arg. The testnet deploy passes no
+  // Ignition `--parameters` override, so `admin` is the deployer (accounts[0]). NOTE: `treasury` is
+  // NOT a constructor arg on any target — SettlementManager's ctor initializes `_treasury = admin`
+  // and the deploy then resets it via a post-deploy `setTreasury` call, so treasury never enters the
+  // constructor-arg bytecode match that verification checks and needs no handling here.
+  // If a production deploy overrides `admin` (e.g. a multisig) via `--parameters`, set `admin` below
+  // to that same address, or the constructor-arg match — and thus explorer verification — will fail.
   const wallets = await viem.getWalletClients();
   const deployer = wallets[0];
   if (deployer === undefined) {
