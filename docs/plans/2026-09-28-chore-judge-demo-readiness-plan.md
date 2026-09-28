@@ -195,7 +195,7 @@ optimizer check, `docs/deployment-runbook.md` (proof-tx note, gitignored).
       targetAdvance". (Pure-optimizer route-shape is locked in WS-A A2; real vault pricing is on-chain here.)
 - [x] Confirm `seed.ts` still seeds `alice-freelance` ELIGIBLE (escrow path) — verified: all three claims
       seed ELIGIBLE, no testnet reseed required.
-- [ ] **Reconcile the live proof tx** (operator step, demo-time): the committed `executeRoute 0xc753…` ran
+- [ ] **Reconcile the live proof tx** (operator step, demo-time — NOT done here, needs testnet keys): the committed `executeRoute 0xc753…` ran
       the _old_ Request B. At rehearsal, **re-execute Request B on testnet** to capture a matching proof tx,
       OR caption Beat 5 so the BSCScan link's route matches the narrated request. Carried into WS-D Beat 5.
       _(Cannot run here — needs testnet keys/funds.)_
@@ -215,32 +215,32 @@ optimizer returns a deterministic 2-leg route ≥ target; proof-tx reconciliatio
 `packages/shared/package.json` (subpath export + `"sideEffects": false`), `packages/shared/tsup.config.ts`
 (entry), `packages/contracts/package.json` (script), `.prettierignore` (add the generated file).
 
-- [ ] Generator reads `ALICE_CLAIMS`, `REQUEST_A`, `REQUEST_B`, `SCRIPTED_DEPLOYER_PAYROLL`,
+- [x] Generator reads `ALICE_CLAIMS`, `REQUEST_A`, `REQUEST_B`, `SCRIPTED_DEPLOYER_PAYROLL`,
       `STABLE_MANDATE`, `FLEX_MANDATE`, and the 97 manifest (via `lib/read-manifest.ts`); emits a typed
       `.ts` const `export const DEMO_FIXTURE = { … } as const satisfies DemoFixture` with **money as
       base-unit integer strings** (bigint `.toString()` inline — **do NOT import `@matura/shared`**),
       deterministic key order. Validate with `DemoFixture.parse(...)` **inside the generator** before
       writing ("validated, not trusted", like `gen-deployments.ts`).
-- [ ] Wire `"contracts:export-demo-fixture": "node scripts/export-demo-fixture.ts"` (**bare node**, not
+- [x] Wire `"contracts:export-demo-fixture": "node scripts/export-demo-fixture.ts"` (**bare node**, not
       `hardhat run` — the CI gate runs chain-less). Plain `writeFileSync` (not atomic-write). Document the
       fs-write coupling in a header comment like `read-manifest.ts:8-18`; note the file is a **build-time
       input inlined by tsup**, not a runtime asset.
-- [ ] `demo.ts`: Zod schema + `type DemoFixture = z.infer<…>`. Money/unit fields
+- [x] `demo.ts`: Zod schema + `type DemoFixture = z.infer<…>`. Money/unit fields
       `z.string().regex(/^\d+$/)`. No runtime `.parse` of the generated const at import (the `satisfies`
       gives compile-time safety).
-- [ ] `package.json` subpath export `"./fixtures": { types/import/require → dist/fixtures/* }`;
+- [x] `package.json` subpath export `"./fixtures": { types/import/require → dist/fixtures/* }`;
       `tsup` entry `["src/index.ts", "src/fixtures/index.ts"]`; add `"sideEffects": false`. Do **not** add
       the fixture to `src/index.ts` (keep it off `apps/api`'s boot path).
-- [ ] Add `packages/shared/src/fixtures/demo.generated.ts` to `.prettierignore` (else the diff gate flaps).
+- [x] Add `packages/shared/src/fixtures/demo.generated.ts` to `.prettierignore` (else the diff gate flaps).
 
 ### A2 — CI freshness gate + optimizer-lock test
 
 **Files:** `.github/workflows/ci.yml` (new step after "Deployment manifest loader is fresh"),
 `packages/shared/src/fixtures/__tests__/demo-fixture.test.ts` (new — `__tests__/` is correct for shared).
 
-- [ ] CI step (exact `ci.yml:57-65` shape): `pnpm --filter @matura/contracts contracts:export-demo-fixture`
+- [x] CI step (exact `ci.yml:57-65` shape): `pnpm --filter @matura/contracts contracts:export-demo-fixture`
       then `git diff --exit-code packages/shared/src/fixtures/demo.generated.ts`.
-- [ ] Test: (a) `DemoFixture.parse(DEMO_FIXTURE)` validates; (b) run the `@matura/shared` `optimizeRoute` on
+- [x] Test: (a) `DemoFixture.parse(DEMO_FIXTURE)` validates; (b) run the `@matura/shared` `optimizeRoute` on
       Request A and B and assert the expected route shape (**A** = single leg on Stable, advance ≥ 4,800;
       **B** = 2 legs spanning Stable + Flex, advance ≥ 24,000). This locks the numbers cited in README/script.
 
@@ -254,16 +254,16 @@ optimizer returns a deterministic 2-leg route ≥ target; proof-tx reconciliatio
 The **gating** assertions (exit nonzero on miss; **poll with retries** for read-lag; pin reads to the
 `finalized` tag so a lagging public-RPC node can't false-fail):
 
-- [ ] chainId == 97; bytecode present at each **demo-relevant** manifest address (router, vaults, sources,
+- [x] chainId == 97; bytecode present at each **demo-relevant** manifest address (router, vaults, sources,
       settlement, claim/issuer registries).
-- [ ] `alice-payroll` **and** `alice-freelance` claims are **ELIGIBLE**.
-- [ ] **Per-leg available liquidity:** Stable ≥ payroll-leg advance **and** Flex ≥ freelance-leg advance
+- [x] `alice-payroll` **and** `alice-freelance` claims are **ELIGIBLE**.
+- [x] **Per-leg available liquidity:** Stable ≥ payroll-leg advance **and** Flex ≥ freelance-leg advance
       (Request B splits across two vaults — a single `≥ 24,000` check would test the wrong pool).
-- [ ] Operator/deployer **tBNB balance ≥ `MIN_DEPLOYER_BALANCE_WEI`** (faucet-dry guard; pre-fund ahead of
+- [x] Operator/deployer **tBNB balance ≥ `MIN_DEPLOYER_BALANCE_WEI`** (faucet-dry guard; pre-fund ahead of
       the demo, never faucet live).
-- [ ] (Optional) if `SMOKE_API_URL` set, run `smoke-api.mjs` for API liveness (`/health`, `/vaults` shape).
-- [ ] Print a green/red `createChecklist` summary; nonzero exit blocks "go".
-- [ ] _Dropped per deepen (P3):_ the static vault-mandate == config assertion (static-vs-static, mandates
+- [x] (Optional) if `SMOKE_API_URL` set, run `smoke-api.mjs` for API liveness (`/health`, `/vaults` shape).
+- [x] Print a green/red `createChecklist` summary; nonzero exit blocks "go".
+- [x] _Dropped per deepen (P3):_ the static vault-mandate == config assertion (static-vs-static, mandates
       don't change between demos; a wrong route would surface it anyway).
 
 **Note:** the optimizer-output assertion lives in the A2 shared test (pure, no chain); contracts can't
@@ -273,7 +273,7 @@ import the optimizer. Together = "demo-ready".
 
 **Files:** `packages/contracts/package.json` (`demo:reset:full`).
 
-- [ ] `"demo:reset:full": "pnpm run demo:reset && pnpm run demo:local"` (matches the `&&`-chained `pnpm run`
+- [x] `"demo:reset:full": "pnpm run demo:reset && pnpm run demo:local"` (matches the `&&`-chained `pnpm run`
       idiom of `demo:local`) → wipe → deploy → seed → verify, leaving Alice's claims freshly seeded. Local
       only; document that `hardhat node` must be running for the deploy/seed/verify legs (the wipe runs
       chain-down).
@@ -292,23 +292,23 @@ stack and nonzero when a claim is ineligible / a leg's liquidity is short / bala
 All claims traceable to code, brand-consistent (**Matura Account / Claims / Vaults / Router / Protocol**),
 domain = `usematura.xyz`:
 
-- [ ] One-sentence product statement (verbatim): _"Matura is a best-execution liquidity router that
+- [x] One-sentence product statement (verbatim): _"Matura is a best-execution liquidity router that
       aggregates verified future payments, splits only the amount a user needs, and finds the most efficient
       liquidity across competing onchain pools."_
-- [ ] Problem · product distinction · **why blockchain is necessary**.
-- [ ] Architecture **mermaid** diagram + monorepo map (`apps/{api,app,landing,e2e,e2e-stack}`,
+- [x] Problem · product distinction · **why blockchain is necessary**.
+- [x] Architecture **mermaid** diagram + monorepo map (`apps/{api,app,landing,e2e,e2e-stack}`,
       `packages/{contracts,chain,shared,ui,eslint-config,typescript-config}`).
-- [ ] Local quick start with **exact commands** (Node 24 keg-only note; `hardhat node` +
+- [x] Local quick start with **exact commands** (Node 24 keg-only note; `hardhat node` +
       `demo:local`/`demo:reset:full`; app/api/landing dev; `smoke:bsc-testnet`).
-- [ ] BSC-Testnet deployment table (11 addresses from `97.json`) + BSCScan explorer links + deploymentBlock.
-- [ ] **Demo scenarios A & B** — reconciled to the fixture (A = 4,800 partial payroll slice on Stable;
+- [x] BSC-Testnet deployment table (11 addresses from `97.json`) + BSCScan explorer links + deploymentBlock.
+- [x] **Demo scenarios A & B** — reconciled to the fixture (A = 4,800 partial payroll slice on Stable;
       B = 24,000 across payroll + freelance spanning Stable + Flex). **Fix the wrong table at
       `README.md:138-140`.**
-- [ ] Contract responsibilities + **trust assumptions** (link `docs/threat-model.md`, `SECURITY.md`).
-- [ ] Security / regulatory / **synthetic-data** disclaimers.
-- [ ] Test commands + **current results** (filled from WS-F's `docs/test-report.md`; no fabricated %).
-- [ ] Explicit scope: **implemented / mocked / future** (the honest-limitations list below).
-- [ ] Independent **`usematura.xyz` / `app.usematura.xyz`** deployment note (two Next apps; landing static +
+- [x] Contract responsibilities + **trust assumptions** (link `docs/threat-model.md`, `SECURITY.md`).
+- [x] Security / regulatory / **synthetic-data** disclaimers.
+- [x] Test commands + **current results** (filled from WS-F's `docs/test-report.md`; no fabricated %).
+- [x] Explicit scope: **implemented / mocked / future** (the honest-limitations list below).
+- [x] Independent **`usematura.xyz` / `app.usematura.xyz`** deployment note (two Next apps; landing static +
       wallet-free; app wallet-connected).
 
 **WS-C acceptance:** every number matches the fixture; every address matches `97.json`; brand terms
@@ -323,22 +323,22 @@ Cross-reference `docs/demo-operator-checklist.md`.
 
 Nine beats, timed **≤3:00**, optional segments marked `(optional)`:
 
-- [ ] **Pre-demo checklist + two-tier fallback plan** — run `smoke:bsc-testnet` (must be green);
+- [x] **Pre-demo checklist + two-tier fallback plan** — run `smoke:bsc-testnet` (must be green);
       `demo:reset:full` for local rehearsal; tier-1 live → **tier-2 recorded video** in `docs/demo-assets/`.
       Include the SIWE/CORS baked-domain gotcha and "pre-fund the demo wallet" as checklist items.
-- [ ] Beat 1 — 30-second problem statement.
-- [ ] Beat 2 — Portfolio: Alice's **three claims** (payroll 20k / freelance 15k / stream ~10k).
-- [ ] Beat 3 — **Request A**: partial payroll slice (4,800) → cheapest vault (Stable).
-- [ ] Beat 4 — **Request B**: multi-claim route (24,000) across **two sources** (payroll + freelance),
+- [x] Beat 1 — 30-second problem statement.
+- [x] Beat 2 — Portfolio: Alice's **three claims** (payroll 20k / freelance 15k / stream ~10k).
+- [x] Beat 3 — **Request A**: partial payroll slice (4,800) → cheapest vault (Stable).
+- [x] Beat 4 — **Request B**: multi-claim route (24,000) across **two sources** (payroll + freelance),
       spanning Stable + Flex.
-- [ ] Beat 5 — Wallet confirmation + **BSC Testnet BSCScan proof** (executeRoute tx — **must match the
+- [x] Beat 5 — Wallet confirmation + **BSC Testnet BSCScan proof** (executeRoute tx — **must match the
       retargeted Request B**, per WS0 reconciliation).
-- [ ] Beat 6 — Settlement waterfall + **retained user balance** _(optional: narrated from local
+- [x] Beat 6 — Settlement waterfall + **retained user balance** _(optional: narrated from local
       `demo:settle` since testnet has no time-travel)_.
-- [ ] Beat 7 — **Delayed-claim exception**: live, show the router **excluding** an ineligible/not-yet-due
+- [x] Beat 7 — **Delayed-claim exception**: live, show the router **excluding** an ineligible/not-yet-due
       claim; _(optional)_ reference the local settle waterfall for the delayed-obligor path.
-- [ ] Beat 8/9 — Closing differentiation: **aggregation · partial slicing · best execution**.
-- [ ] A timing table (seconds per beat) proving the core path fits 3:00 with optional beats excluded.
+- [x] Beat 8/9 — Closing differentiation: **aggregation · partial slicing · best execution**.
+- [x] A timing table (seconds per beat) proving the core path fits 3:00 with optional beats excluded.
 - [ ] **Record the tier-2 video** during rehearsal (operator step; store in `docs/demo-assets/`).
 
 **WS-D acceptance:** rehearsable, ≤3:00 on the core path, every on-screen number matches the fixture, every
@@ -352,25 +352,25 @@ beat demonstrable on live testnet as written, and the Beat-5 proof link matches 
 `apps/app/src/app/layout.tsx` + new `apps/app/src/app/robots.ts` (metadata, Decision 10), various
 (dead-code removal). Reuse `apps/e2e/scripts/lib/scan-bundle.mjs` `SECRET_VALUE_PATTERNS` + `check-app-secrets.mjs`.
 
-- [ ] **Verify every README claim against code** (addresses, commands, numbers, scenarios).
-- [ ] **Copy-voice audit** (outcome-led, specific, non-hype, accurate about the testnet prototype) across
+- [x] **Verify every README claim against code** (addresses, commands, numbers, scenarios).
+- [x] **Copy-voice audit** (outcome-led, specific, non-hype, accurate about the testnet prototype) across
       landing + app; fix **brand capitalization drift** ("Matura protocol/account" → canonical caps).
-- [ ] **CTA / canonical / OG / footer / cross-domain** verification against `apps/landing/src/lib/site.ts`
+- [x] **CTA / canonical / OG / footer / cross-domain** verification against `apps/landing/src/lib/site.ts`
       (`usematura.xyz` / `app.usematura.xyz`); confirm **baked `NEXT_PUBLIC_*` match API SIWE/CORS
       exact-match** (the exact-match 401 trap). Ensure landing hero numbers are labeled _illustrative_.
-- [ ] **App metadata (Decision 10):** add canonical + OG + `robots.ts` (`noindex`) to `apps/app`.
-- [ ] **Logo/gradient check:** record "flat text wordmark, 0 gradients, 0 SVG logo assets" (add nothing).
-- [ ] **Dead-code / stale-artifact sweep** — remove only provably-unreferenced, behavior-neutral artifacts;
+- [x] **App metadata (Decision 10):** add canonical + OG + `robots.ts` (`noindex`) to `apps/app`.
+- [x] **Logo/gradient check:** record "flat text wordmark, 0 gradients, 0 SVG logo assets" (add nothing).
+- [x] **Dead-code / stale-artifact sweep** — remove only provably-unreferenced, behavior-neutral artifacts;
       **report-don't-delete** any workspace package unless build/lint/test proves zero importers.
-- [ ] **Clean-checkout command verification** — every `pnpm` workspace command runs from a fresh clone
+- [x] **Clean-checkout command verification** — every `pnpm` workspace command runs from a fresh clone
       (document any needing Docker/Postgres/Node 24).
-- [ ] **Secret scan** — reuse `SECRET_VALUE_PATTERNS` verbatim (postgres URL, JWT `eyJ…`, key-adjacent hex);
+- [x] **Secret scan** — reuse `SECRET_VALUE_PATTERNS` verbatim (postgres URL, JWT `eyJ…`, key-adjacent hex);
       **add `Bearer\s+[A-Za-z0-9._-]{20,}`**; **no blanket `0x[0-9a-f]{64}`** (bytecode/tx-hash false positives).
-- [ ] **Full quality-gate run → `docs/test-report.md`** with real **timestamps + environment** (Node/pnpm
+- [x] **Full quality-gate run → `docs/test-report.md`** with real **timestamps + environment** (Node/pnpm
       versions, OS). Run the **CI `verify`** sequence (build → lint → typecheck → test → contracts:compile →
       contracts:test → ABI-freshness → manifest-freshness → **demo-fixture-freshness** → Playwright), not
       just `turbo test`. **Record actual pass/fail; do not fabricate coverage.**
-- [ ] Flag CLAUDE.md's stale `matura.xyz` wording for a follow-up (out of scope to fix here).
+- [x] Flag CLAUDE.md's stale `matura.xyz` wording for a follow-up (out of scope to fix here).
 
 **WS-F acceptance:** report shows a real, timestamped gate run; no README claim contradicts code; copy is
 brand-consistent; app has canonical/OG/noindex; no behavior changed by the sweep.
@@ -399,16 +399,16 @@ last, and it re-enters `apps/app/layout.tsx` for metadata.
 
 ## Non-Functional Requirements / Constraints
 
-- [ ] **No `any`** anywhere (type-aware ESLint). Fixture safety via `as const satisfies DemoFixture` +
+- [x] **No `any`** anywhere (type-aware ESLint). Fixture safety via `as const satisfies DemoFixture` +
       gen-time `.parse`; smoke/optimizer via typed reads.
-- [ ] **Money = base-unit integer strings** at every boundary (`/^\d+$/`); bigints only inside contracts/chain.
-- [ ] **Parallelizable**: WS-A/C/D concurrent after WS0, disjoint directories (see conflict map).
-- [ ] **Tests updated/created**: shared fixture schema + optimizer-lock test; `verify.ts` change exercised by
+- [x] **Money = base-unit integer strings** at every boundary (`/^\d+$/`); bigints only inside contracts/chain.
+- [x] **Parallelizable**: WS-A/C/D concurrent after WS0, disjoint directories (see conflict map).
+- [x] **Tests updated/created**: shared fixture schema + optimizer-lock test; `verify.ts` change exercised by
       `demo:local`/`verify:bsc-testnet`; smoke script is itself a check.
-- [ ] Landing stays **wallet-free**; `@matura/shared` stays **framework-free Zod** (generator writes plain
+- [x] Landing stays **wallet-free**; `@matura/shared` stays **framework-free Zod** (generator writes plain
       `.ts` into it, exactly like the ABI/manifest gates); `@matura/contracts` keeps **no `@matura/*` deps**
       (generator must not import shared).
-- [ ] Commits authored `arjunamarcelino` only — **no Claude co-author trailer**; per-workstream commits.
+- [x] Commits authored `arjunamarcelino` only — **no Claude co-author trailer**; per-workstream commits.
 
 ## Risks (ordered by severity)
 
