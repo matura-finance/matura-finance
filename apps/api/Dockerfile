@@ -32,10 +32,11 @@ COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
 
-# `prisma generate` runs INSIDE the linux container so the correct glibc query engine is
-# emitted into apps/api/src/generated/prisma (not the host's darwin engine). `turbo run build`
-# then builds @matura/chain first (task graph) before @matura/api's `nest build`.
-RUN pnpm --filter @matura/api exec prisma generate
+# `turbo run build` builds @matura/chain first (task graph), then runs @matura/api's build
+# script (`prisma generate && nest build`). `prisma generate` therefore runs INSIDE the linux
+# container — emitting the correct glibc query engine into apps/api/src/generated/prisma (not
+# the host's darwin engine) — and nest-cli `assets` copies that engine into dist/generated/prisma
+# so `node dist/main.js` resolves it without depending on the src tree layout.
 RUN pnpm turbo run build --filter=@matura/api
 
 # ---- runner: slim, non-root; the pruned tree (node_modules + prisma engine + generated client + dist) ----
