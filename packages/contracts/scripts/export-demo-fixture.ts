@@ -17,7 +17,10 @@ import { dirname, join } from "node:path";
 // Our `config/*` sources use NodeNext `.js` import specifiers that point at `.ts` files (repo
 // convention). Plain `node` type-stripping does not remap `.js` → `.ts`, so register a minimal
 // resolve hook that does (copied from `packages/chain/scripts/gen-deployments.ts`), then dynamically
-// import the config below (a static import would resolve before the hook is registered).
+// import the config below (a static import would resolve before the hook is registered). Only
+// relative `.js` specifiers from OUR src are remapped; third-party `.js` imports (e.g. zod's own
+// internal modules under node_modules) are left untouched, and a genuine failure THROWS with the
+// `.ts` path so a broken import surfaces instead of being masked.
 register(
   "data:text/javascript," +
     encodeURIComponent(
