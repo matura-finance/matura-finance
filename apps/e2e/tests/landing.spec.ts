@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-/** Marketing site (usematura.xyz) — static, wallet-free. These run in CI without any chain/API. */
+/** Marketing site (usematura.xyz) — static, wallet-free single-pager. These run in CI without any chain/API. */
 
 test.describe("landing", () => {
   test("hero renders the approved headline and a single h1", async ({ page }) => {
@@ -19,18 +19,23 @@ test.describe("landing", () => {
     await expect(openApp).toHaveAttribute("href", /app\.usematura\.xyz|localhost:3002/);
   });
 
-  test("landing → how it works → protocol path", async ({ page }) => {
+  test("anchor nav scrolls to in-page sections (no route change)", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "See how it works" }).first().click();
-    await expect(page).toHaveURL(/\/how-it-works$/);
+    await expect(page).toHaveURL(/#how-it-works$/);
+    await expect(page.locator("#how-it-works")).toBeInViewport();
+    // Still a single-page document: exactly one <h1>.
     await expect(page.locator("h1")).toHaveCount(1);
-
-    await page.goto("/protocol");
-    await expect(page.getByText("Best-Execution Claim Router")).toBeVisible();
   });
 
-  test("core routes respond", async ({ page }) => {
-    for (const path of ["/for-issuers", "/docs", "/privacy", "/terms"]) {
+  test("live diagnostics link out to BscScan", async ({ page }) => {
+    await page.goto("/#protocol");
+    const bscScan = page.getByRole("link", { name: /BscScan/i }).first();
+    await expect(bscScan).toHaveAttribute("href", /testnet\.bscscan\.com/);
+  });
+
+  test("legal routes respond", async ({ page }) => {
+    for (const path of ["/privacy", "/terms"]) {
       const response = await page.goto(path);
       expect(response?.ok()).toBeTruthy();
       await expect(page.locator("h1")).toHaveCount(1);
@@ -56,7 +61,7 @@ test.describe("landing", () => {
       await toggle.first().click();
       await expect(toggle.first()).toHaveAttribute("aria-expanded", "true");
       await page.getByRole("link", { name: "How it works" }).first().click();
-      await expect(page).toHaveURL(/\/how-it-works$/);
+      await expect(page).toHaveURL(/#how-it-works$/);
     }
     await context.close();
   });

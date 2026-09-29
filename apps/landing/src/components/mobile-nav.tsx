@@ -2,7 +2,6 @@
 
 import { buttonVariants } from "@matura/ui/components/button";
 import { cn } from "@matura/ui/lib/utils";
-import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { APP_URL, NAV_LINKS } from "../lib/site";
@@ -108,14 +107,14 @@ export function MobileNav() {
         >
           <nav aria-label="Mobile" className="mx-auto flex w-full max-w-6xl flex-col gap-1">
             {NAV_LINKS.map((link) => (
-              <Link
+              <a
                 key={link.href}
                 href={link.href}
                 onClick={close}
-                className="rounded-md px-3 py-3 text-base font-medium text-midnight transition-colors hover:bg-midnight/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="rounded-md px-3 py-3 text-base font-medium capitalize text-midnight transition-colors hover:bg-midnight/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
             <a
               href={APP_URL}

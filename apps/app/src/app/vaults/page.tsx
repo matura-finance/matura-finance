@@ -4,7 +4,7 @@ import { Screen } from "../../components/screen";
 import { VaultsView } from "../../components/vaults/vaults-view";
 
 export const metadata: Metadata = {
-  title: "Vaults — Matura",
+  title: "Matura",
 };
 
 export default function VaultsPage() {

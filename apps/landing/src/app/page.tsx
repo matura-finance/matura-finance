@@ -1,43 +1,106 @@
 import { AllocationBar } from "@matura/ui/components/allocation-bar";
 import { Badge } from "@matura/ui/components/badge";
 import { buttonVariants } from "@matura/ui/components/button";
-import { Card } from "@matura/ui/components/card";
 import { cn } from "@matura/ui/lib/utils";
-import Link from "next/link";
+import Image from "next/image";
 
-import { DisplayHeading, Eyebrow, Lede, Section } from "../components/marketing";
-import { APP_URL, BSCSCAN_TESTNET_URL, CONTRACTS_DEPLOYED } from "../lib/site";
+import {
+  Container,
+  DisplayHeading,
+  Eyebrow,
+  Lede,
+  MonoTag,
+  Panel,
+  Section,
+} from "../components/marketing";
+import { HeroScene } from "../components/hero-scene";
+import {
+  APP_URL,
+  bscScanAddress,
+  BSCSCAN_TESTNET_URL,
+  CHAIN_ID,
+  CONTACT_EMAIL,
+  DEPLOYMENT_BLOCK,
+  GITHUB_DOCS,
+  TESTNET_CONTRACTS,
+  TESTNET_VAULTS,
+} from "../lib/site";
 
-const CLAIM_LABELS = [
-  "Earned salary",
-  "Approved freelance payout",
-  "Marketplace settlement",
-  "Onchain stream",
+const CLAIM_TYPES = [
+  { label: "Earned salary", note: "Payroll not yet paid out" },
+  { label: "Approved freelance payout", note: "Invoice cleared, awaiting terms" },
+  { label: "Marketplace settlement", note: "Sold, pending platform payout" },
+  { label: "Onchain stream", note: "Vesting or streamed income" },
+] as const;
+
+const PROBLEM_FLAWS = [
+  {
+    tag: "01 / siloed",
+    title: "Financed in isolation",
+    body: "Each payment is handled separately. You can't see or draw against your total earned-but-unpaid position in one place.",
+    who: "Anyone with income from more than one source",
+  },
+  {
+    tag: "02 / single-provider",
+    title: "Take-it-or-leave-it pricing",
+    body: "You accept whatever one facility quotes. There's no competition on the cost of your advance, so you systematically overpay.",
+    who: "Everyone",
+  },
+  {
+    tag: "03 / all-or-nothing",
+    title: "Whole-invoice only",
+    body: "An entire invoice is pushed into one facility, even when you only need a fraction or a cheaper blend exists.",
+    who: "People who need $200, not the whole $2,000",
+  },
 ] as const;
 
 const FLOW_STEPS = [
   {
     title: "Verify",
-    body: "An approved issuer or onchain adapter confirms the amount, beneficiary, and expected payment date.",
+    body: "An approved issuer or onchain adapter attests to the amount, beneficiary, and expected payment date. The claim lands in your account.",
   },
   {
     title: "Compare",
-    body: "Matura Vaults return executable prices based on claim type, duration, liquidity, and risk limits.",
+    body: "The router prices eligible vaults against your request — including partial claim slices — and pins claim state and liquidity at a block.",
   },
   {
     title: "Route",
-    body: "Matura Router selects the lowest-cost eligible combination and assigns only the claim slices required.",
+    body: "You review the cheapest verifiable route — amount, cost, vaults, retained balance — then sign it as EIP-712 typed data. Non-custodial.",
   },
   {
     title: "Settle",
-    body: "You receive liquidity now. At maturity, the issuer pays Matura Protocol, which settles the selected vaults and returns the unassigned balance to you.",
+    body: "executeRoute re-checks every leg onchain and funds atomically. At maturity the issuer pays and settlement is conservation-checked.",
   },
 ] as const;
 
-const EXECUTION_PROOF = [
-  "Partial claim slicing",
-  "Multi-vault comparison",
-  "Deterministic settlement",
+const ROUTER_FEATURES = [
+  {
+    tag: "optimizer",
+    title: "Pure integer optimizer",
+    body: "bigint-only, no floats: a bounded exact search with a greedy fallback, in framework-free @matura/shared.",
+  },
+  {
+    tag: "deterministic",
+    title: "Byte-identical routes",
+    body: "Identical inputs at the same pinned block always yield the same route — ranked by cost, then fewer legs, then lower face.",
+  },
+  {
+    tag: "trust-minimized",
+    title: "No quote-vs-execution gap",
+    body: "The API's off-chain leg validation mirrors the Solidity _validateLegs, so what you're quoted is exactly what the contract funds.",
+  },
+  {
+    tag: "single-use",
+    title: "Single-use intents",
+    body: "A route is persisted as a short-lived intent, re-validated against a fresh block, emitted to sign — and consumed exactly once.",
+  },
+] as const;
+
+const ONCHAIN_LAYERS = [
+  { title: "Claim state", body: "Issuer-authorized, revocable, traceable." },
+  { title: "Vault accounting", body: "Liquidity and reservations, checkable by anyone." },
+  { title: "Route authorization", body: "EIP-712 signatures bind exactly what will execute." },
+  { title: "Settlement", body: "Atomic funding and conservation-checked settlement." },
 ] as const;
 
 const ISSUER_BENEFITS = [
@@ -47,12 +110,81 @@ const ISSUER_BENEFITS = [
   "Transparent settlement reporting",
 ] as const;
 
+const BEFORE_YOU_SIGN = [
+  "Amount received",
+  "Claim value assigned",
+  "Total cost",
+  "Selected vaults",
+  "Retained balance",
+  "Settlement status",
+] as const;
+
+const WHY_MATURA = [
+  {
+    tag: "aggregate",
+    title: "One unified account",
+    body: "See and draw against your entire earned-but-unpaid position — not one invoice at a time.",
+  },
+  {
+    tag: "compete",
+    title: "Genuine best execution",
+    body: "Vaults compete for your request. You get the cheapest verifiable route, not one provider's take-it-or-leave-it price.",
+  },
+  {
+    tag: "right-size",
+    title: "Only what you need",
+    body: "Partial claim slicing lets you draw $200 without financing the whole $2,000 invoice.",
+  },
+  {
+    tag: "provable",
+    title: "Provably fair pricing",
+    body: "A deterministic optimizer returns a byte-identical route for identical inputs — auditable, not a black box.",
+  },
+  {
+    tag: "non-custodial",
+    title: "Non-custodial by design",
+    body: "Matura only prepares calldata and typed data to sign. It never holds your key or your funds.",
+  },
+  {
+    tag: "verifiable",
+    title: "Verifiable settlement",
+    body: "Every leg is re-checked onchain before atomic funding, and settlement is conservation-checked.",
+  },
+] as const;
+
+const FAQ_ITEMS = [
+  {
+    q: "What exactly is a claim?",
+    a: "A claim is a verified future payment — salary, a cleared freelance invoice, a marketplace payout, or an onchain stream — attested by an approved issuer or onchain adapter. It records the amount, beneficiary, and expected payment date.",
+  },
+  {
+    q: "Is Matura custodial? Does it hold my funds or keys?",
+    a: "No. The API only prepares unsigned calldata and EIP-712 typed data. You sign in your own wallet, funds move via the onchain router, and Matura never holds your key or custody of your money.",
+  },
+  {
+    q: "How does best execution pick a route?",
+    a: "A pure integer optimizer compares eligible vaults — including partial claim slices — and selects the cheapest verifiable combination. Its off-chain checks mirror the Solidity validation, so the quote is exactly what the contract funds. Identical inputs at the same block yield a byte-identical route.",
+  },
+  {
+    q: "Is my invoice data exposed onchain?",
+    a: "No. Issuers stay the source of truth for offchain payment rights. The chain records rights and value flows — claim state, vault accounting, route authorization, settlement — not your private documents.",
+  },
+  {
+    q: "What happens at maturity?",
+    a: "You receive liquidity now. At maturity the issuer pays Matura Protocol, which settles the selected vaults under a conservation check and returns any unassigned balance to you.",
+  },
+  {
+    q: "Is this real money?",
+    a: "Not yet. The current release is a testnet prototype on BNB Smart Chain Testnet using synthetic claims and mock assets — for demonstration only, not for production value.",
+  },
+] as const;
+
 export default function HomePage() {
   return (
     <>
       {/* 1 — Hero */}
-      <Section tone="mist" className="overflow-hidden">
-        <div className="mx-auto grid w-full max-w-6xl gap-12 px-gutter lg:grid-cols-12 lg:items-center">
+      <Section id="top" tone="mist" className="overflow-hidden">
+        <Container className="grid gap-12 lg:grid-cols-12 lg:items-center">
           <div className="flex flex-col gap-6 lg:col-span-7">
             <div className="animate-rise">
               <Eyebrow>Future Income Liquidity</Eyebrow>
@@ -60,92 +192,159 @@ export default function HomePage() {
             <DisplayHeading as="h1" className="animate-rise text-midnight [--rise-delay:60ms]">
               Liquidity for what you&apos;ve already earned.
             </DisplayHeading>
-            <Lede className="animate-rise [--rise-delay:120ms]">
-              Matura brings verified future payments into one account, assigns only what you need,
-              and routes each request to the most efficient onchain liquidity.
+            <Lede className="animate-rise max-w-[52ch] text-xl [--rise-delay:120ms]">
+              Matura aggregates verified future payments into one account, assigns only what you
+              need, and routes each request across competing onchain liquidity at the lowest
+              executable cost — with every leg re-validated onchain before it settles.
             </Lede>
             <div className="animate-rise flex flex-wrap items-center gap-3 [--rise-delay:180ms]">
               <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }))}>
                 Open Matura
               </a>
-              <Link
-                href="/how-it-works"
+              <a
+                href="#how-it-works"
                 className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
               >
                 See how it works
-              </Link>
+              </a>
             </div>
-            <p className="animate-rise text-sm text-midnight/60 [--rise-delay:240ms]">
-              Built on BNB Chain · Verified claims · Transparent execution
-            </p>
+            <div className="animate-rise flex flex-col gap-3 [--rise-delay:240ms]">
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/50">
+                  Built on
+                </span>
+                <Image
+                  src="/logos/bnb/bnb-chain-black.png"
+                  alt="BNB Chain"
+                  width={114}
+                  height={20}
+                  unoptimized
+                />
+              </div>
+              <p className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/50">
+                Verified claims · Transparent execution
+              </p>
+            </div>
           </div>
 
           <div className="lg:col-span-5">
-            <HeroVisual />
+            <HeroScene />
           </div>
-        </div>
+        </Container>
       </Section>
 
       {/* 2 — Problem */}
-      <Section tone="card" className="border-y border-midnight/10">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-gutter lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <Eyebrow>Value, stuck in time</Eyebrow>
-            <DisplayHeading className="mt-5 text-midnight">
-              You&apos;ve earned it. You just can&apos;t use it yet.
-            </DisplayHeading>
+      <Section id="problem" tone="card" className="border-y border-midnight/10">
+        <Container className="flex flex-col gap-12">
+          <div className="grid gap-8 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <Eyebrow>Value, stuck in time</Eyebrow>
+              <DisplayHeading className="mt-5 text-midnight">
+                You&apos;ve earned it. You just can&apos;t use it yet.
+              </DisplayHeading>
+            </div>
+            <div className="lg:col-span-7 lg:pt-2">
+              <Lede className="max-w-[60ch] text-xl">
+                Salaries, freelance payouts, marketplace earnings, refunds, and onchain streams
+                become yours before they become spendable. Invoice factoring and early-wage-access
+                products don&apos;t fix that gap — they have three structural flaws.
+              </Lede>
+            </div>
           </div>
-          <div className="lg:col-span-7 lg:pt-2">
-            <Lede className="max-w-[60ch] text-xl">
-              Salary, freelance payouts, refunds, marketplace earnings, and onchain streams often
-              become yours before they become spendable. Existing products treat each payment
-              separately—and make you accept one provider&apos;s price.
-            </Lede>
-          </div>
-        </div>
+
+          <ul className="grid gap-4 md:grid-cols-3">
+            {PROBLEM_FLAWS.map((flaw) => (
+              <Panel key={flaw.tag} as="li" className="flex flex-col gap-3">
+                <MonoTag>{flaw.tag}</MonoTag>
+                <h3 className="font-heading text-lg font-semibold text-midnight">{flaw.title}</h3>
+                <p className="text-sm leading-relaxed text-midnight/70">{flaw.body}</p>
+                <p className="mt-auto border-t border-midnight/10 pt-3 text-xs text-midnight/50">
+                  Hurts: {flaw.who}
+                </p>
+              </Panel>
+            ))}
+          </ul>
+
+          <p className="max-w-[70ch] text-sm leading-relaxed text-midnight/60">
+            The underlying capital is real and already committed — the inefficiency is purely in how
+            it is aggregated, priced, and settled. This is a market-structure problem, not a credit
+            problem.
+          </p>
+        </Container>
       </Section>
 
       {/* 3 — Unified account */}
       <Section tone="mist">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-gutter lg:grid-cols-2 lg:items-center">
+        <Container className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col gap-5">
             <Eyebrow>Matura Account</Eyebrow>
             <DisplayHeading className="text-midnight">
               Every verified payment. One liquidity account.
             </DisplayHeading>
             <Lede>
-              Matura gathers eligible future payments into a single view, so you can understand what
-              is available now without losing sight of what remains yours.
+              A wallet sees all of its eligible claims in one place — the full earned-but-unpaid
+              position, not one invoice at a time. Request an amount, not a facility.
             </Lede>
           </div>
 
           <ul className="grid gap-3 sm:grid-cols-2">
-            {CLAIM_LABELS.map((label) => (
-              <li key={label}>
-                <Card className="h-full gap-3 p-5">
-                  <span aria-hidden className="h-1.5 w-6 rounded-full bg-liquid-mint" />
-                  <span className="font-heading text-base font-semibold text-midnight">
-                    {label}
-                  </span>
-                  <span className="text-sm text-midnight/60">Verified · Available to route</span>
-                </Card>
-              </li>
+            {CLAIM_TYPES.map((claim) => (
+              <Panel key={claim.label} as="li" className="flex flex-col gap-2">
+                <span aria-hidden className="h-1.5 w-6 rounded-pill bg-liquid-mint" />
+                <span className="font-heading text-base font-semibold text-midnight">
+                  {claim.label}
+                </span>
+                <span className="text-sm text-midnight/55">{claim.note}</span>
+                <MonoTag className="mt-1">Verified · routable</MonoTag>
+              </Panel>
             ))}
           </ul>
-        </div>
+        </Container>
       </Section>
 
-      {/* 4 — How it works */}
-      <Section tone="card" className="border-y border-midnight/10">
-        <div className="mx-auto w-full max-w-6xl px-gutter">
-          <DisplayHeading className="max-w-[18ch] text-midnight">
+      {/* 4 — Why Matura (advantages) */}
+      <Section id="why" tone="card" className="border-y border-midnight/10">
+        <Container className="flex flex-col gap-12">
+          <div className="grid gap-8 lg:grid-cols-12">
+            <div className="lg:col-span-5">
+              <Eyebrow>Why Matura</Eyebrow>
+              <DisplayHeading className="mt-5 text-midnight">
+                Cheaper, fairer, and verifiable — by construction.
+              </DisplayHeading>
+            </div>
+            <div className="lg:col-span-7 lg:pt-2">
+              <Lede className="max-w-[60ch] text-xl">
+                Matura isn&apos;t a better rate on the same broken model — it changes the market
+                structure. Aggregation, competition, and onchain verification each remove a cost
+                that legacy early-payout products leave in.
+              </Lede>
+            </div>
+          </div>
+
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {WHY_MATURA.map((item) => (
+              <Panel key={item.tag} as="li" className="flex flex-col gap-2">
+                <MonoTag>{item.tag}</MonoTag>
+                <h3 className="font-heading text-base font-semibold text-midnight">{item.title}</h3>
+                <p className="text-sm leading-relaxed text-midnight/70">{item.body}</p>
+              </Panel>
+            ))}
+          </ul>
+        </Container>
+      </Section>
+
+      {/* 5 — How it works */}
+      <Section id="how-it-works" tone="mist">
+        <Container>
+          <Eyebrow>How it works</Eyebrow>
+          <DisplayHeading className="mt-5 max-w-[20ch] text-midnight">
             From verified payment to usable liquidity.
           </DisplayHeading>
 
           <div className="relative mt-14">
             <span
               aria-hidden
-              className="absolute left-[19px] top-6 bottom-6 w-px bg-midnight/15 md:hidden"
+              className="absolute left-[19px] bottom-6 top-6 w-px bg-midnight/15 md:hidden"
             />
             <span
               aria-hidden
@@ -154,7 +353,7 @@ export default function HomePage() {
             <ol className="grid gap-8 md:grid-cols-4">
               {FLOW_STEPS.map((step, index) => (
                 <li key={step.title} className="relative flex gap-4 md:flex-col md:gap-4">
-                  <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-liquid-mint font-heading text-sm font-bold text-midnight ring-4 ring-[var(--background)]">
+                  <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-liquid-mint font-mono text-sm font-bold text-midnight ring-4 ring-mist">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <div className="flex flex-col gap-2">
@@ -167,60 +366,119 @@ export default function HomePage() {
               ))}
             </ol>
           </div>
-        </div>
+        </Container>
       </Section>
 
-      {/* 5 — Best execution */}
-      <Section tone="mist">
-        <div className="mx-auto grid w-full max-w-6xl gap-12 px-gutter lg:grid-cols-2 lg:items-start">
-          <div className="flex flex-col gap-5">
-            <Eyebrow>More than early payout</Eyebrow>
-            <DisplayHeading className="text-midnight">
-              One request. Competing liquidity. A better route.
-            </DisplayHeading>
-            <Lede>
-              Instead of forcing an entire invoice into one facility, Matura compares eligible
-              vaults and can combine partial claim slices to meet the amount you requested at the
-              lowest executable cost.
-            </Lede>
-            <ul className="flex flex-wrap gap-2 pt-1">
-              {EXECUTION_PROOF.map((point) => (
-                <li key={point}>
-                  <Badge variant="outline" className="border-midnight/20 text-midnight">
-                    {point}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
+      {/* 6 — Best-execution router (the differentiator) */}
+      <Section tone="card" className="border-y border-midnight/10">
+        <Container className="flex flex-col gap-12">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+            <div className="flex flex-col gap-5">
+              <Eyebrow>The router</Eyebrow>
+              <DisplayHeading className="text-midnight">
+                One request. Competing liquidity. A better route.
+              </DisplayHeading>
+              <Lede>
+                Instead of forcing an entire invoice into one facility, Matura compares eligible
+                vaults and can combine partial claim slices to meet exactly the amount you requested
+                at the lowest executable cost.
+              </Lede>
+              <ul className="flex flex-wrap gap-2 pt-1">
+                {[
+                  "Partial claim slicing",
+                  "Multi-vault comparison",
+                  "Deterministic settlement",
+                ].map((point) => (
+                  <li key={point}>
+                    <Badge variant="outline" className="border-midnight/20 text-midnight">
+                      {point}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <ExecutionDiagram />
           </div>
 
-          <ExecutionDiagram />
-        </div>
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {ROUTER_FEATURES.map((feature) => (
+              <Panel key={feature.tag} as="li" className="flex flex-col gap-2">
+                <MonoTag>{feature.tag}</MonoTag>
+                <h3 className="font-heading text-base font-semibold text-midnight">
+                  {feature.title}
+                </h3>
+                <p className="text-sm leading-relaxed text-midnight/70">{feature.body}</p>
+              </Panel>
+            ))}
+          </ul>
+        </Container>
       </Section>
 
-      {/* 6 — Why blockchain */}
-      <Section tone="card" className="border-y border-midnight/10">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-gutter lg:grid-cols-12">
+      {/* 7 — Why onchain */}
+      <Section tone="mist">
+        <Container className="grid gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
             <Eyebrow>Why onchain</Eyebrow>
             <DisplayHeading className="mt-5 text-midnight">
               A shared settlement layer for rights that begin elsewhere.
             </DisplayHeading>
-          </div>
-          <div className="lg:col-span-7 lg:pt-2">
-            <Lede className="max-w-[60ch] text-xl">
-              Issuers remain the source of truth for offchain payment rights. BNB Chain provides a
-              common execution layer for claim state, vault accounting, route authorization, and
-              settlement—so every funded slice can be traced without exposing private documents
-              onchain.
+            <Lede className="mt-5">
+              Issuers stay the source of truth for offchain payment rights. BNB Chain records rights
+              and value flows — not your private invoices — so every funded slice is auditable
+              without exposing documents onchain.
             </Lede>
           </div>
-        </div>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:col-span-7">
+            {ONCHAIN_LAYERS.map((layer) => (
+              <Panel key={layer.title} as="li" className="flex flex-col gap-2">
+                <h3 className="font-heading text-base font-semibold text-midnight">
+                  {layer.title}
+                </h3>
+                <p className="text-sm text-midnight/70">{layer.body}</p>
+              </Panel>
+            ))}
+          </ul>
+        </Container>
       </Section>
 
-      {/* 7 — Issuer */}
-      <Section tone="mist">
-        <div className="mx-auto grid w-full max-w-6xl gap-10 px-gutter lg:grid-cols-2 lg:items-center">
+      {/* 8 — Live diagnostics (real testnet deployment) */}
+      <Section id="protocol" tone="card" className="border-y border-midnight/10">
+        <Container className="flex flex-col gap-10">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-8">
+              <Eyebrow>Live on BNB Testnet</Eyebrow>
+              <DisplayHeading className="mt-5 text-midnight">
+                Verifiable execution, from claim to settlement.
+              </DisplayHeading>
+              <Image
+                src="/logos/bnb/bnb-chain-black.png"
+                alt="BNB Chain"
+                width={137}
+                height={24}
+                unoptimized
+                className="mt-6"
+              />
+            </div>
+            <div className="lg:col-span-4 lg:text-right">
+              <a
+                href={`${BSCSCAN_TESTNET_URL}/address/${TESTNET_CONTRACTS[0].address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+              >
+                Inspect on BscScan
+              </a>
+            </div>
+          </div>
+
+          <DiagnosticsPanel />
+        </Container>
+      </Section>
+
+      {/* 9 — For issuers */}
+      <Section id="issuers" tone="mist">
+        <Container className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col gap-5">
             <Eyebrow>For platforms and issuers</Eyebrow>
             <DisplayHeading className="text-midnight">
@@ -228,11 +486,12 @@ export default function HomePage() {
             </DisplayHeading>
             <Lede>
               Payroll providers, freelance platforms, marketplaces, and creator tools can offer
-              faster access without building a separate financing stack for every payout type.
+              faster access to approved payouts — without building a financing stack for every
+              payout type. Each integration brings a whole population of payouts.
             </Lede>
             <div className="pt-1">
               <a
-                href="mailto:team@usematura.xyz"
+                href={`mailto:${CONTACT_EMAIL}`}
                 className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
               >
                 Talk to the team
@@ -242,157 +501,185 @@ export default function HomePage() {
 
           <ul className="grid gap-3 sm:grid-cols-2">
             {ISSUER_BENEFITS.map((benefit) => (
-              <li key={benefit}>
-                <Card className="h-full flex-row items-center gap-3 p-5">
-                  <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-liquid-mint" />
-                  <span className="text-sm font-medium text-midnight">{benefit}</span>
-                </Card>
-              </li>
+              <Panel key={benefit} as="li" className="flex-row items-center gap-3">
+                <span aria-hidden className="h-2 w-2 shrink-0 rounded-pill bg-liquid-mint" />
+                <span className="text-sm font-medium text-midnight">{benefit}</span>
+              </Panel>
             ))}
           </ul>
-        </div>
+        </Container>
       </Section>
 
-      {/* 8 — Protocol proof (Deep Night) */}
-      <Section tone="deep-night">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-gutter lg:grid-cols-12 lg:items-end">
-          <div className="lg:col-span-8">
-            <Eyebrow tone="dark">Matura Protocol</Eyebrow>
-            <DisplayHeading className="mt-5 text-mist">
-              Verifiable execution from claim to settlement.
-            </DisplayHeading>
-            <Lede tone="dark" className="mt-5 text-mist/70">
-              Issuer-authorized Matura Claims, isolated Matura Vaults, onchain quote validation,
-              atomic funding, and conservation-checked settlement on BNB Chain.
-            </Lede>
-          </div>
-          <div className="lg:col-span-4 lg:text-right">
-            {CONTRACTS_DEPLOYED ? (
-              <a
-                href={`${BSCSCAN_TESTNET_URL}/`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants({ variant: "outline", size: "lg" }),
-                  "border-mist/30 bg-transparent text-mist hover:bg-mist/10 hover:text-mist",
-                )}
-              >
-                View contracts
-              </a>
-            ) : (
-              <p className="text-sm font-medium text-liquid-mint">Contracts deploying soon</p>
-            )}
-          </div>
-        </div>
-      </Section>
-
-      {/* 9 — Safety & scope */}
-      <Section tone="mist">
-        <div className="mx-auto grid w-full max-w-6xl gap-8 px-gutter lg:grid-cols-12">
+      {/* 10 — Safety & scope */}
+      <Section tone="card" className="border-y border-midnight/10">
+        <Container className="grid gap-10 lg:grid-cols-12">
           <div className="lg:col-span-5">
-            <DisplayHeading className="text-midnight">
+            <Eyebrow>Safety &amp; scope</Eyebrow>
+            <DisplayHeading className="mt-5 text-midnight">
               Built for transparency from the first transaction.
             </DisplayHeading>
-          </div>
-          <div className="lg:col-span-7 lg:pt-2">
-            <Lede className="max-w-[60ch] text-xl">
-              Matura shows the amount received, claim value assigned, total cost, selected vaults,
-              retained balance, and settlement status before execution. The current release is a
-              testnet prototype using synthetic claims and mock assets.
-            </Lede>
             <div className="pt-6">
               <Badge variant="warning">Testnet prototype · synthetic claims</Badge>
             </div>
           </div>
-        </div>
+          <div className="flex flex-col gap-6 lg:col-span-7 lg:pt-2">
+            <Lede className="max-w-[60ch] text-xl">
+              You see the full picture before you sign. The current release is a testnet prototype
+              using synthetic claims and mock assets — not for production value.
+            </Lede>
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {BEFORE_YOU_SIGN.map((item) => (
+                <li
+                  key={item}
+                  className="flex items-center gap-2 rounded-card border border-midnight/10 px-3 py-2 text-sm text-midnight/75"
+                >
+                  <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-liquid-mint" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Container>
       </Section>
 
-      {/* 10 — Final CTA (Deep Night) */}
-      <Section tone="deep-night">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 px-gutter text-center">
-          <DisplayHeading className="text-mist">
-            Stop waiting for what is already yours.
-          </DisplayHeading>
-          <Lede tone="dark" className="max-w-[50ch] text-center text-mist/70">
-            Explore how verified future payments can become efficient, transparent liquidity.
-          </Lede>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }))}>
-              Open Matura
-            </a>
-            <Link
-              href="/protocol"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "lg" }),
-                "border-mist/30 bg-transparent text-mist hover:bg-mist/10 hover:text-mist",
-              )}
-            >
-              Read the protocol overview
-            </Link>
+      {/* 11 — FAQ */}
+      <Section id="faq" tone="mist">
+        <Container className="grid gap-10 lg:grid-cols-12">
+          <div className="lg:col-span-4">
+            <Eyebrow>FAQ</Eyebrow>
+            <DisplayHeading className="mt-5 text-midnight">Questions, answered.</DisplayHeading>
           </div>
-        </div>
+          <ul className="flex flex-col gap-3 lg:col-span-8">
+            {FAQ_ITEMS.map((item) => (
+              <li key={item.q}>
+                <details className="group rounded-card border border-midnight/10 bg-background p-5 transition-colors hover:border-liquid-mint/50 open:border-midnight/15">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-heading text-base font-semibold text-midnight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                    {item.q}
+                    <span
+                      aria-hidden
+                      className="grid h-6 w-6 shrink-0 place-items-center rounded-pill border border-midnight/20 text-midnight/60 transition-transform duration-200 group-open:rotate-45"
+                    >
+                      +
+                    </span>
+                  </summary>
+                  <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-midnight/70">
+                    {item.a}
+                  </p>
+                </details>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </Section>
+
+      {/* 12 — Terminal contact close */}
+      <Section id="contact" tone="card" className="border-y border-midnight/10">
+        <Container className="max-w-3xl">
+          <Panel className="flex flex-col gap-6 p-8 sm:p-10">
+            <MonoTag>matura ~ %</MonoTag>
+            <DisplayHeading className="text-midnight">
+              Stop waiting for what is already yours.
+            </DisplayHeading>
+            <Lede className="max-w-[52ch]">
+              Explore how verified future payments become efficient, transparent, verifiable
+              liquidity.
+            </Lede>
+            <div className="flex flex-wrap items-center gap-3">
+              <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }))}>
+                Open Matura
+              </a>
+              <a
+                href={GITHUB_DOCS.architecture}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+              >
+                Read the architecture
+              </a>
+            </div>
+          </Panel>
+        </Container>
       </Section>
     </>
   );
 }
 
 /**
- * Decorative hero visual — a CSS/SVG "one amount → allocated slices" schematic
- * in a fixed 4:5 slot (reserves layout, avoids CLS). Purely presentational: all
- * meaning lives in the hero copy, so the figure is `aria-hidden`.
+ * Live-deployment readout: real BSC-Testnet contract addresses (mirrored from the
+ * committed manifest) with BscScan proof links, styled as an instrument panel.
+ * Fully static — no runtime fetch. Live vault liquidity can be layered on later
+ * via the public `GET /api/v1/vaults` read endpoint (see docs plan). On Mist,
+ * Liquid Mint appears only as fills/ticks (contrast law), never as copy.
  */
-function HeroVisual() {
+function DiagnosticsPanel() {
   return (
-    <div className="animate-rise [--rise-delay:150ms]">
-      <div className="relative aspect-[4/5] w-full overflow-hidden rounded-card border border-midnight/10 bg-background p-6 shadow-sm">
-        <figure aria-hidden className="flex h-full flex-col justify-between">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-midnight/50">
-              One request
-            </span>
-            <span className="rounded-full bg-liquid-mint px-3 py-1 font-mono text-sm font-semibold text-midnight tabular-nums">
-              10,000
-            </span>
+    <Panel className="flex flex-col gap-8 p-6 sm:p-8">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+        {[
+          { k: "Network", v: `BNB Testnet (${String(CHAIN_ID)})` },
+          { k: "Status", v: "Live", dot: true },
+          { k: "Core contracts", v: `${String(TESTNET_CONTRACTS.length)} deployed` },
+          { k: "Live since block", v: DEPLOYMENT_BLOCK },
+        ].map((stat) => (
+          <div key={stat.k} className="flex flex-col gap-1">
+            <dt className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/45">
+              {stat.k}
+            </dt>
+            <dd className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-midnight">
+              {stat.dot ? (
+                <span aria-hidden className="h-2 w-2 rounded-full bg-liquid-mint" />
+              ) : null}
+              {stat.v}
+            </dd>
           </div>
+        ))}
+      </dl>
 
-          {/* Branching flow-line: ink strokes (mint hairlines are not AA on Mist). */}
-          <svg viewBox="0 0 240 160" className="my-2 w-full" role="presentation">
-            <g fill="none" stroke="currentColor" className="text-midnight/25" strokeWidth="1.5">
-              <path className="animate-flow" d="M120 8 V44" />
-              <path className="animate-flow" d="M120 44 C120 80 40 80 40 116" />
-              <path className="animate-flow" d="M120 44 V116" />
-              <path className="animate-flow" d="M120 44 C120 80 200 80 200 116" />
-            </g>
-            <g>
-              <circle cx="40" cy="120" r="7" fill="var(--color-vault-1)" />
-              <circle cx="120" cy="120" r="7" fill="var(--color-vault-2)" />
-              <circle cx="200" cy="120" r="7" fill="var(--color-vault-3)" />
-            </g>
-          </svg>
+      <ul className="flex flex-col divide-y divide-midnight/10 border-y border-midnight/10">
+        {TESTNET_CONTRACTS.map((contract) => (
+          <li key={contract.key}>
+            <a
+              href={bscScanAddress(contract.address)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex flex-col gap-1 py-3 transition-colors hover:bg-midnight/[0.03] sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span className="flex flex-col gap-0.5">
+                <span className="font-heading text-sm font-semibold text-midnight group-hover:underline">
+                  {contract.label}
+                </span>
+                <span className="text-xs text-midnight/50">{contract.note}</span>
+              </span>
+              <span className="font-mono text-xs text-midnight/45 group-hover:text-midnight/70">
+                {contract.address}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
 
-          <div className="flex flex-col gap-3">
-            <AllocationBar
-              segments={[
-                { key: "v1", label: "Vault A", widthPct: 46, colorVar: "--color-vault-1" },
-                { key: "v2", label: "Vault B", widthPct: 30, colorVar: "--color-vault-2" },
-              ]}
-              retained={{ label: "Retained", widthPct: 24 }}
-            />
-            <div className="flex items-center justify-between text-xs text-midnight/60">
-              <span>Best executable route</span>
-              <span className="font-mono tabular-nums">3 vaults compared</span>
-            </div>
-          </div>
-        </figure>
+      <div className="flex flex-wrap gap-2">
+        <MonoTag className="mr-1 self-center">Vaults</MonoTag>
+        {TESTNET_VAULTS.map((vault) => (
+          <a
+            key={vault.key}
+            href={bscScanAddress(vault.address)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-pill border border-midnight/20 px-3 py-1 text-xs font-medium text-midnight/80 transition-colors hover:border-liquid-mint/60 hover:text-midnight"
+          >
+            {vault.label}
+          </a>
+        ))}
       </div>
-    </div>
+    </Panel>
   );
 }
 
 /**
- * Static schematic for the "best execution" section: one amount split into two
- * financed slices (distinct vaults, each labeled with its rate) plus a retained
- * balance, alongside the verbatim comparison labels. Illustrative example only.
+ * Static schematic for the router section: one amount split into two financed
+ * slices (distinct vaults, each labeled with its rate) plus a retained balance.
+ * Illustrative example only. Light band → light Panel.
  */
 function ExecutionDiagram() {
   const rows = [
@@ -404,11 +691,9 @@ function ExecutionDiagram() {
   ] as const;
 
   return (
-    <Card className="gap-6 p-6">
+    <Panel className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-midnight/50">
-          Example route
-        </span>
+        <MonoTag>Example route</MonoTag>
         <Badge variant="warning">Illustrative</Badge>
       </div>
 
@@ -433,6 +718,6 @@ function ExecutionDiagram() {
           </div>
         ))}
       </dl>
-    </Card>
+    </Panel>
   );
 }

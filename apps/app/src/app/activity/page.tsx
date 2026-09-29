@@ -4,7 +4,7 @@ import { ActivityView } from "../../components/activity/activity-view";
 import { Screen } from "../../components/screen";
 
 export const metadata: Metadata = {
-  title: "Activity — Matura",
+  title: "Matura",
 };
 
 export default function ActivityPage() {

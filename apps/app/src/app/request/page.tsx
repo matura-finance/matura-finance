@@ -4,7 +4,7 @@ import { RequestView } from "../../components/request/request-view";
 import { Screen } from "../../components/screen";
 
 export const metadata: Metadata = {
-  title: "Get liquidity — Matura",
+  title: "Matura",
 };
 
 export default function RequestPage() {

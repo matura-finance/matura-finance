@@ -4,7 +4,7 @@ import { IssuerView } from "../../components/issuer/issuer-view";
 import { Screen } from "../../components/screen";
 
 export const metadata: Metadata = {
-  title: "Issuer simulator — Matura",
+  title: "Matura",
 };
 
 export default function IssuerPage() {

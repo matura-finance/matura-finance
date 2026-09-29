@@ -1,5 +1,6 @@
 import { Badge } from "@matura/ui/components/badge";
 import { Container } from "@matura/ui/components/container";
+import Image from "next/image";
 import Link from "next/link";
 
 import { WalletControl } from "./wallet/wallet-control";
@@ -23,8 +24,19 @@ export function AppNav() {
       <Container>
         <div className="flex h-16 flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <Link href="/" className="font-heading text-lg font-semibold text-foreground">
-              Matura
+            <Link
+              href="/"
+              aria-label="Matura — home"
+              className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Image
+                src="/logos/matura-logo.png"
+                alt="Matura"
+                width={120}
+                height={40}
+                priority
+                unoptimized
+              />
             </Link>
             <nav aria-label="Product" className="flex flex-wrap items-center gap-4">
               {NAV_LINKS.map((link) => (
@@ -47,9 +59,19 @@ export function AppNav() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Badge variant="warning" aria-label="Environment: BNB Chain Testnet">
-              BNB Chain Testnet
-            </Badge>
+            <span className="flex items-center gap-2">
+              <Image
+                src="/logos/bnb/bnb-chain-black.png"
+                alt="BNB Chain"
+                width={91}
+                height={16}
+                unoptimized
+                className="hidden dark:invert sm:block"
+              />
+              <Badge variant="warning" aria-label="Environment: BNB Chain Testnet">
+                Testnet
+              </Badge>
+            </span>
             <WalletControl />
           </div>
         </div>
