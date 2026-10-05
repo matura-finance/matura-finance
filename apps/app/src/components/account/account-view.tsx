@@ -3,16 +3,19 @@
 import { bscTestnet } from "@matura/chain/chains";
 import { isDeployed } from "@matura/chain/deployments";
 import { Badge } from "@matura/ui/components/badge";
+import { buttonVariants } from "@matura/ui/components/button";
 import { Card, CardContent } from "@matura/ui/components/card";
 import { Skeleton } from "@matura/ui/components/skeleton";
 import { Stack } from "@matura/ui/components/stack";
+import { Table, TBody, TD, TH, THead, TR } from "@matura/ui/components/table";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 
-import { useAccountPortfolio } from "../../lib/queries/hooks";
+import type { ClaimWire } from "../../lib/api/schemas";
 import { formatUsdt, shortenAddress } from "../../lib/chain/format";
 import { CLAIM_TYPE_LABEL } from "../../lib/claim-display";
-import type { ClaimWire } from "../../lib/api/schemas";
-import { Disconnected, EmptyAccount, NotDeployed, RpcUnavailable, WrongChain } from "../states";
+import { useAccountPortfolio } from "../../lib/queries/hooks";
+import { Disconnected, NotDeployed, RpcUnavailable, StatePanel, WrongChain } from "../states";
 
 /** Sum a list of base-unit strings with BigInt (never float). */
 function sumBaseUnits(values: string[]): string {
@@ -60,7 +63,19 @@ export function AccountView() {
   if (query.isError) return <RpcUnavailable />;
 
   const { claims } = query.data;
-  if (claims.length === 0) return <EmptyAccount />;
+  if (claims.length === 0) {
+    return (
+      <StatePanel
+        title="No verified payments yet"
+        body="Matura Claims appear here once an approved issuer verifies a future payment. Request liquidity to get started."
+        action={
+          <Link href="/request" className={buttonVariants({ size: "default" })}>
+            Get Liquidity
+          </Link>
+        }
+      />
+    );
+  }
 
   const totalVerified = sumBaseUnits(claims.map((c) => c.faceValue));
   const financed = sumBaseUnits(claims.map((c) => c.financedFaceValue));
@@ -85,39 +100,41 @@ export function AccountView() {
         />
       </div>
 
-      <Stack gap="md">
-        {claims.map((claim) => (
-          <Card key={claim.claimId}>
-            <CardContent className="flex flex-col gap-3 py-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-foreground">{CLAIM_TYPE_LABEL[claim.claimType]}</p>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{claim.state}</Badge>
-                  <Badge variant="warning">Testnet · synthetic</Badge>
-                  {claim.pending === true && <Badge variant="secondary">Indexing…</Badge>}
-                </div>
-              </div>
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
-                <Field label="Issuer" value={shortenAddress(claim.issuer)} mono />
-                <Field label="Face value" value={formatUsdt(claim.faceValue)} />
-                <Field label="Available to route" value={formatUsdt(availableToRoute(claim))} />
-                <Field label="Maturity" value={new Date(claim.dueAt).toLocaleDateString()} />
-              </dl>
-            </CardContent>
-          </Card>
-        ))}
-      </Stack>
+      <div className="overflow-hidden rounded-card border border-border bg-background">
+        <Table>
+          <THead>
+            <TR className="hover:bg-transparent">
+              <TH>Type</TH>
+              <TH>State</TH>
+              <TH numeric>Face value</TH>
+              <TH numeric>Available to route</TH>
+              <TH numeric>Maturity</TH>
+              <TH>Issuer</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {claims.map((claim) => (
+              <TR key={claim.claimId}>
+                <TD className="font-medium text-foreground">{CLAIM_TYPE_LABEL[claim.claimType]}</TD>
+                <TD>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Badge variant="outline">{claim.state}</Badge>
+                    {claim.pending === true && <Badge variant="secondary">Indexing…</Badge>}
+                  </div>
+                </TD>
+                <TD numeric>{formatUsdt(claim.faceValue)}</TD>
+                <TD numeric>{formatUsdt(availableToRoute(claim))}</TD>
+                <TD numeric className="whitespace-nowrap">
+                  {new Date(claim.dueAt).toLocaleDateString()}
+                </TD>
+                <TD className="font-mono text-xs text-muted-foreground">
+                  {shortenAddress(claim.issuer)}
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
+      </div>
     </Stack>
-  );
-}
-
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className={`mt-0.5 text-foreground ${mono ? "font-mono tabular-nums" : "tabular-nums"}`}>
-        {value}
-      </dd>
-    </div>
   );
 }

@@ -7,8 +7,9 @@ import { AppNav } from "./app-nav";
 export type ScreenProps = {
   /** Optional section eyebrow label rendered as a pill badge above the title. */
   eyebrow?: string;
-  title: string;
-  description: string;
+  /** Optional page title. When omitted the whole header block (eyebrow/title/description) is skipped. */
+  title?: string;
+  description?: string;
   children?: ReactNode;
 };
 
@@ -26,17 +27,21 @@ export function Screen({ eyebrow, title, description, children }: ScreenProps) {
         <div className="mx-auto w-full max-w-[1760px] px-4 sm:px-16 lg:px-24">
           {/* Smaller top gap below the navbar; roomy bottom. */}
           <Stack gap="xl" className="pb-section pt-8">
-            <Stack gap="sm" className="max-w-4xl">
-              {eyebrow !== undefined && (
-                <Badge variant="outline" className="w-fit border-border text-foreground">
-                  {eyebrow}
-                </Badge>
-              )}
-              <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {title}
-              </h1>
-              <p className="text-sm text-muted-foreground sm:text-base">{description}</p>
-            </Stack>
+            {title !== undefined && (
+              <Stack gap="sm" className="max-w-4xl">
+                {eyebrow !== undefined && (
+                  <Badge variant="outline" className="w-fit border-border text-foreground">
+                    {eyebrow}
+                  </Badge>
+                )}
+                <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  {title}
+                </h1>
+                {description !== undefined && (
+                  <p className="text-sm text-muted-foreground sm:text-base">{description}</p>
+                )}
+              </Stack>
+            )}
             {children}
           </Stack>
         </div>

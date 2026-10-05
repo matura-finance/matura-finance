@@ -2,14 +2,15 @@
 
 import { bscTestnet } from "@matura/chain/chains";
 import { isDeployed } from "@matura/chain/deployments";
-import { Card, CardContent } from "@matura/ui/components/card";
+import { buttonVariants } from "@matura/ui/components/button";
 import { Skeleton } from "@matura/ui/components/skeleton";
-import { Stack } from "@matura/ui/components/stack";
+import { Table, TBody, TD, TH, THead, TR } from "@matura/ui/components/table";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 
-import { useActivity } from "../../lib/queries/hooks";
 import { shortenHex, txExplorerUrl } from "../../lib/chain/format";
-import { Disconnected, NotDeployed, RpcUnavailable, WrongChain } from "../states";
+import { useActivity } from "../../lib/queries/hooks";
+import { Disconnected, NotDeployed, RpcUnavailable, StatePanel, WrongChain } from "../states";
 
 /** Turn an event `kind` (e.g. "ROUTE_EXECUTED") into a readable label. */
 function humanizeKind(kind: string): string {
@@ -33,48 +34,60 @@ export function ActivityView() {
   const { items } = query.data;
   if (items.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-8">
-          <p className="text-muted-foreground">
-            No activity yet. Route executions and claim lifecycle events will appear here.
-          </p>
-        </CardContent>
-      </Card>
+      <StatePanel
+        title="No activity yet"
+        body="Route executions and claim lifecycle events for your wallet will appear here."
+        action={
+          <Link href="/vaults" className={buttonVariants({ size: "default" })}>
+            Browse vaults
+          </Link>
+        }
+      />
     );
   }
 
   return (
-    <Stack gap="sm">
-      {items.map((event) => {
-        const url = txExplorerUrl(event.txHash);
-        return (
-          <Card key={`${event.txHash}-${String(event.logIndex)}`}>
-            <CardContent className="flex flex-wrap items-center justify-between gap-2 py-4">
-              <div>
-                <p className="font-medium text-foreground">{humanizeKind(event.kind)}</p>
-                <p className="text-xs text-muted-foreground">
-                  Block {event.blockNumber}
-                  {event.claimId !== null && ` · claim ${shortenHex(event.claimId)}`}
-                </p>
-              </div>
-              {url !== null ? (
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-xs text-foreground underline underline-offset-2 hover:opacity-80"
-                >
-                  {shortenHex(event.txHash)} ↗
-                </a>
-              ) : (
-                <span className="font-mono text-xs text-muted-foreground">
-                  {shortenHex(event.txHash)}
-                </span>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </Stack>
+    <div className="overflow-hidden rounded-card border border-border bg-background">
+      <Table>
+        <THead>
+          <TR className="hover:bg-transparent">
+            <TH>Event</TH>
+            <TH numeric>Block</TH>
+            <TH>Claim</TH>
+            <TH numeric>Transaction</TH>
+          </TR>
+        </THead>
+        <TBody>
+          {items.map((event) => {
+            const url = txExplorerUrl(event.txHash);
+            return (
+              <TR key={`${event.txHash}-${String(event.logIndex)}`}>
+                <TD className="font-medium text-foreground">{humanizeKind(event.kind)}</TD>
+                <TD numeric>{event.blockNumber}</TD>
+                <TD className="font-mono text-xs text-muted-foreground">
+                  {event.claimId !== null ? shortenHex(event.claimId) : "—"}
+                </TD>
+                <TD numeric>
+                  {url !== null ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-foreground underline underline-offset-2 hover:opacity-80"
+                    >
+                      {shortenHex(event.txHash)} ↗
+                    </a>
+                  ) : (
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {shortenHex(event.txHash)}
+                    </span>
+                  )}
+                </TD>
+              </TR>
+            );
+          })}
+        </TBody>
+      </Table>
+    </div>
   );
 }
