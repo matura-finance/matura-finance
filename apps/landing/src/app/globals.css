@@ -59,8 +59,4 @@
   .marquee-up {
     animation: matura-marquee-up var(--marquee-duration, 32s) linear infinite;
   }
-
-  .marquee-group:hover .marquee-up {
-    animation-play-state: paused;
-  }
 }
