@@ -20,8 +20,8 @@ const CLAIMS = [
 ] as const;
 
 const SUMMARY = [
-  { k: "Received now", v: "7,600.00" },
-  { k: "Total cost", v: "180.00" },
+  { k: "Received now", v: "7,463.40" },
+  { k: "Total cost", v: "136.60" },
   { k: "You retain", v: "2,400.00" },
 ] as const;
 
@@ -60,20 +60,20 @@ export function HeroDashboard() {
                 10,000.00 eligible
               </span>
             </div>
-            <ul className="mt-4 flex flex-col gap-2.5">
+            <ul className="mt-4 flex flex-col gap-3">
               {CLAIMS.map((claim) => (
                 <li
                   key={claim.label}
-                  className="flex items-center gap-3 rounded-card border border-midnight/10 px-3 py-2.5"
+                  className="flex items-center gap-3.5 rounded-card border border-midnight/10 px-4 py-3"
                 >
                   <span className="h-1.5 w-6 shrink-0 rounded-pill bg-liquid-mint" />
-                  <span className="flex min-w-0 flex-col">
+                  <span className="flex min-w-0 flex-col gap-0.5 text-left">
                     <span className="truncate font-heading text-sm font-semibold text-midnight">
                       {claim.label}
                     </span>
                     <span className="truncate text-xs text-midnight/50">{claim.note}</span>
                   </span>
-                  <span className="ml-auto font-mono text-sm font-medium tabular-nums text-midnight">
+                  <span className="ml-auto shrink-0 font-mono text-sm font-medium tabular-nums text-midnight">
                     {claim.amount}
                   </span>
                 </li>
