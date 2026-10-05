@@ -37,20 +37,20 @@ const PROBLEM_FLAWS = [
   {
     tag: "01 / siloed",
     title: "Financed in isolation",
-    body: "Each payment is handled separately. You can't see or draw against your total earned-but-unpaid position in one place.",
-    who: "Anyone with income from more than one source",
+    body: "Every payment is financed on its own — no single view of everything you're owed.",
+    who: "Anyone juggling more than one income source",
   },
   {
     tag: "02 / single-provider",
-    title: "Take-it-or-leave-it pricing",
-    body: "You accept whatever one facility quotes. There's no competition on the cost of your advance, so you systematically overpay.",
+    title: "One-provider pricing",
+    body: "One quote, zero competition. You overpay, every single time.",
     who: "Everyone",
   },
   {
     tag: "03 / all-or-nothing",
-    title: "Whole-invoice only",
-    body: "An entire invoice is pushed into one facility, even when you only need a fraction or a cheaper blend exists.",
-    who: "People who need $200, not the whole $2,000",
+    title: "All-or-nothing",
+    body: "Forced to finance the whole invoice when you only need a slice.",
+    who: "Anyone who needs $200, not $2,000",
   },
 ] as const;
 
@@ -247,40 +247,36 @@ export default function HomePage() {
       {/* 2 — Problem */}
       <Section id="problem" tone="card" className="border-y border-midnight/10">
         <Container className="flex flex-col gap-12">
-          <div className="grid gap-8 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <Eyebrow>Value, stuck in time</Eyebrow>
-              <DisplayHeading className="mt-5 text-midnight">
-                You&apos;ve earned it. You just can&apos;t use it yet.
-              </DisplayHeading>
-            </div>
-            <div className="lg:col-span-7 lg:pt-2">
-              <Lede className="max-w-[60ch] text-xl">
-                Salaries, freelance payouts, marketplace earnings, refunds, and onchain streams
-                become yours before they become spendable. Invoice factoring and early-wage-access
-                products don&apos;t fix that gap — they have three structural flaws.
-              </Lede>
-            </div>
+          <div className="flex flex-col gap-5">
+            <Eyebrow>Value, stuck in time</Eyebrow>
+            <DisplayHeading className="text-midnight">
+              You&apos;ve earned it.
+              <br />
+              You just can&apos;t use it yet.
+            </DisplayHeading>
+            <Lede className="max-w-[60ch] text-xl">
+              Your income is yours before it&apos;s spendable. Early-payout products don&apos;t
+              close that gap — they&apos;re built on three broken defaults.
+            </Lede>
           </div>
 
           <ul className="grid gap-4 md:grid-cols-3">
             {PROBLEM_FLAWS.map((flaw) => (
-              <Panel key={flaw.tag} as="li" className="flex flex-col gap-3">
-                <MonoTag>{flaw.tag}</MonoTag>
-                <h3 className="font-heading text-lg font-semibold text-midnight">{flaw.title}</h3>
-                <p className="text-sm leading-relaxed text-midnight/70">{flaw.body}</p>
-                <p className="mt-auto border-t border-midnight/10 pt-3 text-xs text-midnight/50">
+              <li
+                key={flaw.tag}
+                className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-midnight/10 bg-mist p-7 transition-colors hover:border-liquid-mint/50"
+              >
+                <FeatureMosaic />
+                <h3 className="relative font-heading text-lg font-semibold text-midnight">
+                  {flaw.title}
+                </h3>
+                <p className="relative text-sm leading-relaxed text-midnight/70">{flaw.body}</p>
+                <p className="relative mt-auto border-t border-midnight/10 pt-3 text-xs text-midnight/50">
                   Hurts: {flaw.who}
                 </p>
-              </Panel>
+              </li>
             ))}
           </ul>
-
-          <p className="max-w-[70ch] text-sm leading-relaxed text-midnight/60">
-            The underlying capital is real and already committed — the inefficiency is purely in how
-            it is aggregated, priced, and settled. This is a market-structure problem, not a credit
-            problem.
-          </p>
         </Container>
       </Section>
 
@@ -614,6 +610,32 @@ export default function HomePage() {
         </Container>
       </Section>
     </>
+  );
+}
+
+/**
+ * Decorative pixel-grid mosaic that fades in from a card's top-right corner —
+ * the subtle texture on the problem cards. Brand ink (Midnight) at very low
+ * opacity, radially masked so it dissolves toward the card body. Presentational,
+ * so `aria-hidden`.
+ */
+function FeatureMosaic() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute right-0 top-0 h-28 w-28"
+      style={{
+        backgroundImage:
+          "linear-gradient(to right, rgba(17,24,39,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(17,24,39,0.07) 1px, transparent 1px)",
+        backgroundSize: "14px 14px",
+        maskImage: "radial-gradient(circle at top right, black, transparent 72%)",
+        WebkitMaskImage: "radial-gradient(circle at top right, black, transparent 72%)",
+      }}
+    >
+      <span className="absolute right-5 top-4 h-3 w-3 bg-midnight/[0.06]" />
+      <span className="absolute right-12 top-8 h-2.5 w-2.5 bg-midnight/[0.05]" />
+      <span className="absolute right-6 top-12 h-2 w-2 bg-midnight/[0.04]" />
+    </span>
   );
 }
 
