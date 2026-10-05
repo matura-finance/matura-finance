@@ -280,13 +280,13 @@ export function ClaimGallery() {
               }}
             >
               <Image
-                src={`/claims/${claim.value}.jpg`}
+                src={`/claims/${claim.value}.webp`}
                 alt=""
                 fill
                 unoptimized
+                loading="lazy"
                 sizes="(max-width: 640px) 82vw, 58vw"
                 className="object-cover"
-                priority={isFeatured}
               />
               <span
                 aria-hidden

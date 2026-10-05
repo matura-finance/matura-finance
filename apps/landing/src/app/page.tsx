@@ -438,7 +438,7 @@ export default function HomePage() {
                 )}
               >
                 <Image
-                  src={`/onchain/${layer.key}.jpg`}
+                  src={`/onchain/${layer.key}.webp`}
                   alt=""
                   fill
                   unoptimized
