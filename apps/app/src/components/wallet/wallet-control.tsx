@@ -98,7 +98,7 @@ export function WalletControl() {
         }}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        className="flex h-10 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex h-10 items-center gap-2 rounded-full px-2 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <WalletBlockie address={address} size={22} />
         <span>{isSigningIn ? "Check your wallet…" : shortenAddress(address)}</span>

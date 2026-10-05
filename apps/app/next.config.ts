@@ -75,6 +75,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // Account + Activity were merged into a single /portfolio page.
+  async redirects() {
+    return [
+      { source: "/account", destination: "/portfolio", permanent: false },
+      { source: "/activity", destination: "/portfolio", permanent: false },
+    ];
+  },
   webpack(config, { webpack }) {
     // Reown's wagmi adapter imports the full `@wagmi/connectors` barrel, which re-exports the
     // Coinbase baseAccount connector → `@base-org/account` → `@coinbase/cdp-sdk` → `@x402/*`.

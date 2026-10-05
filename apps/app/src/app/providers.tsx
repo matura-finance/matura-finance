@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import type { State } from "wagmi";
 
+import { DocumentTitle } from "../components/document-title";
 import { SessionProvider } from "../lib/auth/session-provider";
 import { networks, projectId, wagmiAdapter, wagmiConfig } from "../lib/appkit-config";
 import { env } from "../lib/env";
@@ -74,7 +75,10 @@ export function Providers({
   return (
     <WagmiProvider config={wagmiConfig} initialState={initialState}>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <DocumentTitle />
+          {children}
+        </SessionProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );

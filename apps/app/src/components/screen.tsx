@@ -1,13 +1,12 @@
 import { Badge } from "@matura/ui/components/badge";
-import { Container } from "@matura/ui/components/container";
 import { Stack } from "@matura/ui/components/stack";
 import type { ReactNode } from "react";
 
 import { AppNav } from "./app-nav";
 
 export type ScreenProps = {
-  /** Section eyebrow label rendered as a pill badge. */
-  eyebrow: string;
+  /** Optional section eyebrow label rendered as a pill badge above the title. */
+  eyebrow?: string;
   title: string;
   description: string;
   children?: ReactNode;
@@ -20,23 +19,27 @@ export type ScreenProps = {
  */
 export function Screen({ eyebrow, title, description, children }: ScreenProps) {
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh bg-muted text-foreground">
       <AppNav />
       <main>
-        <Container>
-          <Stack gap="xl" className="py-section">
-            <Stack gap="md" className="max-w-2xl">
-              <Badge variant="outline" className="w-fit border-border text-foreground">
-                {eyebrow}
-              </Badge>
+        {/* Wider than the default reading column, with a clearly larger side gap than the header. */}
+        <div className="mx-auto w-full max-w-[1760px] px-4 sm:px-16 lg:px-24">
+          {/* Smaller top gap below the navbar; roomy bottom. */}
+          <Stack gap="xl" className="pb-section pt-8">
+            <Stack gap="sm" className="max-w-4xl">
+              {eyebrow !== undefined && (
+                <Badge variant="outline" className="w-fit border-border text-foreground">
+                  {eyebrow}
+                </Badge>
+              )}
               <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 {title}
               </h1>
-              <p className="text-base text-muted-foreground sm:text-lg">{description}</p>
+              <p className="text-sm text-muted-foreground sm:text-base">{description}</p>
             </Stack>
             {children}
           </Stack>
-        </Container>
+        </div>
       </main>
     </div>
   );

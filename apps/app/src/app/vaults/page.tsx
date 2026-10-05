@@ -4,13 +4,12 @@ import { Screen } from "../../components/screen";
 import { VaultsView } from "../../components/vaults/vaults-view";
 
 export const metadata: Metadata = {
-  title: "Matura",
+  title: "Matura Vaults",
 };
 
 export default function VaultsPage() {
   return (
     <Screen
-      eyebrow="Matura Vaults"
       title="Matura Vaults"
       description="Compare the mandates and pricing policies that compete to fund eligible Matura Claims."
     >

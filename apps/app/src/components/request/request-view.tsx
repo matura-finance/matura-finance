@@ -379,7 +379,7 @@ function ExecutionStatus({
         {onChainPending && (
           <p className="text-sm text-muted-foreground">
             Taking longer than expected?{" "}
-            <Link href="/activity" className="text-foreground underline underline-offset-2">
+            <Link href="/portfolio" className="text-foreground underline underline-offset-2">
               View your activity
             </Link>
             .
