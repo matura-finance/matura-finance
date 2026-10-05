@@ -185,6 +185,9 @@ export function ClaimGallery() {
   }, []);
 
   // Autoplay every 4s — paused on hover/focus and when reduced motion is on.
+  // `active` is a dep so manual navigation (arrows/tile taps) re-arms the clock,
+  // preventing a double-advance right after the user picks a tile (notably on
+  // touch, where there's no hover to pause it).
   useEffect(() => {
     if (paused || reduceMotion) return;
     const id = window.setInterval(() => {
@@ -193,7 +196,7 @@ export function ClaimGallery() {
     return () => {
       window.clearInterval(id);
     };
-  }, [paused, reduceMotion, count]);
+  }, [paused, reduceMotion, count, active]);
 
   const slots = CLAIMS.map((_, index) => {
     const raw = (index - active + count) % count;
