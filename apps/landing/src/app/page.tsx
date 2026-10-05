@@ -111,11 +111,22 @@ const LAYER_ICON_PATHS: Record<string, string> = {
   swap: "M8 3 4 7l4 4 M4 7h16 M16 21l4-4-4-4 M20 17H4",
 };
 
-const ISSUER_BENEFITS = [
-  "Signed claim issuance",
-  "Configurable eligibility",
-  "Automated reconciliation",
-  "Transparent settlement reporting",
+const ISSUER_FEATURES = [
+  {
+    kind: "sign",
+    title: "One-signature issuance",
+    body: "Attest a payout once — amount, payee, due date — and it's a routable claim.",
+  },
+  {
+    kind: "rules",
+    title: "Your rules, enforced",
+    body: "Set eligibility and limits; the protocol enforces them on every claim.",
+  },
+  {
+    kind: "report",
+    title: "Settled and reported",
+    body: "Automated reconciliation and transparent settlement — handled for you.",
+  },
 ] as const;
 
 const BEFORE_YOU_SIGN = [
@@ -493,35 +504,36 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* 9 — For issuers */}
+      {/* 9 — For platforms & issuers */}
       <Section id="issuers" tone="mist">
-        <Container className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="flex flex-col gap-5">
-            <Eyebrow>For platforms and issuers</Eyebrow>
+        <Container className="flex flex-col gap-14">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <Eyebrow>For platforms &amp; issuers</Eyebrow>
             <DisplayHeading className="text-midnight">
-              Make approved payouts useful before payday.
+              Make payouts useful before payday.
             </DisplayHeading>
-            <Lede>
-              Payroll providers, freelance platforms, marketplaces, and creator tools can offer
-              faster access to approved payouts — without building a financing stack for every
-              payout type. Each integration brings a whole population of payouts.
+            <Lede className="max-w-[62ch]">
+              Payroll, freelance, marketplace, and creator platforms can give users instant access
+              to approved payouts — no financing stack to build. One integration covers them all.
             </Lede>
-            <div className="pt-1">
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-              >
-                Talk to the team
+            <div className="pt-2">
+              <a href={`mailto:${CONTACT_EMAIL}`} className={cn(buttonVariants({ size: "lg" }))}>
+                Talk to the Team
               </a>
             </div>
           </div>
 
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {ISSUER_BENEFITS.map((benefit) => (
-              <Panel key={benefit} as="li" className="flex-row items-center gap-3">
-                <span aria-hidden className="h-2 w-2 shrink-0 rounded-pill bg-liquid-mint" />
-                <span className="text-sm font-medium text-midnight">{benefit}</span>
-              </Panel>
+          <ul className="grid gap-8 lg:grid-cols-3">
+            {ISSUER_FEATURES.map((feature) => (
+              <li key={feature.kind} className="flex flex-col gap-5">
+                <div className="flex h-72 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#111827] via-[#1f2b45] to-[#2a78d6] p-8">
+                  <IssuerVisual kind={feature.kind} />
+                </div>
+                <div>
+                  <h3 className="font-heading text-xl font-bold text-midnight">{feature.title}</h3>
+                  <p className="mt-2 leading-relaxed text-midnight/60">{feature.body}</p>
+                </div>
+              </li>
             ))}
           </ul>
         </Container>
@@ -618,6 +630,107 @@ export default function HomePage() {
         </Container>
       </Section>
     </>
+  );
+}
+
+/**
+ * Built mini-illustrations for the issuer feature cards — a signed claim, an
+ * eligibility-rules panel, and a settlement chart. White cards on the brand
+ * gradient; purely presentational, so `aria-hidden`.
+ */
+function IssuerVisual({ kind }: { kind: string }) {
+  if (kind === "sign") {
+    return (
+      <div
+        aria-hidden
+        className="w-full max-w-[16rem] rounded-xl bg-background p-4 shadow-xl shadow-black/20"
+      >
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-midnight/50">
+            Payroll · May
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-pill bg-liquid-mint/20 px-2 py-0.5 text-[11px] font-semibold text-midnight">
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Signed
+          </span>
+        </div>
+        <div className="mt-3 font-heading text-2xl font-bold tabular-nums text-midnight">
+          $3,200.00
+        </div>
+        <div className="mt-1 text-xs text-midnight/45">Payee 0x9f…7bE · due Jun 1</div>
+      </div>
+    );
+  }
+
+  if (kind === "rules") {
+    const rules = [
+      { label: "Max advance", value: "80%", on: true },
+      { label: "KYC verified", value: "", on: true },
+      { label: "Vault allowlist", value: "", on: false },
+    ];
+    return (
+      <div
+        aria-hidden
+        className="flex w-full max-w-[16rem] flex-col gap-3.5 rounded-xl bg-background p-4 shadow-xl shadow-black/20"
+      >
+        {rules.map((rule) => (
+          <div key={rule.label} className="flex items-center justify-between gap-3">
+            <span className="text-sm text-midnight/70">{rule.label}</span>
+            <span className="flex items-center gap-2">
+              {rule.value ? (
+                <span className="font-mono text-xs text-midnight/45">{rule.value}</span>
+              ) : null}
+              <span
+                className={cn(
+                  "relative h-5 w-9 rounded-full transition-colors",
+                  rule.on ? "bg-liquid-mint" : "bg-midnight/15",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow",
+                    rule.on ? "left-[18px]" : "left-0.5",
+                  )}
+                />
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const bars = [40, 55, 35, 70, 52, 100, 62, 44, 80, 38];
+  return (
+    <div
+      aria-hidden
+      className="w-full max-w-[16rem] rounded-xl bg-background p-4 shadow-xl shadow-black/20"
+    >
+      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-midnight/50">
+        Settled · May
+      </span>
+      <div className="mt-1 font-heading text-2xl font-bold tabular-nums text-midnight">$48,200</div>
+      <div className="mt-3 flex h-20 items-end gap-1.5">
+        {bars.map((height, index) => (
+          <span
+            key={`bar-${String(index)}`}
+            className={cn("flex-1 rounded-t-sm", index === 5 ? "bg-liquid-mint" : "bg-midnight/15")}
+            style={{ height: `${String(height)}%` }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
