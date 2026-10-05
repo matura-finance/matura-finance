@@ -682,7 +682,7 @@ export default function HomePage() {
  * eligibility-rules panel, and a settlement chart. White cards on the brand
  * gradient; purely presentational, so `aria-hidden`.
  */
-function IssuerVisual({ kind }: { kind: string }) {
+function IssuerVisual({ kind }: { kind: (typeof ISSUER_FEATURES)[number]["kind"] }) {
   if (kind === "sign") {
     return (
       <div

@@ -150,7 +150,7 @@ export function ClaimGallery() {
   const prevSlots = useRef<Map<string, number>>(new Map());
 
   const count = CLAIMS.length;
-  const current = CLAIMS[active] ?? CLAIMS[0];
+  const current = CLAIMS[active];
   const featuredWidth = Math.round(trackWidth * (trackWidth < 640 ? 0.82 : 0.58));
 
   const go = (delta: number) => {
