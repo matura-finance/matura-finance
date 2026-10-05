@@ -3,8 +3,9 @@ import type { CSSProperties } from "react";
 
 /**
  * "What our users say" — three columns of testimonial cards that scroll up on an
- * infinite CSS marquee (each column duplicated so the loop is seamless). Pauses
- * on hover and goes static for reduced motion. Server component, no client JS.
+ * infinite CSS marquee (each column duplicated so the loop is seamless). Goes
+ * static for reduced motion, and `content-visibility: auto` lets the browser
+ * skip the animation while the block is off-screen. Server component, no client JS.
  *
  * These testimonials are illustrative mock copy for the prototype; avatars are
  * initials badges, not photos of real people.
@@ -116,7 +117,7 @@ function Card({ t, index }: { t: Testimonial; index: number }) {
 export function Testimonials() {
   return (
     <div
-      className="marquee-group relative grid h-[34rem] grid-cols-1 gap-5 overflow-hidden sm:grid-cols-2 lg:grid-cols-3"
+      className="relative grid h-[34rem] grid-cols-1 gap-5 overflow-hidden [contain-intrinsic-size:auto_34rem] [content-visibility:auto] sm:grid-cols-2 lg:grid-cols-3"
       style={{
         maskImage: "linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)",
         WebkitMaskImage: "linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent)",
