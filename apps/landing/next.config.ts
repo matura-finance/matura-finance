@@ -44,6 +44,16 @@ const config: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // The old multi-page routes were folded into the one-pager; keep prior URLs
+  // (and search-engine equity) alive by redirecting to their in-page anchors.
+  async redirects() {
+    return [
+      { source: "/how-it-works", destination: "/#how-it-works", permanent: true },
+      { source: "/protocol", destination: "/#protocol", permanent: true },
+      { source: "/for-issuers", destination: "/#issuers", permanent: true },
+      { source: "/docs", destination: "/", permanent: true },
+    ];
+  },
 };
 
 export default config;
