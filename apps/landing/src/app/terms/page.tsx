@@ -35,7 +35,7 @@ const SECTIONS = [
 
 export default function TermsPage() {
   return (
-    <Section tone="mist">
+    <Section tone="mist" reveal={false}>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-gutter">
         <Eyebrow>Terms</Eyebrow>
         <DisplayHeading as="h1" className="text-midnight">

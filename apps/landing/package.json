@@ -13,7 +13,6 @@
   "dependencies": {
     "@matura/ui": "workspace:*",
     "geist": "^1.4.2",
-    "motion": "^14.0.0",
     "next": "^15.5.0",
     "react": "catalog:",
     "react-dom": "catalog:"

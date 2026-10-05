@@ -4,9 +4,11 @@ import type { ComponentProps, ReactNode } from "react";
 import { Reveal } from "./reveal";
 
 /**
- * Shared, server-only marketing primitives. No wallet, no client state.
- * They encode the Matura contrast law so pages can't accidentally break it:
- * on Mist, Liquid Mint appears only as a fill/tick, never as copy.
+ * Shared, wallet-free marketing primitives. Server components except that
+ * {@link Section} wraps its content in the {@link Reveal} scroll-reveal client
+ * island by default (opt out with `reveal={false}`); children stay server-
+ * rendered. They encode the Matura contrast law so pages can't accidentally
+ * break it: on Mist, Liquid Mint appears only as a fill/tick, never as copy.
  */
 
 type Tone = "light" | "dark";
