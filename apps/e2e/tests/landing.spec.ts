@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { expect, test } from "@playwright/test";
 
 /** Marketing site (usematura.xyz) — static, wallet-free single-pager. These run in CI without any chain/API. */
@@ -50,6 +54,37 @@ test.describe("landing", () => {
       page.getByRole("heading", { level: 1, name: /Liquidity for what you've already earned\./ }),
     ).toBeVisible();
     await context.close();
+  });
+
+  // The landing is wallet-free and can't import @matura/chain, so lib/site.ts
+  // hand-mirrors the deployed BSC-testnet addresses for the diagnostics proof
+  // links. Guard against silent drift: a redeploy that changes addresses must
+  // update site.ts (or this fails) rather than shipping stale BscScan links.
+  test("testnet address mirror matches the chain manifest (no drift)", () => {
+    const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+    const manifest = JSON.parse(
+      readFileSync(join(repoRoot, "packages/chain/src/deployments/97.json"), "utf8"),
+    ) as {
+      deploymentBlock: string;
+      addresses: Record<string, string>;
+      namedVaults?: Record<string, string>;
+    };
+    const siteSrc = readFileSync(join(repoRoot, "apps/landing/src/lib/site.ts"), "utf8");
+
+    const manifestAddrs = new Set(
+      [...Object.values(manifest.addresses), ...Object.values(manifest.namedVaults ?? {})].map(
+        (address) => address.toLowerCase(),
+      ),
+    );
+    const siteAddrs = [...siteSrc.matchAll(/address:\s*"(0x[0-9a-fA-F]{40})"/g)].map((match) =>
+      (match[1] ?? "").toLowerCase(),
+    );
+
+    expect(siteAddrs.length).toBeGreaterThan(0);
+    for (const address of siteAddrs) expect(manifestAddrs.has(address)).toBe(true);
+
+    const block = /DEPLOYMENT_BLOCK\s*=\s*"(\d+)"/.exec(siteSrc)?.[1];
+    expect(block).toBe(String(manifest.deploymentBlock));
   });
 
   test("mobile nav opens and closes after navigation", async ({ browser }) => {
