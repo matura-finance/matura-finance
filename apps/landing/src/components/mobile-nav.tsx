@@ -55,9 +55,25 @@ export function MobileNav() {
       }
     }
 
+    // Close on a tap/click outside the panel and its toggle.
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target) || toggleRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    // Lock background scroll while the panel is open (it's absolute, so the page
+    // would otherwise scroll the open-but-offscreen menu away under trapped focus).
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.body.style.overflow = previousOverflow;
     };
   }, [open]);
 
