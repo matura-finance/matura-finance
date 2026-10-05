@@ -4,9 +4,18 @@ import type { NextConfig } from "next";
 
 // The marketing site is static and wallet-free: it makes no API/chain calls, so connect-src
 // stays 'self'. script-src allows Next's inline hydration + the static JSON-LD block.
+//
+// Dev-only: Next's Fast Refresh / HMR runtime evaluates code via `eval`, which a strict
+// script-src blocks — breaking client-side hydration (dead onClick, etc.). We relax with
+// 'unsafe-eval' ONLY in development; production keeps the strict policy.
+const isDev = process.env.NODE_ENV !== "production";
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",

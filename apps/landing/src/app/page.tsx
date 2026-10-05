@@ -14,6 +14,7 @@ import {
 } from "../components/marketing";
 import { HeroScene } from "../components/hero-scene";
 import { HeroDashboard } from "../components/hero-dashboard";
+import { ClaimGallery } from "../components/claim-gallery";
 import {
   APP_URL,
   bscScanAddress,
@@ -25,13 +26,6 @@ import {
   TESTNET_CONTRACTS,
   TESTNET_VAULTS,
 } from "../lib/site";
-
-const CLAIM_TYPES = [
-  { label: "Earned salary", note: "Payroll not yet paid out" },
-  { label: "Approved freelance payout", note: "Invoice cleared, awaiting terms" },
-  { label: "Marketplace settlement", note: "Sold, pending platform payout" },
-  { label: "Onchain stream", note: "Vesting or streamed income" },
-] as const;
 
 const PROBLEM_FLAWS = [
   {
@@ -282,30 +276,20 @@ export default function HomePage() {
 
       {/* 3 — Unified account */}
       <Section tone="mist">
-        <Container className="grid gap-10 lg:grid-cols-2 lg:items-center">
+        <Container className="flex flex-col gap-10">
           <div className="flex flex-col gap-5">
             <Eyebrow>Matura Account</Eyebrow>
             <DisplayHeading className="text-midnight">
               Every verified payment. One liquidity account.
             </DisplayHeading>
-            <Lede>
-              A wallet sees all of its eligible claims in one place — the full earned-but-unpaid
-              position, not one invoice at a time. Request an amount, not a facility.
+            <Lede className="max-w-[60ch] text-xl">
+              See all of your eligible claims in one place — the full earned-but-unpaid position,
+              not one invoice at a time. Anything that&apos;s verifiable future income can become a
+              routable claim.
             </Lede>
           </div>
 
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {CLAIM_TYPES.map((claim) => (
-              <Panel key={claim.label} as="li" className="flex flex-col gap-2">
-                <span aria-hidden className="h-1.5 w-6 rounded-pill bg-liquid-mint" />
-                <span className="font-heading text-base font-semibold text-midnight">
-                  {claim.label}
-                </span>
-                <span className="text-sm text-midnight/55">{claim.note}</span>
-                <MonoTag className="mt-1">Verified · routable</MonoTag>
-              </Panel>
-            ))}
-          </ul>
+          <ClaimGallery />
         </Container>
       </Section>
 
