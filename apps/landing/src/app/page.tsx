@@ -212,6 +212,7 @@ export default function HomePage() {
       <Section
         id="top"
         tone="mist"
+        reveal={false}
         className="relative -mt-[5.5rem] overflow-hidden pt-44 sm:pt-52"
       >
         <HeroBackdrop />

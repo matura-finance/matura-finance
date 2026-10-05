@@ -1,6 +1,8 @@
 import { cn } from "@matura/ui/lib/utils";
 import type { ComponentProps, ReactNode } from "react";
 
+import { Reveal } from "./reveal";
+
 /**
  * Shared, server-only marketing primitives. No wallet, no client state.
  * They encode the Matura contrast law so pages can't accidentally break it:
@@ -17,11 +19,14 @@ type Tone = "light" | "dark";
  */
 export function Section({
   tone = "mist",
+  reveal = true,
   className,
   children,
   ...props
 }: ComponentProps<"section"> & {
   tone?: "mist" | "card" | "deep-night" | "night-raised";
+  /** Wrap the content in a scroll-reveal (default true; off for the hero). */
+  reveal?: boolean;
 }) {
   const toneClass =
     tone === "deep-night"
@@ -33,7 +38,7 @@ export function Section({
           : "bg-mist text-midnight";
   return (
     <section className={cn("py-[clamp(4rem,8vw,8rem)]", toneClass, className)} {...props}>
-      {children}
+      {reveal ? <Reveal>{children}</Reveal> : children}
     </section>
   );
 }
