@@ -74,11 +74,42 @@ const ROUTER_ACCORDION = [
 ] as const;
 
 const ONCHAIN_LAYERS = [
-  { title: "Claim state", body: "Issuer-authorized, revocable, traceable." },
-  { title: "Vault accounting", body: "Liquidity and reservations, checkable by anyone." },
-  { title: "Route authorization", body: "EIP-712 signatures bind exactly what will execute." },
-  { title: "Settlement", body: "Atomic funding and conservation-checked settlement." },
+  {
+    key: "claim",
+    icon: "doc",
+    span: "lg:col-span-2",
+    title: "Claim state",
+    body: "Issuer-authorized, revocable, and traceable — on a ledger anyone can check.",
+  },
+  {
+    key: "vault",
+    icon: "shield",
+    span: "lg:col-span-1",
+    title: "Vault accounting",
+    body: "Liquidity and reservations, auditable by anyone.",
+  },
+  {
+    key: "route",
+    icon: "key",
+    span: "lg:col-span-1",
+    title: "Route authorization",
+    body: "Your signature binds exactly what will execute.",
+  },
+  {
+    key: "settle",
+    icon: "swap",
+    span: "lg:col-span-2",
+    title: "Settlement",
+    body: "Atomic funding, with every balance conservation-checked at settlement.",
+  },
 ] as const;
+
+const LAYER_ICON_PATHS: Record<string, string> = {
+  doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15l2 2 4-4",
+  shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4",
+  key: "M15.5 7.5a4 4 0 1 0-4.9 3.9L3 19v2h2l1-1h2v-2h2l1.6-1.6a4 4 0 0 0 3.9-4.9z M18 7h.01",
+  swap: "M8 3 4 7l4 4 M4 7h16 M16 21l4-4-4-4 M20 17H4",
+};
 
 const ISSUER_BENEFITS = [
   "Signed claim issuance",
@@ -366,26 +397,63 @@ export default function HomePage() {
 
       {/* 7 — Why onchain */}
       <Section tone="mist">
-        <Container className="grid gap-10 lg:grid-cols-12">
-          <div className="lg:col-span-5">
-            <Eyebrow>Why onchain</Eyebrow>
-            <DisplayHeading className="mt-5 text-midnight">
-              A shared settlement layer for rights that begin elsewhere.
+        <Container className="flex flex-col gap-12">
+          <div className="flex flex-col gap-5">
+            <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+              Why Onchain
+            </span>
+            <DisplayHeading className="text-midnight">
+              Verifiable by anyone. Private to you.
             </DisplayHeading>
-            <Lede className="mt-5">
-              Issuers stay the source of truth for offchain payment rights. BNB Chain records rights
-              and value flows — not your private invoices — so every funded slice is auditable
-              without exposing documents onchain.
+            <Lede className="max-w-[60ch] text-xl">
+              The chain records the rights and value flows — never your private invoices. Every
+              funded slice stays auditable; your documents stay off-chain.
             </Lede>
           </div>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:col-span-7">
+
+          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {ONCHAIN_LAYERS.map((layer) => (
-              <Panel key={layer.title} as="li" className="flex flex-col gap-2">
-                <h3 className="font-heading text-base font-semibold text-midnight">
-                  {layer.title}
-                </h3>
-                <p className="text-sm text-midnight/70">{layer.body}</p>
-              </Panel>
+              <li
+                key={layer.key}
+                className={cn(
+                  "group relative h-72 overflow-hidden rounded-2xl ring-1 ring-midnight/10 sm:h-80",
+                  layer.span,
+                )}
+              >
+                <Image
+                  src={`/onchain/${layer.key}.jpg`}
+                  alt=""
+                  fill
+                  unoptimized
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 40vw"
+                  className="object-cover grayscale transition duration-500 ease-out group-hover:scale-[1.04] group-hover:grayscale-0"
+                />
+                <span
+                  aria-hidden
+                  className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5"
+                />
+                <span className="absolute left-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur">
+                  <svg
+                    aria-hidden
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d={LAYER_ICON_PATHS[layer.icon]} />
+                  </svg>
+                </span>
+                <div className="absolute inset-x-0 bottom-0 p-6">
+                  <h3 className="font-heading text-xl font-bold text-white">{layer.title}</h3>
+                  <p className="mt-1.5 max-w-[46ch] text-sm leading-relaxed text-white/75">
+                    {layer.body}
+                  </p>
+                </div>
+              </li>
             ))}
           </ul>
         </Container>
