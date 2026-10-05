@@ -6,8 +6,8 @@ import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import { cookieToInitialState } from "wagmi";
 
+import { wagmiConfig } from "../lib/appkit-config";
 import { env } from "../lib/env";
-import { getConfig } from "../lib/wagmi";
 import { Providers } from "./providers";
 
 import "./globals.css";
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const initialState = cookieToInitialState(getConfig(), (await headers()).get("cookie"));
+  const initialState = cookieToInitialState(wagmiConfig, (await headers()).get("cookie"));
 
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${manrope.variable}`}>

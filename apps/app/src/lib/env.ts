@@ -12,6 +12,7 @@ const EnvSchema = z.object({
   appUrl: z.url(),
   landingUrl: z.url(),
   rpcUrl: z.url().optional(),
+  walletConnectProjectId: z.string().min(1),
 });
 
 export type PublicEnv = z.infer<typeof EnvSchema>;
@@ -33,4 +34,9 @@ export const env: PublicEnv = EnvSchema.parse({
   appUrl: orUndefined(process.env.NEXT_PUBLIC_APP_URL) ?? "http://localhost:3002",
   landingUrl: orUndefined(process.env.NEXT_PUBLIC_LANDING_URL) ?? "http://localhost:3001",
   rpcUrl: orUndefined(process.env.NEXT_PUBLIC_RPC_URL),
+  // Public Reown/WalletConnect project id (safe to expose; it's an identifier, not a secret).
+  // The placeholder lets the app build and render; the WalletConnect QR path only works once a
+  // real id from cloud.reown.com is set. Injected/EIP-6963 wallets connect without it.
+  walletConnectProjectId:
+    orUndefined(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) ?? "PLACEHOLDER_REOWN_PROJECT_ID",
 });

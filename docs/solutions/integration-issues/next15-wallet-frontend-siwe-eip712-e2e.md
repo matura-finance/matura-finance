@@ -47,9 +47,25 @@ whose transitive chain `@base-org/account → @coinbase/cdp-sdk → @x402/evm` h
 module. Importing anything from the barrel pulls that in. It also bloats the bundle with every
 connector.
 
-**Fix:** do **not** ship a wagmi `mock` connector inside the app. Keep the app connector list
-empty and rely on wagmi's default EIP-6963 discovery. For e2e, inject a mock EIP-1193 provider at
-the **Playwright layer** (see §7). The shipped app stays lean and wallet-injection is test-only.
+**Original fix (EIP-6963-only era):** do **not** ship a wagmi `mock` connector inside the app.
+Keep the app connector list empty and rely on wagmi's default EIP-6963 discovery. For e2e, inject
+a mock EIP-1193 provider at the **Playwright layer** (see §7).
+
+**Update (2026-10-06 — WalletConnect added via Reown AppKit):** the product now ships Reown
+AppKit (`@reown/appkit` + `@reown/appkit-adapter-wagmi`) so mobile wallets can connect over
+WalletConnect, reversing the earlier "EIP-6963 only / no WalletConnect" decision. AppKit does **not**
+let you avoid the barrel — its wagmi adapter (`@reown/appkit-adapter-wagmi/.../helpers.js`) imports
+the full `@wagmi/connectors` barrel, so the same `baseAccount → @base-org/account → @coinbase/cdp-sdk
+→ @x402/*` chain re-appears and `next dev`/`build` 500 on `Can't resolve '@x402/evm/upto/client'`.
+Mitigation lives in `apps/app/next.config.ts`: a `webpack.IgnorePlugin` drops the whole `@x402`
+namespace (the only importer, Coinbase's `signX402Payment`, is unreachable — we never instantiate the
+baseAccount connector) plus the two benign optional deps the WC/MetaMask web stack `require()`s in
+other runtimes (`@react-native-async-storage/async-storage`, `pino-pretty`). This also required
+widening the CSP `connect-src`/`img-src`/`frame-src` to WalletConnect/Reown hosts (see §6) and a
+public `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`. Config lives in `apps/app/src/lib/appkit-config.ts`;
+`createAppKit` runs once at module scope in `providers.tsx`; the header button calls
+`useAppKit().open()`. The Playwright EIP-6963 injection in §7 still works unchanged (AppKit surfaces
+injected providers via EIP-6963).
 
 ## 2. Post-execution refetch loop from unstable hook return values
 
