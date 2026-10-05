@@ -3,206 +3,45 @@ import { buttonVariants } from "@matura/ui/components/button";
 import { cn } from "@matura/ui/lib/utils";
 import Image from "next/image";
 
+import { ClaimGallery } from "../components/claim-gallery";
+import { FlowSteps } from "../components/flow-steps";
+import { HeroDashboard } from "../components/hero-dashboard";
+import { HeroScene } from "../components/hero-scene";
 import {
   Container,
   DisplayHeading,
   Eyebrow,
   Lede,
   MonoTag,
-  Panel,
   Section,
 } from "../components/marketing";
-import { HeroScene } from "../components/hero-scene";
-import { HeroDashboard } from "../components/hero-dashboard";
-import { ClaimGallery } from "../components/claim-gallery";
-import { FlowSteps } from "../components/flow-steps";
+import {
+  CheckIcon,
+  ChevronIcon,
+  DiagnosticsPanel,
+  FeatureMosaic,
+  HeroBackdrop,
+  IssuerVisual,
+} from "../components/section-visuals";
 import { Testimonials } from "../components/testimonials";
+import {
+  BEFORE_YOU_SIGN,
+  CLOSING_STATS,
+  FAQ_ITEMS,
+  ISSUER_FEATURES,
+  LAYER_ICON_PATHS,
+  ONCHAIN_LAYERS,
+  PROBLEM_FLAWS,
+  ROUTER_ACCORDION,
+  WHY_MATURA,
+} from "../lib/landing-content";
 import {
   APP_URL,
   bscScanAddress,
-  CHAIN_ID,
   CONTACT_EMAIL,
-  DEPLOYMENT_BLOCK,
   GITHUB_DOCS,
   TESTNET_CONTRACTS,
-  TESTNET_VAULTS,
 } from "../lib/site";
-
-const PROBLEM_FLAWS = [
-  {
-    tag: "01 / siloed",
-    title: "Financed in isolation",
-    body: "Every payment is financed on its own — no single view of everything you're owed.",
-    who: "Anyone juggling more than one income source",
-  },
-  {
-    tag: "02 / single-provider",
-    title: "One-provider pricing",
-    body: "One quote, zero competition. You overpay, every single time.",
-    who: "Everyone",
-  },
-  {
-    tag: "03 / all-or-nothing",
-    title: "All-or-nothing",
-    body: "Forced to finance the whole invoice when you only need a slice.",
-    who: "Anyone who needs $200, not $2,000",
-  },
-] as const;
-
-// Router section accordion — the lead item is open by default; the rest expand.
-const ROUTER_ACCORDION = [
-  {
-    title: "One request, competing vaults",
-    body: "You're never stuck with one lender or forced to finance a whole invoice. Matura shops your request across vaults — even splitting a claim when that's cheaper — to reach your exact amount at the best price.",
-  },
-  {
-    title: "Precise, no-rounding pricing",
-    body: "Costs are worked out with exact math, so there's no rounding drift — it weighs the real options to find the best combination.",
-  },
-  {
-    title: "Same request, same result",
-    body: "The same request at the same moment always gives the same route — picked by lowest cost first, then the fewest steps.",
-  },
-  {
-    title: "The quote is what you get",
-    body: "The price you're quoted is exactly what gets funded — no gap between the quote and the transaction.",
-  },
-  {
-    title: "Fresh, one-time routes",
-    body: "Each route is prepared fresh, re-checked right before you sign, and can only be used once.",
-  },
-] as const;
-
-const ONCHAIN_LAYERS = [
-  {
-    key: "claim",
-    icon: "doc",
-    span: "lg:col-span-2",
-    title: "Claim state",
-    body: "Issuer-authorized, revocable, and traceable — on a ledger anyone can check.",
-  },
-  {
-    key: "vault",
-    icon: "shield",
-    span: "lg:col-span-1",
-    title: "Vault accounting",
-    body: "Liquidity and reservations, auditable by anyone.",
-  },
-  {
-    key: "route",
-    icon: "key",
-    span: "lg:col-span-1",
-    title: "Route authorization",
-    body: "Your signature binds exactly what will execute.",
-  },
-  {
-    key: "settle",
-    icon: "swap",
-    span: "lg:col-span-2",
-    title: "Settlement",
-    body: "Atomic funding, with every balance conservation-checked at settlement.",
-  },
-] as const;
-
-const LAYER_ICON_PATHS = {
-  doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15l2 2 4-4",
-  shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4",
-  key: "M15.5 7.5a4 4 0 1 0-4.9 3.9L3 19v2h2l1-1h2v-2h2l1.6-1.6a4 4 0 0 0 3.9-4.9z M18 7h.01",
-  swap: "M8 3 4 7l4 4 M4 7h16 M16 21l4-4-4-4 M20 17H4",
-} satisfies Record<(typeof ONCHAIN_LAYERS)[number]["icon"], string>;
-
-const ISSUER_FEATURES = [
-  {
-    kind: "sign",
-    title: "One-signature issuance",
-    body: "Attest a payout once — amount, payee, due date — and it's a routable claim.",
-  },
-  {
-    kind: "rules",
-    title: "Your rules, enforced",
-    body: "Set eligibility and limits; the protocol enforces them on every claim.",
-  },
-  {
-    kind: "report",
-    title: "Settled and reported",
-    body: "Automated reconciliation and transparent settlement — handled for you.",
-  },
-] as const;
-
-const CLOSING_STATS = [
-  { label: "Advance cost", value: "from 1.6%", sub: "priced across competing vaults" },
-  { label: "Time to funded", value: "~30s", sub: "request to on-chain settlement" },
-  { label: "Availability", value: "24/7", sub: "liquidity on-chain, anytime" },
-] as const;
-
-const BEFORE_YOU_SIGN = [
-  "Amount received",
-  "Claim value assigned",
-  "Total cost",
-  "Selected vaults",
-  "Retained balance",
-  "Settlement status",
-] as const;
-
-const WHY_MATURA = [
-  {
-    tag: "aggregate",
-    title: "One unified account",
-    body: "Draw against everything you're owed — not one invoice at a time.",
-  },
-  {
-    tag: "compete",
-    title: "Genuine best execution",
-    body: "Vaults compete for your request. You get the cheapest route, not one quote.",
-  },
-  {
-    tag: "right-size",
-    title: "Only what you need",
-    body: "Slice a claim — take $200 without financing the whole $2,000.",
-  },
-  {
-    tag: "provable",
-    title: "Provably fair pricing",
-    body: "Same inputs, same route, every time. Auditable, not a black box.",
-  },
-  {
-    tag: "non-custodial",
-    title: "Non-custodial by design",
-    body: "Matura prepares the transaction. Your keys and funds stay yours.",
-  },
-  {
-    tag: "verifiable",
-    title: "Verifiable settlement",
-    body: "Every leg re-checked on-chain, then funded atomically.",
-  },
-] as const;
-
-const FAQ_ITEMS = [
-  {
-    q: "What exactly is a claim?",
-    a: "A claim is a verified future payment — salary, a cleared freelance invoice, a marketplace payout, or an onchain stream — attested by an approved issuer or onchain adapter. It records the amount, beneficiary, and expected payment date.",
-  },
-  {
-    q: "Is Matura custodial? Does it hold my funds or keys?",
-    a: "No. The API only prepares unsigned calldata and EIP-712 typed data. You sign in your own wallet, funds move via the onchain router, and Matura never holds your key or custody of your money.",
-  },
-  {
-    q: "How does best execution pick a route?",
-    a: "A pure integer optimizer compares eligible vaults — including partial claim slices — and selects the cheapest verifiable combination. Its off-chain checks mirror the Solidity validation, so the quote is exactly what the contract funds. Identical inputs at the same block yield a byte-identical route.",
-  },
-  {
-    q: "Is my invoice data exposed onchain?",
-    a: "No. Issuers stay the source of truth for offchain payment rights. The chain records rights and value flows — claim state, vault accounting, route authorization, settlement — not your private documents.",
-  },
-  {
-    q: "What happens at maturity?",
-    a: "You receive liquidity now. At maturity the issuer pays Matura Protocol, which settles the selected vaults under a conservation check and returns any unassigned balance to you.",
-  },
-  {
-    q: "Is this real money?",
-    a: "Not yet. The current release is a testnet prototype on BNB Smart Chain Testnet using synthetic claims and mock assets — for demonstration only, not for production value.",
-  },
-] as const;
 
 export default function HomePage() {
   return (
@@ -674,265 +513,5 @@ export default function HomePage() {
         </Container>
       </Section>
     </>
-  );
-}
-
-/**
- * Built mini-illustrations for the issuer feature cards — a signed claim, an
- * eligibility-rules panel, and a settlement chart. White cards on the brand
- * gradient; purely presentational, so `aria-hidden`.
- */
-function IssuerVisual({ kind }: { kind: (typeof ISSUER_FEATURES)[number]["kind"] }) {
-  if (kind === "sign") {
-    return (
-      <div
-        aria-hidden
-        className="w-full max-w-[16rem] rounded-xl bg-background p-4 shadow-xl shadow-black/20"
-      >
-        <div className="flex items-center justify-between">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-midnight/50">
-            Payroll · May
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-pill bg-liquid-mint/20 px-2 py-0.5 text-[11px] font-semibold text-midnight">
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
-            Signed
-          </span>
-        </div>
-        <div className="mt-3 font-heading text-2xl font-bold tabular-nums text-midnight">
-          $3,200.00
-        </div>
-        <div className="mt-1 text-xs text-midnight/45">Payee 0x9f…7bE · due Jun 1</div>
-      </div>
-    );
-  }
-
-  if (kind === "rules") {
-    const rules = [
-      { label: "Max advance", value: "80%", on: true },
-      { label: "KYC verified", value: "", on: true },
-      { label: "Vault allowlist", value: "", on: false },
-    ];
-    return (
-      <div
-        aria-hidden
-        className="flex w-full max-w-[16rem] flex-col gap-3.5 rounded-xl bg-background p-4 shadow-xl shadow-black/20"
-      >
-        {rules.map((rule) => (
-          <div key={rule.label} className="flex items-center justify-between gap-3">
-            <span className="text-sm text-midnight/70">{rule.label}</span>
-            <span className="flex items-center gap-2">
-              {rule.value ? (
-                <span className="font-mono text-xs text-midnight/45">{rule.value}</span>
-              ) : null}
-              <span
-                className={cn(
-                  "relative h-5 w-9 rounded-full transition-colors",
-                  rule.on ? "bg-liquid-mint" : "bg-midnight/15",
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow",
-                    rule.on ? "left-[18px]" : "left-0.5",
-                  )}
-                />
-              </span>
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  const bars = [40, 55, 35, 70, 52, 100, 62, 44, 80, 38];
-  return (
-    <div
-      aria-hidden
-      className="w-full max-w-[16rem] rounded-xl bg-background p-4 shadow-xl shadow-black/20"
-    >
-      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-midnight/50">
-        Settled · May
-      </span>
-      <div className="mt-1 font-heading text-2xl font-bold tabular-nums text-midnight">$48,200</div>
-      <div className="mt-3 flex h-20 items-end gap-1.5">
-        {bars.map((height, index) => (
-          <span
-            key={`bar-${String(index)}`}
-            className={cn("flex-1 rounded-t-sm", index === 5 ? "bg-liquid-mint" : "bg-midnight/15")}
-            style={{ height: `${String(height)}%` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Chevron for the router accordion summaries. Points down when closed and flips
- * up when its parent <details class="group"> is open.
- */
-function ChevronIcon() {
-  return (
-    <svg
-      aria-hidden
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0 text-midnight/40 transition-transform duration-200 group-open:rotate-180"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-/**
- * Checklist tick for the Why-Matura grid. Liquid Mint is contrast-legal here
- * because it's a tick/fill, never copy. Nudged down to sit on the title line.
- */
-function CheckIcon() {
-  return (
-    <svg
-      aria-hidden
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="mt-0.5 shrink-0 text-liquid-mint"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-/**
- * Decorative pixel-grid mosaic that fades in from a card's top-right corner —
- * the subtle texture on the problem cards. Brand ink (Midnight) at very low
- * opacity, radially masked so it dissolves toward the card body. Presentational,
- * so `aria-hidden`.
- */
-function FeatureMosaic() {
-  return (
-    <span
-      aria-hidden
-      className="pointer-events-none absolute right-0 top-0 h-28 w-28"
-      style={{
-        backgroundImage:
-          "linear-gradient(to right, rgba(17,24,39,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(17,24,39,0.07) 1px, transparent 1px)",
-        backgroundSize: "14px 14px",
-        maskImage: "radial-gradient(circle at top right, black, transparent 72%)",
-        WebkitMaskImage: "radial-gradient(circle at top right, black, transparent 72%)",
-      }}
-    >
-      <span className="absolute right-5 top-4 h-3 w-3 bg-midnight/[0.06]" />
-      <span className="absolute right-12 top-8 h-2.5 w-2.5 bg-midnight/[0.05]" />
-      <span className="absolute right-6 top-12 h-2 w-2 bg-midnight/[0.04]" />
-    </span>
-  );
-}
-
-/**
- * Decorative hero backdrop — soft, blurred brand-color washes behind the centered
- * hero. Brand palette only (Liquid Mint + the vault ramp), kept low-opacity so ink
- * copy stays AA on Mist. Purely presentational, so `aria-hidden` and non-interactive.
- */
-function HeroBackdrop() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -left-24 -top-24 h-[28rem] w-[28rem] rounded-full bg-[var(--color-vault-1)]/10 blur-3xl" />
-      <div className="absolute -right-16 top-10 h-[24rem] w-[24rem] rounded-full bg-liquid-mint/15 blur-3xl" />
-      <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-mist" />
-    </div>
-  );
-}
-
-/**
- * Live-deployment readout: real BSC-Testnet contract addresses (mirrored from the
- * committed manifest) with BscScan proof links, styled as an instrument panel.
- * Fully static — no runtime fetch. Live vault liquidity can be layered on later
- * via the public `GET /api/v1/vaults` read endpoint (see docs plan). On Mist,
- * Liquid Mint appears only as fills/ticks (contrast law), never as copy.
- */
-function DiagnosticsPanel() {
-  return (
-    <Panel className="flex flex-col gap-8 p-6 sm:p-8">
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-        {[
-          { k: "Network", v: `BNB Testnet (${String(CHAIN_ID)})` },
-          { k: "Status", v: "Live", dot: true },
-          { k: "Core contracts", v: `${String(TESTNET_CONTRACTS.length)} deployed` },
-          { k: "Live since block", v: DEPLOYMENT_BLOCK },
-        ].map((stat) => (
-          <div key={stat.k} className="flex flex-col gap-1">
-            <dt className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/45">
-              {stat.k}
-            </dt>
-            <dd className="flex items-center gap-1.5 font-mono text-sm font-semibold tabular-nums text-midnight">
-              {stat.dot ? (
-                <span aria-hidden className="h-2 w-2 rounded-full bg-liquid-mint" />
-              ) : null}
-              {stat.v}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
-      <ul className="flex flex-col divide-y divide-midnight/10 border-y border-midnight/10">
-        {TESTNET_CONTRACTS.map((contract) => (
-          <li key={contract.key}>
-            <a
-              href={bscScanAddress(contract.address)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex flex-col gap-1 py-3 transition-colors hover:bg-midnight/[0.03] sm:flex-row sm:items-center sm:justify-between"
-            >
-              <span className="flex flex-col gap-0.5">
-                <span className="font-heading text-sm font-semibold text-midnight group-hover:underline">
-                  {contract.label}
-                </span>
-                <span className="text-xs text-midnight/50">{contract.note}</span>
-              </span>
-              <span className="font-mono text-xs text-midnight/45 group-hover:text-midnight/70">
-                {contract.address}
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex flex-wrap gap-2">
-        <MonoTag className="mr-1 self-center">Vaults</MonoTag>
-        {TESTNET_VAULTS.map((vault) => (
-          <a
-            key={vault.key}
-            href={bscScanAddress(vault.address)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-pill border border-midnight/20 px-3 py-1 text-xs font-medium text-midnight/80 transition-colors hover:border-liquid-mint/60 hover:text-midnight"
-          >
-            {vault.label}
-          </a>
-        ))}
-      </div>
-    </Panel>
   );
 }
