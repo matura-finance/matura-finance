@@ -8,6 +8,7 @@ import { WagmiProvider } from "wagmi";
 import type { State } from "wagmi";
 
 import { DocumentTitle } from "../components/document-title";
+import { PostConnectRedirect } from "../components/post-connect-redirect";
 import { SessionProvider } from "../lib/auth/session-provider";
 import { networks, projectId, wagmiAdapter, wagmiConfig } from "../lib/appkit-config";
 import { env } from "../lib/env";
@@ -77,6 +78,7 @@ export function Providers({
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
           <DocumentTitle />
+          <PostConnectRedirect />
           {children}
         </SessionProvider>
       </QueryClientProvider>

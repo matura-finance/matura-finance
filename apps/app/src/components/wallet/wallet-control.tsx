@@ -3,11 +3,13 @@
 import { bscTestnet } from "@matura/chain/chains";
 import { Button } from "@matura/ui/components/button";
 import { useAppKit } from "@reown/appkit/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAccount, useDisconnect, useSwitchChain } from "wagmi";
 
 import { useSession } from "../../lib/auth/session-provider";
 import { shortenAddress } from "../../lib/chain/format";
+import { clearPendingRedirect } from "../../lib/pending-redirect";
 
 /**
  * The wallet control in the shell header. States: disconnected ("Connect" → Reown modal) →
@@ -23,6 +25,7 @@ export function WalletControl() {
   const { disconnect } = useDisconnect();
   const { switchChain, isPending: isSwitching } = useSwitchChain();
   const { isAuthenticated, isSigningIn, signIn, signOut } = useSession();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -149,8 +152,10 @@ export function WalletControl() {
                 title="Disconnect"
                 onClick={() => {
                   setMenuOpen(false);
+                  clearPendingRedirect();
                   signOut();
                   disconnect();
+                  router.replace("/vaults");
                 }}
                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >

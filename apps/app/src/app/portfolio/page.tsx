@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 
 import { AccountView } from "../../components/account/account-view";
 import { ActivityView } from "../../components/activity/activity-view";
-import { ConnectGate } from "../../components/connect-gate";
+import { RequireConnected } from "../../components/require-connected";
 import { Screen } from "../../components/screen";
 
 export const metadata: Metadata = {
@@ -12,12 +12,12 @@ export const metadata: Metadata = {
 
 export default function PortfolioPage() {
   return (
-    <Screen
-      eyebrow="Portfolio"
-      title="Your portfolio"
-      description="Your verified future payments and the on-chain activity across your connected wallet, in one place."
-    >
-      <ConnectGate>
+    <RequireConnected>
+      <Screen
+        eyebrow="Portfolio"
+        title="Your portfolio"
+        description="Your verified future payments and the on-chain activity across your connected wallet, in one place."
+      >
         <Stack gap="xl">
           <AccountView />
           <section className="space-y-4">
@@ -25,7 +25,7 @@ export default function PortfolioPage() {
             <ActivityView />
           </section>
         </Stack>
-      </ConnectGate>
-    </Screen>
+      </Screen>
+    </RequireConnected>
   );
 }
