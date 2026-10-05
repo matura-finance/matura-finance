@@ -5,7 +5,6 @@ import { DisplayHeading, Eyebrow, Lede, Section } from "../../components/marketi
 import { CONTACT_EMAIL } from "../../lib/site";
 
 export const metadata: Metadata = {
-  title: "Matura",
   description: "How Matura handles information during the testnet prototype phase. Draft.",
   alternates: { canonical: "/privacy" },
 };

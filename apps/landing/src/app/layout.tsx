@@ -15,12 +15,23 @@ const manrope = Manrope({
   display: "swap",
 });
 
+const TITLE = "Matura | Future income, liquid today";
+const DESCRIPTION =
+  "Turn income you've already earned into instant, fairly-priced liquidity — routed across competing on-chain vaults, and verified on-chain.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  // Every page renders exactly "Matura" as its title — no per-page suffix.
-  title: "Matura",
-  description:
-    "Matura aggregates verified future payments, assigns only what you need, and routes each request across competing onchain liquidity on BNB Chain.",
+  // One title for the whole site; legal pages inherit it (no per-page override).
+  title: TITLE,
+  description: DESCRIPTION,
+  keywords: [
+    "future income liquidity",
+    "invoice financing",
+    "best-execution routing",
+    "earned wage access",
+    "non-custodial",
+    "BNB Chain",
+  ],
   applicationName: "Matura",
   manifest: "/site.webmanifest",
   icons: {
@@ -41,15 +52,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Matura",
     url: SITE_URL,
-    title: "Matura",
-    description:
-      "Matura aggregates verified future payments, assigns only what you need, and routes each request across competing onchain liquidity on BNB Chain.",
+    title: TITLE,
+    description: DESCRIPTION,
   },
   twitter: {
-    card: "summary",
-    title: "Matura",
-    description:
-      "Matura aggregates verified future payments, assigns only what you need, and routes each request across competing onchain liquidity on BNB Chain.",
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 
