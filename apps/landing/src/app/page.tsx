@@ -545,28 +545,34 @@ export default function HomePage() {
           <div className="lg:col-span-5">
             <Eyebrow>Safety &amp; scope</Eyebrow>
             <DisplayHeading className="mt-5 text-midnight">
-              Built for transparency from the first transaction.
+              You hold the keys. You see everything.
             </DisplayHeading>
             <div className="pt-6">
-              <Badge variant="warning">Testnet prototype · synthetic claims</Badge>
+              <Badge variant="warning">Testnet Prototype · Synthetic Claims</Badge>
             </div>
           </div>
           <div className="flex flex-col gap-6 lg:col-span-7 lg:pt-2">
             <Lede className="max-w-[60ch] text-xl">
-              You see the full picture before you sign. The current release is a testnet prototype
-              using synthetic claims and mock assets — not for production value.
+              Matura only prepares what you sign — never your keys, never your funds. Every leg is
+              re-checked on-chain, and every settlement is conservation-checked.
             </Lede>
-            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {BEFORE_YOU_SIGN.map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-2 rounded-card border border-midnight/10 px-3 py-2 text-sm text-midnight/75"
-                >
-                  <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-pill bg-liquid-mint" />
-                  {item}
-                </li>
-              ))}
-            </ul>
+            <div className="flex flex-col gap-3">
+              <MonoTag>Visible before you sign</MonoTag>
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {BEFORE_YOU_SIGN.map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-2 rounded-card border border-midnight/10 px-3 py-2 text-sm text-midnight/75"
+                  >
+                    <span
+                      aria-hidden
+                      className="h-1.5 w-1.5 shrink-0 rounded-pill bg-liquid-mint"
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </Container>
       </Section>
