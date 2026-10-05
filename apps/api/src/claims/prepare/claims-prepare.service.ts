@@ -47,7 +47,14 @@ export class ClaimsPrepareService {
     }
 
     const issuer = toHexAddress(wallet);
-    const message = await this.issuers.buildMessage(issuer, body);
+    // The on-chain `_usedExternalId` dedup has no zero-guard, so a zero externalIdHash can only be
+    // registered once ever. Synthetic demo claims never carry a real external id, so default it to
+    // the (already-unique) claimId — otherwise every demo claim after the first reverts
+    // `DuplicateExternalId()`. External issuers still pass their own externalIdHash.
+    const message = await this.issuers.buildMessage(issuer, {
+      ...body,
+      externalIdHash: body.externalIdHash ?? claimId,
+    });
     const claimRegistry = this.chain.addresses.claimRegistry;
     const domain = claimRegistryDomain(this.chain.chainId, claimRegistry);
     const signature = await this.contracts.signClaimAttestation(domain, message);
