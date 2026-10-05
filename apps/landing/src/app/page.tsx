@@ -20,7 +20,6 @@ import { Testimonials } from "../components/testimonials";
 import {
   APP_URL,
   bscScanAddress,
-  BSCSCAN_TESTNET_URL,
   CHAIN_ID,
   CONTACT_EMAIL,
   DEPLOYMENT_BLOCK,
@@ -498,7 +497,7 @@ export default function HomePage() {
             </div>
             <div className="lg:col-span-4 lg:text-right">
               <a
-                href={`${BSCSCAN_TESTNET_URL}/address/${TESTNET_CONTRACTS[0].address}`}
+                href={bscScanAddress(TESTNET_CONTRACTS[0].address)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
