@@ -212,7 +212,7 @@ export default function HomePage() {
       <Section
         id="top"
         tone="mist"
-        className="relative -mt-[5.5rem] overflow-hidden pt-[8rem] sm:pt-36"
+        className="relative -mt-[5.5rem] overflow-hidden pt-44 sm:pt-52"
       >
         <HeroBackdrop />
         <Container className="relative flex flex-col items-center gap-6 text-center">
@@ -264,7 +264,7 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="animate-rise mt-8 w-full [--rise-delay:300ms]">
+          <div className="animate-rise mt-20 w-full [--rise-delay:300ms]">
             <HeroDashboard />
           </div>
         </Container>
