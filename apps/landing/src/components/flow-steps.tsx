@@ -65,8 +65,7 @@ function StepPin({ color }: { color: string }) {
 export function FlowSteps() {
   const gridRef = useRef<HTMLOListElement>(null);
   const cardRefs = useRef<(HTMLLIElement | null)[]>([]);
-  const [path, setPath] = useState("");
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [geometry, setGeometry] = useState({ path: "", w: 0, h: 0 });
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -116,18 +115,20 @@ export function FlowSteps() {
           `C ${c1x.toFixed(1)} ${start.y.toFixed(1)} ${c2x.toFixed(1)} ${end.y.toFixed(1)} ` +
           `${end.x.toFixed(1)} ${end.y.toFixed(1)} `;
       }
-      setPath(d.trim());
-      setSize({ w: gr.width, h: gr.height });
+      setGeometry({ path: d.trim(), w: gr.width, h: gr.height });
     };
 
     recompute();
+    // Observing the grid catches layout-size changes (incl. font-swap reflow,
+    // which also changes the grid's row heights). The hover-straighten rotates a
+    // card (a transform) without changing layout size — ResizeObserver stays
+    // silent for that — so recompute when that transition ends too.
     const ro = new ResizeObserver(recompute);
     ro.observe(grid);
-    cardRefs.current.forEach((el) => {
-      if (el) ro.observe(el);
-    });
+    grid.addEventListener("transitionend", recompute);
     return () => {
       ro.disconnect();
+      grid.removeEventListener("transitionend", recompute);
     };
   }, []);
 
@@ -136,11 +137,11 @@ export function FlowSteps() {
       <svg
         aria-hidden
         className="pointer-events-none absolute left-0 top-0 text-midnight/30"
-        width={size.w}
-        height={size.h}
+        width={geometry.w}
+        height={geometry.h}
       >
         <path
-          d={path}
+          d={geometry.path}
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
@@ -154,42 +155,47 @@ export function FlowSteps() {
         ref={gridRef}
         className="relative grid grid-cols-1 gap-y-12 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-6"
       >
-        {STEPS.map((step, i) => (
-          <li
-            key={step.title}
-            ref={(el) => {
-              cardRefs.current[i] = el;
-            }}
-            className={cn(
-              "w-full transition-transform duration-300 hover:rotate-0 lg:max-w-sm",
-              COL[i],
-              ROW[i],
-              JUSTIFY[i],
-              SHIFT[i],
-              ROTATION[i],
-            )}
-          >
-            <div className="relative rounded-2xl border border-midnight/10 bg-background px-3 pb-3 pt-8 shadow-lg shadow-midnight/5">
-              <StepPin color={ACCENTS[i] ?? ACCENTS[0] ?? "#2a78d6"} />
-              <div
-                className="rounded-xl border p-5"
-                style={{
-                  backgroundColor: `color-mix(in srgb, ${ACCENTS[i] ?? ""} 7%, var(--color-background))`,
-                  borderColor: `color-mix(in srgb, ${ACCENTS[i] ?? ""} 28%, transparent)`,
-                }}
-              >
-                <span
-                  className="font-heading text-4xl font-bold tabular-nums"
-                  style={{ color: ACCENTS[i] }}
+        {STEPS.map((step, i) => {
+          const accent = ACCENTS[i] ?? ACCENTS[0] ?? "#2a78d6";
+          return (
+            <li
+              key={step.title}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
+              className={cn(
+                "w-full transition-transform duration-300 hover:rotate-0 lg:max-w-sm",
+                COL[i],
+                ROW[i],
+                JUSTIFY[i],
+                SHIFT[i],
+                ROTATION[i],
+              )}
+            >
+              <div className="relative rounded-2xl border border-midnight/10 bg-background px-3 pb-3 pt-8 shadow-lg shadow-midnight/5">
+                <StepPin color={accent} />
+                <div
+                  className="rounded-xl border p-5"
+                  style={{
+                    backgroundColor: `color-mix(in srgb, ${accent} 7%, var(--color-background))`,
+                    borderColor: `color-mix(in srgb, ${accent} 28%, transparent)`,
+                  }}
                 >
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <h3 className="mt-3 font-heading text-lg font-bold text-midnight">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-midnight/60">{step.body}</p>
+                  <span
+                    className="font-heading text-4xl font-bold tabular-nums"
+                    style={{ color: accent }}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="mt-3 font-heading text-lg font-bold text-midnight">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-midnight/60">{step.body}</p>
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );
