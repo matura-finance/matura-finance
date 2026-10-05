@@ -25,6 +25,10 @@
     "demo:reset:full": "pnpm run demo:reset && pnpm run demo:local",
     "demo:settle": "hardhat run scripts/demo-settle.ts --network localhost",
     "demo:testnet-execute": "hardhat run scripts/demo-testnet-execute.ts --network bscTestnet",
+    "register-claim:bsc-testnet": "hardhat run scripts/register-claim.ts --network bscTestnetSeed",
+    "fund-usdt:bsc-testnet": "hardhat run scripts/fund-usdt.ts --network bscTestnetSeed",
+    "mark-eligible:bsc-testnet": "ACTION=eligible hardhat run scripts/mark-claim.ts --network bscTestnet",
+    "mark-matured:bsc-testnet": "ACTION=matured hardhat run scripts/mark-claim.ts --network bscTestnet",
     "demo:reset": "node scripts/demo-reset.ts"
   },
   "devDependencies": {
