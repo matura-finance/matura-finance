@@ -105,12 +105,12 @@ const ONCHAIN_LAYERS = [
   },
 ] as const;
 
-const LAYER_ICON_PATHS: Record<string, string> = {
+const LAYER_ICON_PATHS = {
   doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 15l2 2 4-4",
   shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4",
   key: "M15.5 7.5a4 4 0 1 0-4.9 3.9L3 19v2h2l1-1h2v-2h2l1.6-1.6a4 4 0 0 0 3.9-4.9z M18 7h.01",
   swap: "M8 3 4 7l4 4 M4 7h16 M16 21l4-4-4-4 M20 17H4",
-};
+} satisfies Record<(typeof ONCHAIN_LAYERS)[number]["icon"], string>;
 
 const ISSUER_FEATURES = [
   {
