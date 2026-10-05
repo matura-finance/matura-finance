@@ -1,4 +1,3 @@
-import { AllocationBar } from "@matura/ui/components/allocation-bar";
 import { Badge } from "@matura/ui/components/badge";
 import { buttonVariants } from "@matura/ui/components/button";
 import { cn } from "@matura/ui/lib/utils";
@@ -14,6 +13,7 @@ import {
   Section,
 } from "../components/marketing";
 import { HeroScene } from "../components/hero-scene";
+import { HeroDashboard } from "../components/hero-dashboard";
 import {
   APP_URL,
   bscScanAddress,
@@ -182,53 +182,64 @@ const FAQ_ITEMS = [
 export default function HomePage() {
   return (
     <>
-      {/* 1 — Hero */}
-      <Section id="top" tone="mist" className="overflow-hidden">
-        <Container className="grid gap-12 lg:grid-cols-12 lg:items-center">
-          <div className="flex flex-col gap-6 lg:col-span-7">
-            <div className="animate-rise">
-              <Eyebrow>Future Income Liquidity</Eyebrow>
-            </div>
-            <DisplayHeading as="h1" className="animate-rise text-midnight [--rise-delay:60ms]">
-              Liquidity for what you&apos;ve already earned.
-            </DisplayHeading>
-            <Lede className="animate-rise max-w-[52ch] text-xl [--rise-delay:120ms]">
-              Matura aggregates verified future payments into one account, assigns only what you
-              need, and routes each request across competing onchain liquidity at the lowest
-              executable cost — with every leg re-validated onchain before it settles.
-            </Lede>
-            <div className="animate-rise flex flex-wrap items-center gap-3 [--rise-delay:180ms]">
-              <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }))}>
-                Open Matura
-              </a>
-              <a
-                href="#how-it-works"
-                className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
-              >
-                See how it works
-              </a>
-            </div>
-            <div className="animate-rise flex flex-col gap-3 [--rise-delay:240ms]">
-              <div className="flex items-center gap-2.5">
-                <span className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/50">
-                  Built on
-                </span>
-                <Image
-                  src="/logos/bnb/bnb-chain-black.png"
-                  alt="BNB Chain"
-                  width={114}
-                  height={20}
-                  unoptimized
-                />
-              </div>
-              <p className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/50">
-                Verified claims · Transparent execution
-              </p>
-            </div>
+      {/* 1 — Hero — pulled up behind the floating nav so its background sits under it */}
+      <Section
+        id="top"
+        tone="mist"
+        className="relative -mt-[5.5rem] overflow-hidden pt-[8rem] sm:pt-36"
+      >
+        <HeroBackdrop />
+        <Container className="relative flex flex-col items-center gap-6 text-center">
+          <div className="animate-rise">
+            <span className="inline-flex items-center gap-2 rounded-pill border border-midnight/10 bg-background px-1.5 py-1 shadow-sm">
+              <span className="rounded-pill bg-liquid-mint px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-deep-night">
+                New
+              </span>
+              <span className="pr-1.5 text-sm font-medium text-midnight/80">
+                Best-execution routing, live on BNB Testnet
+              </span>
+            </span>
           </div>
 
-          <div className="lg:col-span-5">
-            <HeroScene />
+          <DisplayHeading
+            as="h1"
+            className="animate-rise max-w-[16ch] text-midnight [--rise-delay:60ms]"
+          >
+            Liquidity for what you&apos;ve already earned.
+          </DisplayHeading>
+
+          <Lede className="animate-rise max-w-[46ch] text-xl [--rise-delay:120ms]">
+            Turn income you&apos;ve earned into cash today — routed across competing vaults for the
+            best rate, verified onchain.
+          </Lede>
+
+          <div className="animate-rise flex flex-wrap items-center justify-center gap-3 [--rise-delay:180ms]">
+            <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }))}>
+              Open Matura
+            </a>
+            <a
+              href="#how-it-works"
+              className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+            >
+              See How It Works
+            </a>
+          </div>
+
+          <div className="animate-rise flex items-center gap-2.5 [--rise-delay:240ms]">
+            <span className="font-mono text-xs uppercase tracking-[0.14em] text-midnight/50">
+              Built on
+            </span>
+            <Image
+              src="/logos/bnb/bnb-chain-black.png"
+              alt="BNB Chain"
+              width={114}
+              height={20}
+              unoptimized
+            />
+          </div>
+
+          <div className="animate-rise mt-8 w-full [--rise-delay:300ms]">
+            <HeroDashboard />
           </div>
         </Container>
       </Section>
@@ -398,7 +409,9 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <ExecutionDiagram />
+            <div className="mx-auto w-full max-w-sm lg:mx-0 lg:ml-auto">
+              <HeroScene />
+            </div>
           </div>
 
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -605,6 +618,21 @@ export default function HomePage() {
 }
 
 /**
+ * Decorative hero backdrop — soft, blurred brand-color washes behind the centered
+ * hero. Brand palette only (Liquid Mint + the vault ramp), kept low-opacity so ink
+ * copy stays AA on Mist. Purely presentational, so `aria-hidden` and non-interactive.
+ */
+function HeroBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute -left-24 -top-24 h-[28rem] w-[28rem] rounded-full bg-[var(--color-vault-1)]/10 blur-3xl" />
+      <div className="absolute -right-16 top-10 h-[24rem] w-[24rem] rounded-full bg-liquid-mint/15 blur-3xl" />
+      <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-mist" />
+    </div>
+  );
+}
+
+/**
  * Live-deployment readout: real BSC-Testnet contract addresses (mirrored from the
  * committed manifest) with BscScan proof links, styled as an instrument panel.
  * Fully static — no runtime fetch. Live vault liquidity can be layered on later
@@ -672,52 +700,6 @@ function DiagnosticsPanel() {
           </a>
         ))}
       </div>
-    </Panel>
-  );
-}
-
-/**
- * Static schematic for the router section: one amount split into two financed
- * slices (distinct vaults, each labeled with its rate) plus a retained balance.
- * Illustrative example only. Light band → light Panel.
- */
-function ExecutionDiagram() {
-  const rows = [
-    { label: "Amount needed", value: "10,000.00" },
-    { label: "Selected claims", value: "2 slices" },
-    { label: "Received now", value: "7,600.00" },
-    { label: "Total cost", value: "180.00" },
-    { label: "Retained balance", value: "2,400.00" },
-  ] as const;
-
-  return (
-    <Panel className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <MonoTag>Example route</MonoTag>
-        <Badge variant="warning">Illustrative</Badge>
-      </div>
-
-      <AllocationBar
-        segments={[
-          { key: "vault-a", label: "Vault A · 1.6%", widthPct: 46, colorVar: "--color-vault-1" },
-          { key: "vault-b", label: "Vault B · 2.1%", widthPct: 30, colorVar: "--color-vault-2" },
-        ]}
-        retained={{ label: "You retain", widthPct: 24 }}
-      />
-
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="flex items-baseline justify-between gap-3 border-b border-midnight/10 pb-2"
-          >
-            <dt className="text-sm text-midnight/60">{row.label}</dt>
-            <dd className="font-mono text-sm font-medium tabular-nums text-midnight">
-              {row.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
     </Panel>
   );
 }

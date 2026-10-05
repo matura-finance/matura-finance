@@ -103,9 +103,9 @@ export function MobileNav() {
         <div
           id={panelId}
           ref={panelRef}
-          className="absolute left-0 right-0 top-16 z-50 border-b border-midnight/10 bg-mist px-gutter pb-6 pt-2 shadow-sm"
+          className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-midnight/10 bg-mist/95 p-2 shadow-lg shadow-midnight/5 backdrop-blur-xl"
         >
-          <nav aria-label="Mobile" className="mx-auto flex w-full max-w-6xl flex-col gap-1">
+          <nav aria-label="Mobile" className="flex w-full flex-col gap-1">
             {NAV_LINKS.map((link) => (
               <a
                 key={link.href}
