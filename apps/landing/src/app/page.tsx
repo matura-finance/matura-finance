@@ -49,26 +49,27 @@ const PROBLEM_FLAWS = [
   },
 ] as const;
 
-const ROUTER_FEATURES = [
+// Router section accordion — the lead item is open by default; the rest expand.
+const ROUTER_ACCORDION = [
   {
-    tag: "optimizer",
-    title: "Pure integer optimizer",
-    body: "bigint-only, no floats: a bounded exact search with a greedy fallback, in framework-free @matura/shared.",
+    title: "One request, competing vaults",
+    body: "You're never stuck with one lender or forced to finance a whole invoice. Matura shops your request across vaults — even splitting a claim when that's cheaper — to reach your exact amount at the best price.",
   },
   {
-    tag: "deterministic",
-    title: "Byte-identical routes",
-    body: "Identical inputs at the same pinned block always yield the same route — ranked by cost, then fewer legs, then lower face.",
+    title: "Precise, no-rounding pricing",
+    body: "Costs are worked out with exact math, so there's no rounding drift — it weighs the real options to find the best combination.",
   },
   {
-    tag: "trust-minimized",
-    title: "No quote-vs-execution gap",
-    body: "The API's off-chain leg validation mirrors the Solidity _validateLegs, so what you're quoted is exactly what the contract funds.",
+    title: "Same request, same result",
+    body: "The same request at the same moment always gives the same route — picked by lowest cost first, then the fewest steps.",
   },
   {
-    tag: "single-use",
-    title: "Single-use intents",
-    body: "A route is persisted as a short-lived intent, re-validated against a fresh block, emitted to sign — and consumed exactly once.",
+    title: "The quote is what you get",
+    body: "The price you're quoted is exactly what gets funded — no gap between the quote and the transaction.",
+  },
+  {
+    title: "Fresh, one-time routes",
+    body: "Each route is prepared fresh, re-checked right before you sign, and can only be used once.",
   },
 ] as const;
 
@@ -324,49 +325,42 @@ export default function HomePage() {
 
       {/* 6 — Best-execution router (the differentiator) */}
       <Section tone="card" className="border-y border-midnight/10">
-        <Container className="flex flex-col gap-12">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+        <Container className="grid gap-12 lg:grid-cols-2 lg:items-center">
+          {/* Reserve a stable height so expanding/collapsing the accordion doesn't
+              shift the vertically-centred visual on the right. */}
+          <div className="flex flex-col gap-8 lg:min-h-[42rem]">
             <div className="flex flex-col gap-5">
               <Eyebrow>The router</Eyebrow>
               <DisplayHeading className="text-midnight">
-                One request. Competing liquidity. A better route.
+                One request.
+                <br />
+                Competing liquidity.
+                <br />A better route.
               </DisplayHeading>
-              <Lede>
-                Instead of forcing an entire invoice into one facility, Matura compares eligible
-                vaults and can combine partial claim slices to meet exactly the amount you requested
-                at the lowest executable cost.
-              </Lede>
-              <ul className="flex flex-wrap gap-2 pt-1">
-                {[
-                  "Partial claim slicing",
-                  "Multi-vault comparison",
-                  "Deterministic settlement",
-                ].map((point) => (
-                  <li key={point}>
-                    <Badge variant="outline" className="border-midnight/20 text-midnight">
-                      {point}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
             </div>
 
-            <div className="mx-auto w-full max-w-sm lg:mx-0 lg:ml-auto">
+            <ul className="flex flex-col divide-y divide-midnight/10">
+              {ROUTER_ACCORDION.map((item, index) => (
+                <li key={item.title}>
+                  <details className="group" name="router-accordion" open={index === 0}>
+                    <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 font-heading text-lg font-semibold text-midnight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                      {item.title}
+                      <ChevronIcon />
+                    </summary>
+                    <p className="max-w-[52ch] pb-5 pr-8 text-sm leading-relaxed text-midnight/60">
+                      {item.body}
+                    </p>
+                  </details>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-midnight/10 bg-mist p-8 sm:p-12">
+            <div className="mx-auto w-full max-w-sm">
               <HeroScene />
             </div>
           </div>
-
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {ROUTER_FEATURES.map((feature) => (
-              <Panel key={feature.tag} as="li" className="flex flex-col gap-2">
-                <MonoTag>{feature.tag}</MonoTag>
-                <h3 className="font-heading text-base font-semibold text-midnight">
-                  {feature.title}
-                </h3>
-                <p className="text-sm leading-relaxed text-midnight/70">{feature.body}</p>
-              </Panel>
-            ))}
-          </ul>
         </Container>
       </Section>
 
@@ -556,6 +550,29 @@ export default function HomePage() {
         </Container>
       </Section>
     </>
+  );
+}
+
+/**
+ * Chevron for the router accordion summaries. Points down when closed and flips
+ * up when its parent <details class="group"> is open.
+ */
+function ChevronIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0 text-midnight/40 transition-transform duration-200 group-open:rotate-180"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }
 
