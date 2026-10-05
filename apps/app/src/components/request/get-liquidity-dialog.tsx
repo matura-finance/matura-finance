@@ -57,6 +57,9 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   const [executionId, setExecutionId] = useState<string | undefined>(undefined);
   const [prepareError, setPrepareError] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
+  // Splits the single awaitingWallet state into two visible steps: Sign (route signature) then
+  // Confirm (the executeRoute transaction). Flipped true once the gasless signature resolves.
+  const [routeSigned, setRouteSigned] = useState(false);
 
   const poll = useExecutionPoll(
     executionId,
@@ -110,6 +113,7 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
     setExecutionId(undefined);
     setExpired(false);
     setPrepareError(null);
+    setRouteSigned(false);
     setAmount("");
     setMaxCost("");
     onClose();
@@ -119,6 +123,7 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
     const data = optimize.data;
     if (data?.routeId === undefined || data.routeId === null) return;
     setPrepareError(null);
+    setRouteSigned(false);
     try {
       const prepared = await prepare.mutateAsync(data.routeId);
       const step = prepared.steps.at(0);
@@ -137,6 +142,7 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
           primaryType: "ExecutionRoute",
           message,
         });
+        setRouteSigned(true);
         return writeContractAsync({
           address: router,
           abi: maturaRouterAbi,
@@ -175,7 +181,7 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
 
   let stepIndex = 0;
   if (optimize.isPending || inReview || result?.executable === false) stepIndex = 1;
-  if (s === "awaitingWallet") stepIndex = 2;
+  if (s === "awaitingWallet") stepIndex = routeSigned ? 3 : 2;
   else if (s === "broadcast" || s === "confirmed" || s === "indexing") stepIndex = 3;
   else if (s === "indexed") stepIndex = 4;
 
@@ -232,11 +238,17 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
       </StatusPane>
     );
   } else if (s === "awaitingWallet") {
-    content = (
+    content = routeSigned ? (
       <StatusPane
         icon={<Spinner />}
-        title="Confirm in your wallet"
-        body="Sign the route and approve the transaction in your wallet."
+        title="Confirm the transaction"
+        body="Approve the executeRoute transaction in your wallet to receive your advance."
+      />
+    ) : (
+      <StatusPane
+        icon={<Spinner />}
+        title="Sign your route"
+        body="Sign the route authorization in your wallet — this is gasless and moves no funds."
       />
     );
   } else if (s === "broadcast" || s === "confirmed" || s === "indexing") {
@@ -404,7 +416,7 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   return (
     <Dialog open={open} onClose={handleClose} dismissable={!inFlight} size="lg">
       <Stepper current={stepIndex} />
-      <div className="mt-6">{content}</div>
+      <div className="mt-6 [&_button]:capitalize">{content}</div>
     </Dialog>
   );
 }
@@ -454,29 +466,40 @@ function NonExecutable({
 
 function Stepper({ current }: { current: number }) {
   return (
-    <ol className="flex flex-wrap items-center gap-2">
+    <ol className="flex items-center">
       {STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;
+        const last = i === STEPS.length - 1;
         return (
-          <li key={label} className="flex items-center gap-2">
-            <span
-              className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                done
-                  ? "bg-primary text-primary-foreground"
-                  : active
-                    ? "border-2 border-primary text-primary"
-                    : "border border-border text-muted-foreground"
-              }`}
-            >
-              {done ? "✓" : String(i + 1)}
-            </span>
-            <span
-              className={`text-xs font-medium ${done || active ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              {label}
-            </span>
-            {i < STEPS.length - 1 && <span aria-hidden className="h-px w-4 bg-border" />}
+          <li key={label} className={`flex items-center ${last ? "" : "flex-1"}`}>
+            <div className="flex items-center gap-2">
+              <span
+                aria-current={active ? "step" : undefined}
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  done
+                    ? "bg-primary text-primary-foreground"
+                    : active
+                      ? "border-2 border-primary text-primary"
+                      : "border border-border text-muted-foreground"
+                }`}
+              >
+                {done ? "✓" : String(i + 1)}
+              </span>
+              <span
+                className={`hidden whitespace-nowrap text-xs font-medium sm:inline ${
+                  done || active ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </span>
+            </div>
+            {!last && (
+              <span
+                aria-hidden
+                className={`mx-2 h-px flex-1 ${done ? "bg-primary" : "bg-border"}`}
+              />
+            )}
           </li>
         );
       })}
