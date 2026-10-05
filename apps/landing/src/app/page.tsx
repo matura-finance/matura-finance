@@ -117,32 +117,32 @@ const WHY_MATURA = [
   {
     tag: "aggregate",
     title: "One unified account",
-    body: "See and draw against your entire earned-but-unpaid position — not one invoice at a time.",
+    body: "Draw against everything you're owed — not one invoice at a time.",
   },
   {
     tag: "compete",
     title: "Genuine best execution",
-    body: "Vaults compete for your request. You get the cheapest verifiable route, not one provider's take-it-or-leave-it price.",
+    body: "Vaults compete for your request. You get the cheapest route, not one quote.",
   },
   {
     tag: "right-size",
     title: "Only what you need",
-    body: "Partial claim slicing lets you draw $200 without financing the whole $2,000 invoice.",
+    body: "Slice a claim — take $200 without financing the whole $2,000.",
   },
   {
     tag: "provable",
     title: "Provably fair pricing",
-    body: "A deterministic optimizer returns a byte-identical route for identical inputs — auditable, not a black box.",
+    body: "Same inputs, same route, every time. Auditable, not a black box.",
   },
   {
     tag: "non-custodial",
     title: "Non-custodial by design",
-    body: "Matura only prepares calldata and typed data to sign. It never holds your key or your funds.",
+    body: "Matura prepares the transaction. Your keys and funds stay yours.",
   },
   {
     tag: "verifiable",
     title: "Verifiable settlement",
-    body: "Every leg is re-checked onchain before atomic funding, and settlement is conservation-checked.",
+    body: "Every leg re-checked on-chain, then funded atomically.",
   },
 ] as const;
 
@@ -295,30 +295,30 @@ export default function HomePage() {
 
       {/* 4 — Why Matura (advantages) */}
       <Section id="why" tone="card" className="border-y border-midnight/10">
-        <Container className="flex flex-col gap-12">
-          <div className="grid gap-8 lg:grid-cols-12">
-            <div className="lg:col-span-5">
-              <Eyebrow>Why Matura</Eyebrow>
-              <DisplayHeading className="mt-5 text-midnight">
-                Cheaper, fairer, and verifiable — by construction.
-              </DisplayHeading>
-            </div>
-            <div className="lg:col-span-7 lg:pt-2">
-              <Lede className="max-w-[60ch] text-xl">
-                Matura isn&apos;t a better rate on the same broken model — it changes the market
-                structure. Aggregation, competition, and onchain verification each remove a cost
-                that legacy early-payout products leave in.
-              </Lede>
-            </div>
+        <Container className="flex flex-col gap-14">
+          <div className="flex flex-col gap-5">
+            <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+              Why Matura
+            </span>
+            <DisplayHeading className="text-midnight">
+              Cheaper, fairer, verifiable — by construction.
+            </DisplayHeading>
+            <Lede className="max-w-[60ch] text-xl">
+              Not a better rate on a broken model — a different market structure entirely.
+            </Lede>
           </div>
 
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
             {WHY_MATURA.map((item) => (
-              <Panel key={item.tag} as="li" className="flex flex-col gap-2">
-                <MonoTag>{item.tag}</MonoTag>
-                <h3 className="font-heading text-base font-semibold text-midnight">{item.title}</h3>
-                <p className="text-sm leading-relaxed text-midnight/70">{item.body}</p>
-              </Panel>
+              <li key={item.tag} className="flex gap-3">
+                <CheckIcon />
+                <div className="flex flex-col gap-1.5">
+                  <h3 className="font-heading text-base font-semibold text-midnight">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed text-midnight/60">{item.body}</p>
+                </div>
+              </li>
             ))}
           </ul>
         </Container>
@@ -594,6 +594,29 @@ export default function HomePage() {
         </Container>
       </Section>
     </>
+  );
+}
+
+/**
+ * Checklist tick for the Why-Matura grid. Liquid Mint is contrast-legal here
+ * because it's a tick/fill, never copy. Nudged down to sit on the title line.
+ */
+function CheckIcon() {
+  return (
+    <svg
+      aria-hidden
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="mt-0.5 shrink-0 text-liquid-mint"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
   );
 }
 
