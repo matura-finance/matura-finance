@@ -318,7 +318,7 @@ export function ClaimGallery() {
 
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <p className="max-w-[56ch] text-lg leading-relaxed text-midnight/70">
-          {current.explanation}
+          {current?.explanation}
         </p>
         <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }), "shrink-0")}>
           Open your account

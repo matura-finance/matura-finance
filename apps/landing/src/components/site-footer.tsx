@@ -9,14 +9,14 @@ const GROUPS: { heading: string; links: FooterLink[] }[] = [
   {
     heading: "Product",
     links: [
-      { label: "Open app", href: APP_URL, external: true },
-      { label: "How it works", href: "/#how-it-works" },
+      { label: "Open App", href: APP_URL, external: true },
+      { label: "How It Works", href: "/#how-it-works" },
     ],
   },
   {
     heading: "Protocol",
     links: [
-      { label: "Live contracts", href: "/#protocol" },
+      { label: "Live Contracts", href: "/#protocol" },
       { label: "Documentation", href: GITHUB_DOCS.readme, external: true },
     ],
   },
@@ -24,7 +24,7 @@ const GROUPS: { heading: string; links: FooterLink[] }[] = [
     heading: "Resources",
     links: [
       { label: "GitHub", href: GITHUB_URL, external: true },
-      { label: "For issuers", href: "/#issuers" },
+      { label: "For Issuers", href: "/#issuers" },
     ],
   },
   {
@@ -36,13 +36,13 @@ const GROUPS: { heading: string; links: FooterLink[] }[] = [
   },
 ];
 
-/** Mist footer. On light, Liquid Mint stays fill/tick-only (contrast law). */
+/** White footer. On light, Liquid Mint stays fill/tick-only (contrast law). */
 export function SiteFooter() {
   const linkClass =
     "text-sm text-midnight/70 transition-colors hover:text-midnight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm";
 
   return (
-    <footer className="border-t border-midnight/10 bg-mist text-midnight">
+    <footer className="border-t border-midnight/10 bg-background text-midnight">
       <div className="mx-auto w-full max-w-6xl px-gutter py-16">
         <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
           <div className="flex flex-col gap-3">

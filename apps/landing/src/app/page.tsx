@@ -16,6 +16,7 @@ import { HeroScene } from "../components/hero-scene";
 import { HeroDashboard } from "../components/hero-dashboard";
 import { ClaimGallery } from "../components/claim-gallery";
 import { FlowSteps } from "../components/flow-steps";
+import { Testimonials } from "../components/testimonials";
 import {
   APP_URL,
   bscScanAddress,
@@ -127,6 +128,12 @@ const ISSUER_FEATURES = [
     title: "Settled and reported",
     body: "Automated reconciliation and transparent settlement — handled for you.",
   },
+] as const;
+
+const CLOSING_STATS = [
+  { label: "Advance cost", value: "from 1.6%", sub: "priced across competing vaults" },
+  { label: "Time to funded", value: "~30s", sub: "request to on-chain settlement" },
+  { label: "Availability", value: "24/7", sub: "liquidity on-chain, anytime" },
 ] as const;
 
 const BEFORE_YOU_SIGN = [
@@ -410,9 +417,7 @@ export default function HomePage() {
       <Section tone="mist">
         <Container className="flex flex-col gap-12">
           <div className="flex flex-col gap-5">
-            <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-              Why Onchain
-            </span>
+            <Eyebrow>Why Onchain</Eyebrow>
             <DisplayHeading className="text-midnight">
               Verifiable by anyone. Private to you.
             </DisplayHeading>
@@ -475,7 +480,9 @@ export default function HomePage() {
         <Container className="flex flex-col gap-10">
           <div className="grid gap-8 lg:grid-cols-12 lg:items-end">
             <div className="lg:col-span-8">
-              <Eyebrow>Live on BNB Testnet</Eyebrow>
+              <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                Live on BNB Testnet
+              </span>
               <DisplayHeading className="mt-5 text-midnight">
                 Verifiable execution, from claim to settlement.
               </DisplayHeading>
@@ -508,7 +515,9 @@ export default function HomePage() {
       <Section id="issuers" tone="mist">
         <Container className="flex flex-col gap-14">
           <div className="flex flex-col items-center gap-4 text-center">
-            <Eyebrow>For platforms &amp; issuers</Eyebrow>
+            <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+              For Platforms &amp; Issuers
+            </span>
             <DisplayHeading className="text-midnight">
               Make payouts useful before payday.
             </DisplayHeading>
@@ -577,8 +586,24 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* 11 — FAQ */}
-      <Section id="faq" tone="mist">
+      {/* 11 — Testimonials */}
+      <Section id="testimonials" tone="mist">
+        <Container className="flex flex-col gap-12">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+              Testimonials
+            </span>
+            <DisplayHeading className="text-midnight">What our users say</DisplayHeading>
+            <Lede className="max-w-[48ch]">
+              Early users on turning verified income into instant, fairly-priced liquidity.
+            </Lede>
+          </div>
+          <Testimonials />
+        </Container>
+      </Section>
+
+      {/* 12 — FAQ */}
+      <Section id="faq" tone="card" className="border-y border-midnight/10">
         <Container className="grid gap-10 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <Eyebrow>FAQ</Eyebrow>
@@ -587,17 +612,15 @@ export default function HomePage() {
           <ul className="flex flex-col gap-3 lg:col-span-8">
             {FAQ_ITEMS.map((item) => (
               <li key={item.q}>
-                <details className="group rounded-card border border-midnight/10 bg-background p-5 transition-colors hover:border-liquid-mint/50 open:border-midnight/15">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-heading text-base font-semibold text-midnight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                <details
+                  className="group rounded-card border border-midnight/10 bg-background transition-colors hover:border-liquid-mint/50 open:border-liquid-mint/50"
+                  name="faq"
+                >
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-card p-5 font-heading text-base font-semibold text-midnight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
                     {item.q}
-                    <span
-                      aria-hidden
-                      className="grid h-6 w-6 shrink-0 place-items-center rounded-pill border border-midnight/20 text-midnight/60 transition-transform duration-200 group-open:rotate-45"
-                    >
-                      +
-                    </span>
+                    <ChevronIcon />
                   </summary>
-                  <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-midnight/70">
+                  <p className="-mt-1 max-w-[68ch] px-5 pb-5 text-sm leading-relaxed text-midnight/70">
                     {item.a}
                   </p>
                 </details>
@@ -607,19 +630,34 @@ export default function HomePage() {
         </Container>
       </Section>
 
-      {/* 12 — Terminal contact close */}
-      <Section id="contact" tone="card" className="border-y border-midnight/10">
-        <Container className="max-w-3xl">
-          <Panel className="flex flex-col gap-6 p-8 sm:p-10">
-            <MonoTag>matura ~ %</MonoTag>
+      {/* 13 — Closing CTA with stats */}
+      <Section id="contact" tone="mist" className="border-t border-midnight/10">
+        <Container className="flex flex-col items-center gap-16">
+          <ul className="grid w-full gap-5 sm:grid-cols-3">
+            {CLOSING_STATS.map((stat) => (
+              <li
+                key={stat.label}
+                className="flex h-56 flex-col justify-between rounded-2xl border border-midnight/10 bg-background p-8 shadow-sm"
+              >
+                <span className="text-sm text-midnight/50">{stat.label}</span>
+                <div>
+                  <div className="font-heading text-5xl font-bold tracking-tight text-midnight">
+                    {stat.value}
+                  </div>
+                  <span className="mt-2 block text-sm text-midnight/55">{stat.sub}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="flex flex-col items-center gap-5 text-center">
             <DisplayHeading className="text-midnight">
-              Stop waiting for what is already yours.
+              Stop waiting for what&apos;s already yours.
             </DisplayHeading>
-            <Lede className="max-w-[52ch]">
-              Explore how verified future payments become efficient, transparent, verifiable
-              liquidity.
+            <Lede className="max-w-[46ch] text-xl">
+              Verified income, turned into instant, fairly-priced liquidity.
             </Lede>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col items-center gap-4 pt-2">
               <a href={APP_URL} className={cn(buttonVariants({ size: "lg" }))}>
                 Open Matura
               </a>
@@ -627,12 +665,12 @@ export default function HomePage() {
                 href={GITHUB_DOCS.architecture}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
+                className="text-sm font-medium text-midnight/60 underline-offset-4 transition-colors hover:text-midnight hover:underline"
               >
-                Read the architecture
+                Read the architecture →
               </a>
             </div>
-          </Panel>
+          </div>
         </Container>
       </Section>
     </>
