@@ -2,7 +2,6 @@
 
 import { buttonVariants } from "@matura/ui/components/button";
 import { cn } from "@matura/ui/lib/utils";
-import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { APP_URL, NAV_LINKS } from "../lib/site";
@@ -56,9 +55,25 @@ export function MobileNav() {
       }
     }
 
+    // Close on a tap/click outside the panel and its toggle.
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target) || toggleRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    // Lock background scroll while the panel is open (it's absolute, so the page
+    // would otherwise scroll the open-but-offscreen menu away under trapped focus).
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.body.style.overflow = previousOverflow;
     };
   }, [open]);
 
@@ -104,18 +119,18 @@ export function MobileNav() {
         <div
           id={panelId}
           ref={panelRef}
-          className="absolute left-0 right-0 top-16 z-50 border-b border-midnight/10 bg-mist px-gutter pb-6 pt-2 shadow-sm"
+          className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-midnight/10 bg-mist/95 p-2 shadow-lg shadow-midnight/5 backdrop-blur-xl"
         >
-          <nav aria-label="Mobile" className="mx-auto flex w-full max-w-6xl flex-col gap-1">
+          <nav aria-label="Mobile" className="flex w-full flex-col gap-1">
             {NAV_LINKS.map((link) => (
-              <Link
+              <a
                 key={link.href}
                 href={link.href}
                 onClick={close}
-                className="rounded-md px-3 py-3 text-base font-medium text-midnight transition-colors hover:bg-midnight/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="rounded-md px-3 py-3 text-base font-medium capitalize text-midnight transition-colors hover:bg-midnight/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
             <a
               href={APP_URL}

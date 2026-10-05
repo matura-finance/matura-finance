@@ -4,9 +4,18 @@ import type { NextConfig } from "next";
 
 // The marketing site is static and wallet-free: it makes no API/chain calls, so connect-src
 // stays 'self'. script-src allows Next's inline hydration + the static JSON-LD block.
+//
+// Dev-only: Next's Fast Refresh / HMR runtime evaluates code via `eval`, which a strict
+// script-src blocks — breaking client-side hydration (dead onClick, etc.). We relax with
+// 'unsafe-eval' ONLY in development; production keeps the strict policy.
+const isDev = process.env.NODE_ENV !== "production";
+const scriptSrc = isDev
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+  : "script-src 'self' 'unsafe-inline'";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self' data:",
@@ -34,6 +43,16 @@ const config: NextConfig = {
   transpilePackages: ["@matura/ui"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
+  },
+  // The old multi-page routes were folded into the one-pager; keep prior URLs
+  // (and search-engine equity) alive by redirecting to their in-page anchors.
+  async redirects() {
+    return [
+      { source: "/how-it-works", destination: "/#how-it-works", permanent: true },
+      { source: "/protocol", destination: "/#protocol", permanent: true },
+      { source: "/for-issuers", destination: "/#issuers", permanent: true },
+      { source: "/docs", destination: "/", permanent: true },
+    ];
   },
 };
 

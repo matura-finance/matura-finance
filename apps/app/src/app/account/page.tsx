@@ -4,7 +4,7 @@ import { AccountView } from "../../components/account/account-view";
 import { Screen } from "../../components/screen";
 
 export const metadata: Metadata = {
-  title: "Account — Matura",
+  title: "Matura",
 };
 
 export default function AccountPage() {

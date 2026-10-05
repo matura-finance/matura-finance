@@ -15,15 +15,36 @@ const manrope = Manrope({
   display: "swap",
 });
 
+const TITLE = "Matura | Future income, liquid today";
+const DESCRIPTION =
+  "Turn income you've already earned into instant, fairly-priced liquidity — routed across competing on-chain vaults, and verified on-chain.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: {
-    default: "Matura — Liquidity for What You've Already Earned",
-    template: "%s — Matura",
-  },
-  description:
-    "Matura aggregates verified future payments, assigns only what you need, and routes each request across competing onchain liquidity on BNB Chain.",
+  // One title for the whole site; legal pages inherit it (no per-page override).
+  title: TITLE,
+  description: DESCRIPTION,
+  keywords: [
+    "future income liquidity",
+    "invoice financing",
+    "best-execution routing",
+    "earned wage access",
+    "non-custodial",
+    "BNB Chain",
+  ],
   applicationName: "Matura",
+  manifest: "/site.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon-96x96.png", type: "image/png", sizes: "96x96" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    title: "Matura",
+  },
   alternates: {
     canonical: "/",
   },
@@ -31,15 +52,13 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Matura",
     url: SITE_URL,
-    title: "Matura — Liquidity for What You've Already Earned",
-    description:
-      "Matura aggregates verified future payments, assigns only what you need, and routes each request across competing onchain liquidity on BNB Chain.",
+    title: TITLE,
+    description: DESCRIPTION,
   },
   twitter: {
-    card: "summary",
-    title: "Matura — Liquidity for What You've Already Earned",
-    description:
-      "Matura aggregates verified future payments, assigns only what you need, and routes each request across competing onchain liquidity on BNB Chain.",
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 
@@ -48,7 +67,7 @@ const organizationJsonLd = {
   "@type": "Organization",
   name: "Matura",
   url: SITE_URL,
-  logo: `${SITE_URL}/icon.png`,
+  logo: `${SITE_URL}/web-app-manifest-512x512.png`,
   sameAs: [GITHUB_URL],
 };
 

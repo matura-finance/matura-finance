@@ -5,7 +5,6 @@ import { DisplayHeading, Eyebrow, Lede, Section } from "../../components/marketi
 import { CONTACT_EMAIL } from "../../lib/site";
 
 export const metadata: Metadata = {
-  title: "Terms",
   description: "Terms for using the Matura testnet prototype. Draft.",
   alternates: { canonical: "/terms" },
 };
@@ -35,7 +34,7 @@ const SECTIONS = [
 
 export default function TermsPage() {
   return (
-    <Section tone="mist">
+    <Section tone="mist" reveal={false}>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-gutter">
         <Eyebrow>Terms</Eyebrow>
         <DisplayHeading as="h1" className="text-midnight">

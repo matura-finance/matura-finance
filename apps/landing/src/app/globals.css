@@ -37,4 +37,39 @@
     stroke-dasharray: var(--flow-length, 240);
     animation: matura-flow 1.4s ease-out 0.2s both;
   }
+
+  /* Marching-ants connector for the how-it-works pinned notes. */
+  @keyframes matura-dash-flow {
+    to {
+      stroke-dashoffset: -11;
+    }
+  }
+
+  .flow-connector {
+    animation: matura-dash-flow 0.7s linear infinite;
+  }
+
+  /* Vertical testimonial marquee — the duplicated column scrolls up and loops. */
+  @keyframes matura-marquee-up {
+    to {
+      transform: translateY(-50%);
+    }
+  }
+
+  .marquee-up {
+    animation: matura-marquee-up var(--marquee-duration, 32s) linear infinite;
+  }
+
+  /* Scroll-reveal — hidden/animated state only here, so no-JS and reduced-motion
+     always render content fully visible (the hidden state is never the fallback). */
+  [data-reveal] {
+    transition:
+      opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [data-reveal="hidden"] {
+    opacity: 0;
+    transform: translateY(32px);
+  }
 }
