@@ -37,4 +37,15 @@
     stroke-dasharray: var(--flow-length, 240);
     animation: matura-flow 1.4s ease-out 0.2s both;
   }
+
+  /* Marching-ants connector for the how-it-works pinned notes. */
+  @keyframes matura-dash-flow {
+    to {
+      stroke-dashoffset: -11;
+    }
+  }
+
+  .flow-connector {
+    animation: matura-dash-flow 0.7s linear infinite;
+  }
 }

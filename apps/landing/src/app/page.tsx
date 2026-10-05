@@ -15,6 +15,7 @@ import {
 import { HeroScene } from "../components/hero-scene";
 import { HeroDashboard } from "../components/hero-dashboard";
 import { ClaimGallery } from "../components/claim-gallery";
+import { FlowSteps } from "../components/flow-steps";
 import {
   APP_URL,
   bscScanAddress,
@@ -45,25 +46,6 @@ const PROBLEM_FLAWS = [
     title: "All-or-nothing",
     body: "Forced to finance the whole invoice when you only need a slice.",
     who: "Anyone who needs $200, not $2,000",
-  },
-] as const;
-
-const FLOW_STEPS = [
-  {
-    title: "Verify",
-    body: "An approved issuer or onchain adapter attests to the amount, beneficiary, and expected payment date. The claim lands in your account.",
-  },
-  {
-    title: "Compare",
-    body: "The router prices eligible vaults against your request — including partial claim slices — and pins claim state and liquidity at a block.",
-  },
-  {
-    title: "Route",
-    body: "You review the cheapest verifiable route — amount, cost, vaults, retained balance — then sign it as EIP-712 typed data. Non-custodial.",
-  },
-  {
-    title: "Settle",
-    body: "executeRoute re-checks every leg onchain and funds atomically. At maturity the issuer pays and settlement is conservation-checked.",
   },
 ] as const;
 
@@ -326,37 +308,17 @@ export default function HomePage() {
 
       {/* 5 — How it works */}
       <Section id="how-it-works" tone="mist">
-        <Container>
-          <Eyebrow>How it works</Eyebrow>
-          <DisplayHeading className="mt-5 max-w-[20ch] text-midnight">
-            From verified payment to usable liquidity.
-          </DisplayHeading>
-
-          <div className="relative mt-14">
-            <span
-              aria-hidden
-              className="absolute left-[19px] bottom-6 top-6 w-px bg-midnight/15 md:hidden"
-            />
-            <span
-              aria-hidden
-              className="absolute left-[12.5%] right-[12.5%] top-5 hidden h-px bg-midnight/15 md:block"
-            />
-            <ol className="grid gap-8 md:grid-cols-4">
-              {FLOW_STEPS.map((step, index) => (
-                <li key={step.title} className="relative flex gap-4 md:flex-col md:gap-4">
-                  <span className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-pill bg-liquid-mint font-mono text-sm font-bold text-midnight ring-4 ring-mist">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <div className="flex flex-col gap-2">
-                    <h3 className="font-heading text-lg font-semibold text-midnight">
-                      {step.title}
-                    </h3>
-                    <p className="text-sm leading-relaxed text-midnight/70">{step.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+        <Container className="flex flex-col gap-14">
+          <div className="flex flex-col gap-5">
+            <span className="w-fit rounded-pill bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+              How It Works
+            </span>
+            <DisplayHeading className="text-midnight lg:whitespace-nowrap">
+              From verified payment to usable liquidity.
+            </DisplayHeading>
           </div>
+
+          <FlowSteps />
         </Container>
       </Section>
 
