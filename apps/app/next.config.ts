@@ -75,11 +75,12 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  // Account + Activity were merged into a single /portfolio page.
+  // Account + Activity merged into /portfolio; Get Liquidity is now a modal on /portfolio.
   async redirects() {
     return [
       { source: "/account", destination: "/portfolio", permanent: false },
       { source: "/activity", destination: "/portfolio", permanent: false },
+      { source: "/request", destination: "/portfolio?request=1", permanent: false },
     ];
   },
   webpack(config, { webpack }) {

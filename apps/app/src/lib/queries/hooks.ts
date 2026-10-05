@@ -118,7 +118,7 @@ export function usePrepareExecution() {
 }
 
 /** Invalidate the account + activity reads after a confirmed, indexed execution.
- *  Memoized so effects depending on it don't re-run every render (see request-view). */
+ *  Memoized so effects depending on it don't re-run every render (see get-liquidity-dialog). */
 export function useInvalidateOnSettled() {
   const queryClient = useQueryClient();
   return useCallback(

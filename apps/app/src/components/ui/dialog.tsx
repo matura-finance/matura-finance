@@ -13,11 +13,13 @@ export function Dialog({
   open,
   onClose,
   dismissable = true,
+  size = "md",
   children,
 }: {
   open: boolean;
   onClose: () => void;
   dismissable?: boolean;
+  size?: "md" | "lg";
   children: ReactNode;
 }) {
   useEffect(() => {
@@ -50,7 +52,9 @@ export function Dialog({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-lg rounded-card border border-border bg-background p-6 shadow-lg"
+        className={`relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-card border border-border bg-background p-6 shadow-lg ${
+          size === "lg" ? "max-w-2xl" : "max-w-lg"
+        }`}
       >
         {children}
       </div>

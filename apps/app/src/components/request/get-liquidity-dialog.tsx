@@ -6,14 +6,12 @@ import { getDeployment, isDeployed } from "@matura/chain/deployments";
 import { EXECUTION_ROUTE_TYPES } from "@matura/chain/eip712";
 import type { NonExecutableResult } from "@matura/shared";
 import { Button } from "@matura/ui/components/button";
-import { Card, CardContent } from "@matura/ui/components/card";
 import { Field } from "@matura/ui/components/field";
 import { Input } from "@matura/ui/components/input";
-import { Skeleton } from "@matura/ui/components/skeleton";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useAccount, useSignTypedData, useWriteContract } from "wagmi";
+import { useAccount, useSignTypedData, useSwitchChain, useWriteContract } from "wagmi";
 
 import { ApiError } from "../../lib/api/client";
 import { useSession } from "../../lib/auth/session-provider";
@@ -29,19 +27,24 @@ import {
 } from "../../lib/queries/hooks";
 import { useTxFlow } from "../../lib/tx/use-tx-flow";
 import { Dialog } from "../ui/dialog";
-import { Disconnected, NotDeployed, RpcUnavailable, WrongChain } from "../states";
 import { Countdown } from "./countdown";
 import { RouteBreakdown } from "./route-breakdown";
 
 const ELIGIBLE_STATES = new Set(["ELIGIBLE", "PARTIALLY_FUNDED"]);
-const STEPS = ["Review", "Sign", "Confirm", "Done"] as const;
+const STEPS = ["Amount", "Review", "Sign", "Confirm", "Done"] as const;
 const DISCLOSURE =
   "This testnet prototype assigns economic claim slices using mock assets. It is not a production financial offer.";
 
-export function RequestView() {
-  const { address, isConnected, chainId } = useAccount();
+/**
+ * The full Get Liquidity flow as a modal stepper: Amount → Review → Sign → Confirm → Done.
+ * Launched from the Portfolio so the user acts in the context of their positions. Closing resets
+ * the flow; dismissal is blocked while a transaction is in flight.
+ */
+export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { address, chainId } = useAccount();
   const { isAuthenticated, isSigningIn, signIn } = useSession();
-  const portfolio = useAccountPortfolio(isConnected ? address : undefined);
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
+  const portfolio = useAccountPortfolio(address);
   const optimize = useOptimize();
   const prepare = usePrepareExecution();
   const { signTypedDataAsync } = useSignTypedData();
@@ -54,7 +57,6 @@ export function RequestView() {
   const [executionId, setExecutionId] = useState<string | undefined>(undefined);
   const [prepareError, setPrepareError] = useState<string | null>(null);
   const [expired, setExpired] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   const poll = useExecutionPoll(
     executionId,
@@ -101,20 +103,17 @@ export function RequestView() {
     optimizeWithTarget(parseAmountToBaseUnits(amount));
   }, [optimizeWithTarget, amount]);
 
-  const startOptimize = useCallback(() => {
-    setDialogOpen(true);
-    runOptimize();
-  }, [runOptimize]);
-
-  const closeDialog = useCallback(() => {
-    setDialogOpen(false);
+  const handleClose = useCallback(() => {
     tx.reset();
     optimize.reset();
     prepare.reset();
     setExecutionId(undefined);
     setExpired(false);
     setPrepareError(null);
-  }, [tx, optimize, prepare]);
+    setAmount("");
+    setMaxCost("");
+    onClose();
+  }, [tx, optimize, prepare, onClose]);
 
   const confirm = useCallback(async () => {
     const data = optimize.data;
@@ -162,29 +161,6 @@ export function RequestView() {
     }
   }, [optimize.data, prepare, tx, signTypedDataAsync, writeContractAsync]);
 
-  // ── Gates ─────────────────────────────────────────────────────────────────
-  if (!isConnected || address === undefined) return <Disconnected />;
-  if (chainId !== bscTestnet.id) return <WrongChain />;
-  if (!isDeployed(bscTestnet.id)) return <NotDeployed />;
-  if (!isAuthenticated) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-start gap-3 py-8">
-          <p className="font-medium text-foreground">Sign in to request liquidity</p>
-          <p className="text-sm text-muted-foreground">
-            A one-time gasless signature proves you control this wallet. No funds move.
-          </p>
-          <Button disabled={isSigningIn} onClick={() => void signIn()}>
-            {isSigningIn ? "Check your wallet…" : "Sign in"}
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
-  if (portfolio.isPending) return <Skeleton className="h-40 w-full" />;
-  if (portfolio.isError) return <RpcUnavailable />;
-
-  // ── Phase derivation for the stepper dialog ─────────────────────────────────
   const result = optimize.data?.result;
   const executable = result?.executable === true ? result : null;
   const routeId = optimize.data?.routeId ?? null;
@@ -198,200 +174,249 @@ export function RequestView() {
     prepare.isPending;
 
   let stepIndex = 0;
-  if (s === "awaitingWallet") stepIndex = 1;
-  else if (s === "broadcast" || s === "confirmed" || s === "indexing") stepIndex = 2;
-  else if (s === "indexed") stepIndex = 3;
+  if (optimize.isPending || inReview || result?.executable === false) stepIndex = 1;
+  if (s === "awaitingWallet") stepIndex = 2;
+  else if (s === "broadcast" || s === "confirmed" || s === "indexing") stepIndex = 3;
+  else if (s === "indexed") stepIndex = 4;
 
-  return (
-    <>
-      <Card>
-        <CardContent className="flex flex-col gap-5 py-6">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="amount" className="text-sm font-medium text-foreground">
-              How much do you need today?
-            </label>
-            <div className="relative">
-              <Input
-                id="amount"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value);
-                }}
-                className="h-12 pr-16 text-lg tabular-nums"
-              />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                USDT
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Matura compares your eligible claims and the vaults, then assigns only what is needed
-              to fund your request.
+  let content: ReactNode;
+  if (chainId !== bscTestnet.id) {
+    content = (
+      <StatusPane
+        icon={<FailIcon />}
+        title="Wrong network"
+        body="Switch to BNB Chain Testnet to continue."
+      >
+        <Button
+          disabled={isSwitching}
+          onClick={() => {
+            switchChain({ chainId: bscTestnet.id });
+          }}
+        >
+          Switch network
+        </Button>
+      </StatusPane>
+    );
+  } else if (!isDeployed(bscTestnet.id)) {
+    content = <StatusPane icon={<FailIcon />} title="Contracts not deployed on this network" />;
+  } else if (!isAuthenticated) {
+    content = (
+      <StatusPane
+        icon={<Spinner />}
+        title="Sign in to request liquidity"
+        body="A one-time gasless signature proves you control this wallet. No funds move."
+      >
+        <Button disabled={isSigningIn} onClick={() => void signIn()}>
+          {isSigningIn ? "Check your wallet…" : "Sign in"}
+        </Button>
+      </StatusPane>
+    );
+  } else if (s === "failed") {
+    content = (
+      <StatusPane
+        icon={<FailIcon />}
+        title={TX_ERROR_COPY[tx.state.error].title}
+        body={TX_ERROR_COPY[tx.state.error].body}
+      >
+        <Button onClick={handleClose}>Start over</Button>
+      </StatusPane>
+    );
+  } else if (s === "indexed") {
+    content = (
+      <StatusPane
+        icon={<SuccessIcon />}
+        title="Liquidity received"
+        body="Your advance has landed. It may take a moment to appear in your positions."
+      >
+        <Button onClick={handleClose}>Done</Button>
+      </StatusPane>
+    );
+  } else if (s === "awaitingWallet") {
+    content = (
+      <StatusPane
+        icon={<Spinner />}
+        title="Confirm in your wallet"
+        body="Sign the route and approve the transaction in your wallet."
+      />
+    );
+  } else if (s === "broadcast" || s === "confirmed" || s === "indexing") {
+    content = (
+      <StatusPane
+        icon={<Spinner />}
+        title={s === "broadcast" ? "Submitting your route" : "Confirmed — updating your positions"}
+        body={
+          s === "broadcast"
+            ? "Your transaction is being confirmed on-chain."
+            : "Confirmed on-chain. Waiting for Matura to index the result."
+        }
+      >
+        {(s === "confirmed" || s === "indexing") && (
+          <p className="text-xs text-muted-foreground">
+            Taking longer than expected?{" "}
+            <Link href="/portfolio" className="text-foreground underline underline-offset-2">
+              View your activity
+            </Link>
+            .
+          </p>
+        )}
+      </StatusPane>
+    );
+  } else if (optimize.isPending) {
+    content = (
+      <StatusPane
+        icon={<Spinner />}
+        title="Finding your best route"
+        body="Comparing eligible Matura Claims against vault pricing…"
+      />
+    );
+  } else if (optimize.isError) {
+    content = (
+      <StatusPane
+        icon={<FailIcon />}
+        title="Could not compare routes"
+        body="Adjust the amount or your cost limit and try again."
+      >
+        <Button
+          onClick={() => {
+            optimize.reset();
+          }}
+        >
+          Back
+        </Button>
+      </StatusPane>
+    );
+  } else if (result?.executable === false) {
+    content = (
+      <NonExecutable
+        result={result}
+        onFinancePartial={optimizeWithTarget}
+        onBack={() => {
+          optimize.reset();
+        }}
+      />
+    );
+  } else if (inReview) {
+    content = (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading text-lg font-semibold text-foreground">Review your route</h3>
+          {optimize.data?.expiresAt !== null && optimize.data !== undefined && !expired && (
+            <span className="text-xs text-muted-foreground">
+              Expires in <Countdown expiresAt={optimize.data.expiresAt} onExpire={onExpire} />
+            </span>
+          )}
+        </div>
+        <RouteBreakdown result={executable} filteredOut={optimize.data?.filteredOut ?? []} />
+        <p className="text-xs text-muted-foreground">{DISCLOSURE}</p>
+        {prepareError !== null && <p className="text-sm text-warning-foreground">{prepareError}</p>}
+        {expired ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-warning-foreground">
+              This route expired. Refresh to compare current prices.
             </p>
+            <Button variant="secondary" onClick={runOptimize}>
+              Refresh route
+            </Button>
           </div>
-
-          <details className="text-sm">
-            <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">
-              Advanced preferences
-            </summary>
-            <div className="mt-3">
-              <Field label="Maximum total cost (USDT, advisory)" htmlFor="maxCost">
-                <Input
-                  id="maxCost"
-                  inputMode="decimal"
-                  placeholder="optional"
-                  value={maxCost}
-                  onChange={(e) => {
-                    setMaxCost(e.target.value);
-                  }}
-                />
-              </Field>
-            </div>
-          </details>
-
+        ) : (
+          <div className="flex gap-3">
+            <Button onClick={() => void confirm()} disabled={prepare.isPending}>
+              {prepare.isPending ? "Preparing…" : "Confirm & receive liquidity"}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                optimize.reset();
+              }}
+            >
+              Back
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    // Step 1 — the amount form.
+    content = (
+      <div className="flex flex-col gap-5">
+        <div>
+          <h3 className="font-heading text-lg font-semibold text-foreground">
+            How much do you need?
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Matura compares your eligible claims and the vaults, then assigns only what is needed.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="gl-amount" className="text-sm font-medium text-foreground">
+            Amount needed
+          </label>
+          <div className="relative">
+            <Input
+              id="gl-amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value);
+              }}
+              className="h-12 pr-16 text-lg tabular-nums"
+            />
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+              USDT
+            </span>
+          </div>
+        </div>
+        <details className="text-sm">
+          <summary className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground">
+            Advanced preferences
+          </summary>
+          <div className="mt-3">
+            <Field label="Maximum total cost (USDT, advisory)" htmlFor="gl-maxCost">
+              <Input
+                id="gl-maxCost"
+                inputMode="decimal"
+                placeholder="optional"
+                value={maxCost}
+                onChange={(e) => {
+                  setMaxCost(e.target.value);
+                }}
+              />
+            </Field>
+          </div>
+        </details>
+        <div className="flex gap-3">
           <Button
             size="lg"
-            disabled={amount.trim() === "" || optimize.isPending}
-            onClick={startOptimize}
+            disabled={amount.trim() === "" || portfolio.data === undefined}
+            onClick={runOptimize}
           >
             Find my best route
           </Button>
-        </CardContent>
-      </Card>
-
-      <Dialog open={dialogOpen} onClose={closeDialog} dismissable={!inFlight}>
-        <Stepper current={stepIndex} />
-        <div className="mt-6">
-          {optimize.isPending ? (
-            <StatusPane
-              icon={<Spinner />}
-              title="Finding your best route"
-              body="Comparing eligible Matura Claims against vault pricing…"
-            />
-          ) : s === "failed" ? (
-            <StatusPane
-              icon={<FailIcon />}
-              title={TX_ERROR_COPY[tx.state.error].title}
-              body={TX_ERROR_COPY[tx.state.error].body}
-            >
-              <Button onClick={closeDialog}>Start over</Button>
-            </StatusPane>
-          ) : s === "indexed" ? (
-            <StatusPane
-              icon={<SuccessIcon />}
-              title="Liquidity received"
-              body="Your advance has landed. It may take a moment to appear in your Portfolio."
-            >
-              <div className="flex gap-3">
-                <Link
-                  href="/portfolio"
-                  className="text-sm text-foreground underline underline-offset-2"
-                >
-                  View in Portfolio
-                </Link>
-                <Button onClick={closeDialog}>Make another request</Button>
-              </div>
-            </StatusPane>
-          ) : s === "awaitingWallet" ? (
-            <StatusPane
-              icon={<Spinner />}
-              title="Confirm in your wallet"
-              body="Sign the route and approve the transaction in your wallet."
-            />
-          ) : s === "broadcast" || s === "confirmed" || s === "indexing" ? (
-            <StatusPane
-              icon={<Spinner />}
-              title={
-                s === "broadcast" ? "Submitting your route" : "Confirmed — updating your account"
-              }
-              body={
-                s === "broadcast"
-                  ? "Your transaction is being confirmed on-chain."
-                  : "Confirmed on-chain. Waiting for Matura to index the result."
-              }
-            >
-              {(s === "confirmed" || s === "indexing") && (
-                <p className="text-xs text-muted-foreground">
-                  Taking longer than expected?{" "}
-                  <Link href="/portfolio" className="text-foreground underline underline-offset-2">
-                    View your activity
-                  </Link>
-                  .
-                </p>
-              )}
-            </StatusPane>
-          ) : optimize.isError ? (
-            <StatusPane
-              icon={<FailIcon />}
-              title="Could not compare routes"
-              body="Adjust the amount or your cost limit and try again."
-            >
-              <Button onClick={closeDialog}>Close</Button>
-            </StatusPane>
-          ) : result?.executable === false ? (
-            <NonExecutable
-              result={result}
-              onFinancePartial={optimizeWithTarget}
-              onClose={closeDialog}
-            />
-          ) : inReview ? (
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-heading text-lg font-semibold text-foreground">
-                  Review your route
-                </h3>
-                {optimize.data?.expiresAt !== null && optimize.data !== undefined && !expired && (
-                  <span className="text-xs text-muted-foreground">
-                    Expires in <Countdown expiresAt={optimize.data.expiresAt} onExpire={onExpire} />
-                  </span>
-                )}
-              </div>
-
-              <RouteBreakdown result={executable} filteredOut={optimize.data?.filteredOut ?? []} />
-
-              <p className="text-xs text-muted-foreground">{DISCLOSURE}</p>
-              {prepareError !== null && (
-                <p className="text-sm text-warning-foreground">{prepareError}</p>
-              )}
-
-              {expired ? (
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-warning-foreground">
-                    This route expired. Refresh to compare current prices.
-                  </p>
-                  <Button variant="secondary" onClick={runOptimize}>
-                    Refresh route
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-3">
-                  <Button onClick={() => void confirm()} disabled={prepare.isPending}>
-                    {prepare.isPending ? "Preparing…" : "Confirm & receive liquidity"}
-                  </Button>
-                  <Button variant="ghost" onClick={closeDialog}>
-                    Cancel
-                  </Button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <StatusPane icon={<Spinner />} title="Working…" />
-          )}
+          <Button variant="ghost" onClick={handleClose}>
+            Cancel
+          </Button>
         </div>
-      </Dialog>
-    </>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onClose={handleClose} dismissable={!inFlight} size="lg">
+      <Stepper current={stepIndex} />
+      <div className="mt-6">{content}</div>
+    </Dialog>
   );
 }
 
 function NonExecutable({
   result,
   onFinancePartial,
-  onClose,
+  onBack,
 }: {
   result: NonExecutableResult;
   onFinancePartial: (targetBaseUnits: string) => void;
-  onClose: () => void;
+  onBack: () => void;
 }) {
   const canPartial =
     result.bestFeasiblePartial !== undefined && BigInt(result.maxAchievableAdvance) > 0n;
@@ -419,8 +444,8 @@ function NonExecutable({
             Finance {formatUsdt(result.maxAchievableAdvance)} instead
           </Button>
         )}
-        <Button variant="ghost" onClick={onClose}>
-          Close
+        <Button variant="ghost" onClick={onBack}>
+          Back
         </Button>
       </div>
     </div>
@@ -429,7 +454,7 @@ function NonExecutable({
 
 function Stepper({ current }: { current: number }) {
   return (
-    <ol className="flex items-center gap-2">
+    <ol className="flex flex-wrap items-center gap-2">
       {STEPS.map((label, i) => {
         const done = i < current;
         const active = i === current;
@@ -451,7 +476,7 @@ function Stepper({ current }: { current: number }) {
             >
               {label}
             </span>
-            {i < STEPS.length - 1 && <span aria-hidden className="h-px w-5 bg-border" />}
+            {i < STEPS.length - 1 && <span aria-hidden className="h-px w-4 bg-border" />}
           </li>
         );
       })}
