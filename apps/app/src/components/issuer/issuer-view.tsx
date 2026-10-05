@@ -38,7 +38,7 @@ export function IssuerView() {
 
   const [claimType, setClaimType] = useState<ClaimType>("PAYROLL");
   const [face, setFace] = useState("20000");
-  const [dueDays, setDueDays] = useState("30");
+  const [dueMinutes, setDueMinutes] = useState("30");
   const [settleId, setSettleId] = useState("");
   const [delayId, setDelayId] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -72,13 +72,13 @@ export function IssuerView() {
 
   async function createClaim(): Promise<void> {
     if (token === null || address === undefined) return;
-    const days = Number(dueDays);
-    if (!Number.isInteger(days) || days <= 0) {
-      setStatus({ kind: "error", msg: "Enter a whole number of days until maturity." });
+    const minutes = Number(dueMinutes);
+    if (!Number.isInteger(minutes) || minutes <= 0) {
+      setStatus({ kind: "error", msg: "Enter a whole number of minutes until maturity." });
       return;
     }
     const claimId = keccak256(stringToHex(`matura-demo:${crypto.randomUUID()}`));
-    const dueAt = new Date(Date.now() + days * 86_400_000).toISOString();
+    const dueAt = new Date(Date.now() + minutes * 60_000).toISOString();
     try {
       const prepared = await postClaimRegistrationPrepare(
         {
@@ -180,18 +180,18 @@ export function IssuerView() {
                   }}
                 />
               </Field>
-              <Field label="Due in (days)" htmlFor="due">
+              <Field label="Due in (minutes)" htmlFor="due">
                 <Input
                   id="due"
                   inputMode="numeric"
-                  value={dueDays}
+                  value={dueMinutes}
                   onChange={(e) => {
-                    setDueDays(e.target.value);
+                    setDueMinutes(e.target.value);
                   }}
                 />
               </Field>
               <Button
-                disabled={busy || face.trim() === "" || dueDays.trim() === ""}
+                disabled={busy || face.trim() === "" || dueMinutes.trim() === ""}
                 onClick={() => void createClaim()}
               >
                 Create

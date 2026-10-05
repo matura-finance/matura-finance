@@ -66,11 +66,11 @@ export function AccountView() {
   if (claims.length === 0) {
     return (
       <StatePanel
-        title="No verified payments yet"
-        body="Matura Claims appear here once an approved issuer verifies a future payment. Request liquidity to get started."
+        title="No future payments yet"
+        body="Your verified future payments (Matura Claims) show up here once an approved issuer issues one to this wallet. Ask your issuer to issue yours from their Matura issuer portal — it appears here automatically once it's on-chain, and then you can route it for liquidity."
         action={
-          <Link href="/request" className={buttonVariants({ size: "default" })}>
-            Get Liquidity
+          <Link href="/issuer" className={buttonVariants({ variant: "outline", size: "default" })}>
+            Open the issuer portal
           </Link>
         }
       />

@@ -12,7 +12,6 @@ export default function RequestPage() {
   return (
     <RequireConnected>
       <Screen
-        eyebrow="Get liquidity"
         title="How much do you need today?"
         description="Matura will compare eligible claims and vaults, then assign only what is needed to fund your request."
       >
