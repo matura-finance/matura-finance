@@ -17,12 +17,6 @@ function envUrl(value: string | undefined, fallback: string): string {
 /** The product app origin. Linked via a plain `<a>` (cross-origin). */
 export const APP_URL = envUrl(process.env.NEXT_PUBLIC_APP_URL, "https://app.usematura.xyz");
 
-/**
- * Public, read-only orchestration API origin. Only ever used for wallet-free
- * public read endpoints (e.g. `GET /api/v1/vaults`). No secrets, no wallet.
- */
-export const API_URL = envUrl(process.env.NEXT_PUBLIC_API_URL, "https://api.usematura.xyz");
-
 /** The canonical marketing origin — used for `metadataBase`, sitemap, robots. */
 export const SITE_URL = envUrl(process.env.NEXT_PUBLIC_LANDING_URL, "https://usematura.xyz");
 
