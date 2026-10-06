@@ -12,7 +12,7 @@ import {
 describe("format", () => {
   it("formatAmount renders base units as a decimal string (no float)", () => {
     expect(formatAmount("1500000")).toBe("1.5");
-    expect(formatAmount("20000000000")).toBe("20000");
+    expect(formatAmount("20000000000")).toBe("20,000");
     expect(formatAmount("1")).toBe("0.000001");
   });
 

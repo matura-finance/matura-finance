@@ -9,6 +9,7 @@ import { ApiError } from "../api/client";
 import {
   getActivity,
   getExecution,
+  getIssuedClaims,
   getPortfolio,
   getVaults,
   postOptimize,
@@ -22,6 +23,7 @@ export const queryKeys = {
   vaults: () => ["vaults", env.chainId] as const,
   activity: (wallet: string) => ["activity", env.chainId, wallet] as const,
   execution: (executionId: string) => ["execution", env.chainId, executionId] as const,
+  issuedClaims: (issuer: string) => ["issued-claims", env.chainId, issuer] as const,
 };
 
 const POLL_INTERVAL_MS = 2_500;
@@ -50,6 +52,24 @@ export function useActivity(wallet: string | undefined, limit = 25) {
     queryKey: [...queryKeys.activity(wallet ?? ""), limit],
     enabled: wallet !== undefined,
     queryFn: ({ signal }) => getActivity(wallet ?? "", limit, signal),
+  });
+}
+
+/**
+ * Claims the signed-in issuer has registered. Authed + issuer-scoped server-side, so it only
+ * returns on a valid session. Polls on a short interval so newly created claims (and state
+ * changes driven off-chain, e.g. mark-eligible/mark-matured) surface as the indexer projects them.
+ */
+export function useIssuedClaims(issuer: string | undefined) {
+  const { token } = useSession();
+  return useQuery({
+    queryKey: queryKeys.issuedClaims(issuer ?? ""),
+    enabled: issuer !== undefined && token !== null,
+    queryFn: ({ signal }) => {
+      if (token === null) throw new ApiError(401, "NO_SESSION", "Sign in to continue");
+      return getIssuedClaims(token, signal);
+    },
+    refetchInterval: 6_000,
   });
 }
 
@@ -84,12 +104,14 @@ export function useExecutionPoll(executionId: string | undefined, active: boolea
 /** A 401 means the bearer token is dead (expired/revoked) — clear the session so the UI
  *  drops back to the sign-in state instead of retrying with a dead token. */
 function useClearSessionOn401() {
-  const { signOut } = useSession();
+  const { refresh } = useSession();
   return useCallback(
     (error: unknown) => {
-      if (error instanceof ApiError && error.status === 401) signOut();
+      // A 401 means the bearer token is dead — drop it and re-prompt SIWE automatically
+      // (no manual disconnect/reconnect). `refresh` collapses concurrent 401s and loop-guards.
+      if (error instanceof ApiError && error.status === 401) refresh();
     },
-    [signOut],
+    [refresh],
   );
 }
 
@@ -118,13 +140,28 @@ export function usePrepareExecution() {
 }
 
 /** Invalidate the account + activity reads after a confirmed, indexed execution.
- *  Memoized so effects depending on it don't re-run every render (see request-view). */
+ *  Memoized so effects depending on it don't re-run every render (see get-liquidity-dialog). */
 export function useInvalidateOnSettled() {
   const queryClient = useQueryClient();
   return useCallback(
     (wallet: string) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.portfolio(wallet) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.activity(wallet) });
+      // Also refresh wagmi contract reads (the MockUSDT balance hero) so the headline balance
+      // moves with the positions instead of lagging up to its 10s poll. wagmi keys read queries
+      // as ["readContract", …]; a prefix match covers the balance read.
+      void queryClient.invalidateQueries({ queryKey: ["readContract"] });
+    },
+    [queryClient],
+  );
+}
+
+/** Refetch the issuer's claim list after a create/settle/delay (the indexer catches up shortly). */
+export function useInvalidateIssuedClaims() {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (issuer: string) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.issuedClaims(issuer) });
     },
     [queryClient],
   );

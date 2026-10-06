@@ -1,7 +1,15 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ReactNode } from "react";
 import { createSiweMessage } from "viem/siwe";
 import { useAccount, useAccountEffect, useSignMessage } from "wagmi";
@@ -24,6 +32,8 @@ interface SessionContextValue {
   error: string | null;
   signIn: () => Promise<void>;
   signOut: () => void;
+  /** Dead-token recovery: drop the stale session and re-prompt SIWE (no manual reconnect). */
+  refresh: () => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -94,6 +104,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [address, lowerAddress, signMessageAsync]);
 
+  // Called when an authed request 401s (dead/expired token). Drop the stale session and re-prompt
+  // SIWE automatically — no manual disconnect/reconnect. The cooldown collapses the burst of 401s
+  // from concurrent in-flight requests into a single re-sign and guards against a prompt loop if a
+  // freshly minted token keeps being rejected. It MUST exceed the fastest authed poll interval
+  // (useIssuedClaims, 6s) — otherwise each poll tick slips past the guard and re-prompts endlessly.
+  const lastRefreshRef = useRef(0);
+  const refresh = useCallback(() => {
+    const now = Date.now();
+    if (now - lastRefreshRef.current < 30_000) return;
+    lastRefreshRef.current = now;
+    drop();
+    void signIn();
+  }, [drop, signIn]);
+
   const value = useMemo<SessionContextValue>(
     () => ({
       token: session?.token ?? null,
@@ -102,8 +126,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       error,
       signIn,
       signOut: drop,
+      refresh,
     }),
-    [session, isSigningIn, error, signIn, drop],
+    [session, isSigningIn, error, signIn, drop, refresh],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

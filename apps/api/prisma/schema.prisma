@@ -76,6 +76,7 @@ model ClaimProjection {
   @@index([beneficiary, state])
   @@index([issuer, state])
   @@index([beneficiary, blockNumber, logIndex])
+  @@index([issuer, blockNumber, logIndex])
 }
 
 model RouteExecution {

@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
 
 import { IssuerView } from "../../components/issuer/issuer-view";
+import { RequireConnected } from "../../components/require-connected";
 import { Screen } from "../../components/screen";
 
 export const metadata: Metadata = {
-  title: "Matura",
+  title: "Matura Issuer Demo",
 };
 
 export default function IssuerPage() {
   return (
-    <Screen
-      eyebrow="Demo · admin"
-      title="Issuer simulator"
-      description="Create synthetic testnet claims, settle them, or mark a claim delayed. This is a demo surface — nothing here represents a real financial obligation."
-    >
-      <IssuerView />
-    </Screen>
+    <RequireConnected>
+      <Screen
+        eyebrow="Demo · Admin"
+        eyebrowVariant="warning"
+        title="Issuer Simulator"
+        description="Stand in for an issuer to drive the demo end to end: create a claim for your wallet, finance it on Portfolio, then come back to settle or delay it. Everything here uses synthetic testnet claims and mock USDT — nothing represents a real financial obligation."
+      >
+        <IssuerView />
+      </Screen>
+    </RequireConnected>
   );
 }

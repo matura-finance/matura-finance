@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
  * Shared UX-state panels. Every state ships a live next-action (acceptance: no dead
  * ends). Tone: `warning` = caution rail (RPC / not-deployed), default = neutral.
  */
-function StatePanel({
+export function StatePanel({
   title,
   body,
   action,

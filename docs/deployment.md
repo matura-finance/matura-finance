@@ -121,6 +121,7 @@ RPC or any secret). Declared in `turbo.json` `build.env`; see `.env.example`.
 ```bash
 NEXT_PUBLIC_API_URL=<api>/api/v1  NEXT_PUBLIC_CHAIN_ID=97 \
 NEXT_PUBLIC_RPC_URL=<public BSC-testnet RPC>  NEXT_PUBLIC_LANDING_URL=https://usematura.xyz \
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=<id from cloud.reown.com> \
 pnpm --filter @matura/app build && pnpm --filter @matura/app start   # :3002
 ```
 
@@ -128,7 +129,11 @@ The product **gates on `isDeployed(97)`** — until the manifest (`@matura/chain
 has real addresses it renders "Contracts deploying soon", and the `/request` flow **pins the
 `executeRoute` target to the manifest router** and refuses otherwise. So the app only becomes
 functional **after** step 1's testnet deploy+seed lands and `@matura/chain` is rebuilt. Wallet is
-injected/EIP-6963, BSC-testnet only; SIWE session is a header-bearer JWT (in-memory + `sessionStorage`).
+WalletConnect (Reown AppKit) + injected/EIP-6963, BSC-testnet only; SIWE session is a header-bearer
+JWT (in-memory + `sessionStorage`). **`NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is required in
+production** — it's a public id (from cloud.reown.com), but env validation **fails closed** when it
+is unset with `NODE_ENV=production`, so the build/boot errors rather than shipping a dead WalletConnect
+QR path (dev falls back to a placeholder; injected wallets work without it).
 
 **`apps/landing`** — static + wallet-free; no chain/API:
 
@@ -212,13 +217,13 @@ hosted API runs with **no issuer key** (`ISSUER_PRIVATE_KEY` absent, `DEMO_ISSUE
 
 #### Environment matrix (build-arg vs runtime; per service)
 
-| Var(s)                                                                                                                                                                                                                                                | Service                             | Build-arg / Runtime | Notes                                                                              |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------- | ---------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`                                                                                                                                | **app**                             | **build-arg**       | Inlined at `next build`; also derive the CSP `connect-src`. Rebuild on any change. |
-| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED`                                                                                                                                                                    | **landing**                         | **build-arg**       | Only these — **no** wallet/chain/secret vars (keeps landing wallet-free).          |
-| `DATABASE_URL`, `JWT_SECRET`                                                                                                                                                                                                                          | **api + worker**                    | **runtime**         | Secrets — never a build-arg.                                                       |
-| `RPC_URL`, `CHAIN_ID=97`, `INDEXER_CONFIRMATIONS=0`, `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `SIWE_DOMAIN=app.usematura.xyz`, `API_CORS_ORIGINS=https://app.usematura.xyz`, `NODE_ENV=production`, `DEMO_ISSUER_SIGNING_ENABLED=false` | **api (+ worker where applicable)** | **runtime**         | `ISSUER_PRIVATE_KEY` **absent** (prod refuses it).                                 |
-| `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`, `BSCSCAN_API_KEY`                                                                                                                                                                | **local/CI deploy only**            | Hardhat keystore    | Never present in any hosted service image or env.                                  |
+| Var(s)                                                                                                                                                                                                                                                | Service                             | Build-arg / Runtime | Notes                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_CHAIN_ID`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`, `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`                                                                                        | **app**                             | **build-arg**       | Inlined at `next build`; also derive the CSP `connect-src`. Rebuild on any change. **WalletConnect id is required in prod** (fails closed if unset). |
+| `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_LANDING_URL`, `NEXT_PUBLIC_CONTRACTS_DEPLOYED`                                                                                                                                                                    | **landing**                         | **build-arg**       | Only these — **no** wallet/chain/secret vars (keeps landing wallet-free).                                                                            |
+| `DATABASE_URL`, `JWT_SECRET`                                                                                                                                                                                                                          | **api + worker**                    | **runtime**         | Secrets — never a build-arg.                                                                                                                         |
+| `RPC_URL`, `CHAIN_ID=97`, `INDEXER_CONFIRMATIONS=0`, `INDEXER_MAX_BLOCK_RANGE`, `INDEXER_POLL_INTERVAL_MS`, `SIWE_DOMAIN=app.usematura.xyz`, `API_CORS_ORIGINS=https://app.usematura.xyz`, `NODE_ENV=production`, `DEMO_ISSUER_SIGNING_ENABLED=false` | **api (+ worker where applicable)** | **runtime**         | `ISSUER_PRIVATE_KEY` **absent** (prod refuses it).                                                                                                   |
+| `DEPLOYER_PRIVATE_KEY`, `ISSUER_PRIVATE_KEY`, `BSC_TESTNET_RPC_URL`, `BSCSCAN_API_KEY`                                                                                                                                                                | **local/CI deploy only**            | Hardhat keystore    | Never present in any hosted service image or env.                                                                                                    |
 
 `SIWE_DOMAIN` is a bare host (**no scheme**) — `app.usematura.xyz`, not `https://…`. `API_CORS_ORIGINS`
 must be the exact origin **with** scheme and **no trailing slash** (`https://app.usematura.xyz`); empty
@@ -346,6 +351,16 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
 ## Iteration log
 
 > Append newest-first. One entry per iteration that touches the deploy surface.
+
+### 2026-10-06 — WalletConnect/Reown app env + issuer-read migration (PR #13 + review hardening)
+
+- **New required app build-arg:** `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` (public Reown id). Env
+  validation now **fails closed** in production when it is unset — set it on the `app` service or the
+  build/boot errors (dev falls back to a placeholder; injected/EIP-6963 wallets work without it).
+- **New Prisma migration:** `4_claimprojection_issuer_sort_index` (adds
+  `@@index([issuer, blockNumber, logIndex])` for the issuer-scoped claims read). Picked up by the
+  standard `prisma migrate deploy` step — no special handling.
+- **No contract/ABI/manifest change.** App-only + one additive index; local (31337) env unaffected.
 
 ### 2026-09-28 — BSC-testnet deploy + EasyPanel/Docker hosting
 
