@@ -35,8 +35,11 @@ export const env: PublicEnv = EnvSchema.parse({
   landingUrl: orUndefined(process.env.NEXT_PUBLIC_LANDING_URL) ?? "http://localhost:3001",
   rpcUrl: orUndefined(process.env.NEXT_PUBLIC_RPC_URL),
   // Public Reown/WalletConnect project id (safe to expose; it's an identifier, not a secret).
-  // The placeholder lets the app build and render; the WalletConnect QR path only works once a
-  // real id from cloud.reown.com is set. Injected/EIP-6963 wallets connect without it.
+  // The placeholder lets the app build and render in dev; injected/EIP-6963 wallets connect without
+  // it. Gated to non-production so a prod deploy that forgets NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+  // fails closed (the id stays undefined → `.min(1)` throws) rather than silently booting with a
+  // non-functional WalletConnect QR path. Set a real id from cloud.reown.com in production.
   walletConnectProjectId:
-    orUndefined(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) ?? "PLACEHOLDER_REOWN_PROJECT_ID",
+    orUndefined(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) ??
+    (process.env.NODE_ENV === "production" ? undefined : "PLACEHOLDER_REOWN_PROJECT_ID"),
 });
