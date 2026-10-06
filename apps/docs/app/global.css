@@ -1,0 +1,48 @@
+/* Matura docs theme: Tailwind v4 + Matura brand tokens, with Fumadocs layered on top. */
+
+/* @matura/ui/globals.css imports Tailwind v4 and defines the Matura @theme tokens
+   (midnight / liquid-mint / mist / deep-night, fonts, the `.dark` variant). Do NOT import
+   "tailwindcss" again here — it is already imported transitively by this file. */
+@import "@matura/ui/globals.css";
+
+/* Fumadocs UI: a base color theme (overridden below) + the preset (forked typography,
+   animations, and its own @source for class scanning). */
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+/* Let Tailwind scan the shared UI package's source so its utility classes are generated. */
+@source "../../../packages/ui/src";
+
+/* Point Tailwind's default sans/mono at the Matura fonts wired in layout.tsx, so the Fumadocs
+   chrome (sidebar, TOC, nav) and prose render in Geist. */
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+/* ---------------------------------------------------------------------------
+ * Brand mapping — Fumadocs `--color-fd-*` → Matura tokens.
+ *
+ * ACCESSIBILITY LAW (packages/ui/CONTRAST.md): Liquid Mint on light ≈ 1.5:1 → FAILS AA. It is
+ * legal ONLY as a filled chip with a dark label, or as text on a DARK surface. Fumadocs uses
+ * --color-fd-primary for links, the active sidebar item, the TOC highlight, and anchor hover —
+ * all text-on-light on the default (light) theme. So:
+ *   light theme → --color-fd-primary = Midnight  (dark text, AA-safe)
+ *   dark theme  → --color-fd-primary = Liquid Mint (mint text on dark is legal)
+ * These plain :root / .dark overrides come after the imports, so they win the cascade.
+ * ------------------------------------------------------------------------- */
+:root {
+  --color-fd-background: var(--color-mist);
+  --color-fd-foreground: var(--color-midnight);
+  --color-fd-primary: var(--color-midnight);
+  --color-fd-primary-foreground: var(--color-mist);
+  --color-fd-ring: var(--color-midnight);
+}
+
+.dark {
+  --color-fd-background: var(--color-deep-night);
+  --color-fd-foreground: hsl(0, 0%, 92%);
+  --color-fd-primary: var(--color-liquid-mint);
+  --color-fd-primary-foreground: var(--color-midnight);
+  --color-fd-ring: var(--color-liquid-mint);
+}

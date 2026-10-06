@@ -1,0 +1,24 @@
+{
+  "extends": "@matura/typescript-config/nextjs.json",
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".source/**/*.ts",
+    "source.config.ts"
+  ],
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    // Next apps never emit declarations (noEmit). The base config turns `declaration` on for
+    // library packages; leaving it on here makes TS enforce declaration-nameability (TS2742) on
+    // fumadocs' generated `.source/index.ts`, which re-exports non-portable inferred types. Off.
+    "declaration": false,
+    "declarationMap": false
+  }
+}

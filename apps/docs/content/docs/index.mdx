@@ -1,0 +1,26 @@
+---
+title: Introduction
+description: What Matura is, who these docs are for, and how to navigate them.
+---
+
+Matura is a non-custodial **RWA / invoice-financing** protocol on **BNB Smart Chain Testnet**. It
+turns income you've already earned into instant, fairly-priced liquidity — routed across competing
+on-chain vaults via a deterministic best-execution router, and verified on-chain.
+
+> **Testnet only.** Matura is an MVP deployed to BSC Testnet (chain `97`). No real funds, ever. See
+> the Trust & Security section for the full model.
+
+## Who these docs are for
+
+- **Evaluators & judges** — start with the Trust & Security section: the threat model, what you're
+  trusting, and proof-it-works (verified testnet addresses, test & gas reports).
+- **Developers & integrators** — see Contracts and API & Integration for the on-chain surface, SIWE
+  auth, non-custodial write-preparation, and the best-execution router.
+- **Newcomers** — begin with Concepts for a plain-language primer on vaults, claims, routing, and
+  settlement.
+
+## How the protocol fits together
+
+A claim (future income, attested by an approved issuer) is financed by routing it across liquidity
+vaults using the cheapest verifiable route, then settled atomically on-chain. The API never holds a
+user key — it only prepares unsigned calldata / EIP-712 typed data for the user's wallet to sign.

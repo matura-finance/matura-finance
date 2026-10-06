@@ -1,0 +1,16 @@
+# Next.js build output
+/.next/
+/out/
+
+# fumadocs-mdx generated source (regenerated on every dev/build)
+/.source/
+
+# Generated reference content — mirrored from repo docs/ + the contracts manifest
+# at build time (see scripts/sync-reference-docs.mjs). Never committed: always
+# regenerated, so drift at deploy is impossible.
+/content/docs/reference/
+/content/docs/contracts/deployed-addresses.mdx
+
+# misc
+*.tsbuildinfo
+next-env.d.ts
