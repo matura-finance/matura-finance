@@ -35,13 +35,7 @@ import {
   ROUTER_ACCORDION,
   WHY_MATURA,
 } from "../lib/landing-content";
-import {
-  APP_URL,
-  bscScanAddress,
-  CONTACT_EMAIL,
-  GITHUB_DOCS,
-  TESTNET_CONTRACTS,
-} from "../lib/site";
+import { APP_URL, bscScanAddress, CONTACT_EMAIL, DOCS_URL, TESTNET_CONTRACTS } from "../lib/site";
 
 export default function HomePage() {
   return (
@@ -501,12 +495,10 @@ export default function HomePage() {
                 Open Matura
               </a>
               <a
-                href={GITHUB_DOCS.architecture}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={DOCS_URL}
                 className="text-sm font-medium text-midnight/60 underline-offset-4 transition-colors hover:text-midnight hover:underline"
               >
-                Read the architecture →
+                Read the Documentation →
               </a>
             </div>
           </div>
