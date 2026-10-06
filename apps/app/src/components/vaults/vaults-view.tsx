@@ -135,7 +135,7 @@ export function VaultsView() {
                   <span className="select-none font-medium text-muted-foreground blur-[2px]">
                     {v.name}
                   </span>
-                  <Badge variant="outline" className="whitespace-nowrap">
+                  <Badge variant="outline" className="whitespace-nowrap capitalize">
                     Coming soon
                   </Badge>
                 </div>
