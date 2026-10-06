@@ -10,6 +10,10 @@ liquidity across competing onchain pools.**
 > synthetic demo data and a faucet-minted test token only. See
 > [disclaimers](#security--regulatory--synthetic-data-disclaimers).
 
+📖 **Full documentation:** **[docs.usematura.xyz](https://docs.usematura.xyz)** — concepts,
+contracts, API, and the trust model. · 🔗 **Live:** [app](https://app.usematura.xyz) ·
+[site](https://usematura.xyz)
+
 ---
 
 ## Contents
@@ -151,12 +155,13 @@ Full design: [`docs/architecture.md`](docs/architecture.md),
 | `apps/api`                   | NestJS orchestration + read-model: indexer worker, projections, non-custodial write-prep, best-execution router, SIWE auth.       |
 | `apps/app`                   | Next.js 15 wallet-connected product (`app.usematura.xyz`) — the optimize→sign→submit flow, SIWE session, typed API client.        |
 | `apps/landing`               | Next.js 15 static marketing site (`usematura.xyz`) — wallet-free, lint- and CI-grep-guarded to hold no wallet/chain code.         |
+| `apps/docs`                  | Next.js 15 docs site (`docs.usematura.xyz`), Fumadocs — wallet-free; authored guides + a build-generated reference mirror.        |
 | `apps/e2e`                   | Playwright: always-on landing suite + gated product happy-path (viem signer injected as an EIP-6963 provider).                    |
 | `apps/e2e-stack`             | Cross-stack reconciliation e2e — boots node + Postgres + worker + API and reconciles events ↔ DB ↔ balances.                      |
 | `packages/contracts`         | Hardhat 3 / Solidity 0.8.28 + OpenZeppelin 5.6.1 — the Matura Protocol contracts, deploy/seed/verify scripts.                     |
 | `packages/chain`             | tsup dual CJS/ESM build: BSC-Testnet chain def, generated ABIs, per-chain deployment manifests, EIP-712 typed data, viem helpers. |
 | `packages/shared`            | Framework-free Zod schemas + domain types, enum ordinals, and the pure integer best-execution optimizer.                          |
-| `packages/ui`                | Tailwind v4 design tokens + low-level primitives shared by app and landing (wallet-free).                                         |
+| `packages/ui`                | Tailwind v4 design tokens + low-level primitives shared by app, landing, and docs (wallet-free).                                  |
 | `packages/eslint-config`     | ESLint 9 flat, type-aware (`strictTypeChecked` + `projectService`) — repo-wide no-`any`.                                          |
 | `packages/typescript-config` | Shared strict `tsconfig` bases (base / library / nextjs / nestjs).                                                                |
 
@@ -197,6 +202,7 @@ pnpm --filter @matura/contracts demo:reset:full
 ```bash
 pnpm --filter @matura/app dev        # product app  → http://localhost:3002
 pnpm --filter @matura/landing dev    # marketing     → http://localhost:3001
+pnpm --filter @matura/docs dev       # docs site     → http://localhost:3003
 pnpm --filter @matura/api dev         # HTTP API      (nest start --watch)
 pnpm --filter @matura/api worker:dev  # indexer worker (separate process)
 pnpm --filter @matura/api db:migrate  # prisma migrate dev (needs Postgres)
@@ -414,7 +420,7 @@ Stated plainly, not softened:
 
 ## Independent deployments
 
-Two separate Next.js apps, deployed independently:
+Three separate Next.js apps, deployed independently:
 
 - **[`usematura.xyz`](https://usematura.xyz)** — the marketing / landing site
   (`apps/landing`): static, wallet-free, and CI-guarded to contain no wallet or
@@ -422,3 +428,6 @@ Two separate Next.js apps, deployed independently:
 - **[`app.usematura.xyz`](https://app.usematura.xyz)** — the wallet-connected
   product app (`apps/app`): wagmi + viem (BSC Testnet only), SIWE session, and
   the full best-execution request flow.
+- **[`docs.usematura.xyz`](https://docs.usematura.xyz)** — the documentation
+  site (`apps/docs`): a Fumadocs site, static and wallet-free, covering the
+  concepts, contracts, API, and trust model.

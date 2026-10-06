@@ -46,7 +46,7 @@ demo:local` (deploy→seed→verify) in another; `demo:settle` (local-only e2e),
 is a read-only **pre-demo readiness gate** (Request B claims ELIGIBLE, per-leg vault liquidity, operator
 gas). Testnet: `deploy:bsc-testnet` then `seed:bsc-testnet` (uses the seed-only `bscTestnetSeed` network
 so the issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/README.md`.
-Judge/demo assets: `README.md`, `docs/demo-script.md` (≤3-min live script), `docs/test-report.md`.
+Judge/demo assets: `README.md`, `docs/test-report.md`.
 
 **`apps/api`** — orchestration + read-model service. A separate-process **indexer worker**
 (`worker.ts`; `finalized`-tag polling, block-hash-mismatch → full-wipe+reindex, idempotent upserts
@@ -108,8 +108,7 @@ ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate.
   deliberate MVP operator escape hatch. See `docs/deployment-trackb-runbook.md`.
 - **Solidity:** 0.8.28 + OpenZeppelin 5.6.1; custom errors + NatSpec; CEI + SafeERC20 +
   `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md` (full-stack
-  threat model), `SECURITY.md` (disclosure policy + testnet-only warning), and
-  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity).
+  threat model) and `SECURITY.md` (disclosure policy + testnet-only warning).
 - **Boundaries:** `apps/landing` stays wallet-free (lint-guarded, incl. subpath imports);
   `@matura/shared` is framework-free Zod; `@matura/contracts` is self-contained (no `@matura/*` deps).
   `@matura/chain` ships a **tsup dual CJS/ESM build** (`dist`) so the CommonJS `apps/api` can

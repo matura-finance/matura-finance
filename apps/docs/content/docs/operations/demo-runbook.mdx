@@ -3,10 +3,7 @@ title: Demo runbook
 description: The ≤3-minute live demo flow on BSC Testnet.
 ---
 
-This is the shape of the live demo. The authoritative, step-exact script is
-[`docs/demo-script.md`](https://github.com/matura-finance/matura-finance/blob/main/docs/demo-script.md)
-in the repo, with a pre-flight checklist in
-[`docs/demo-operator-checklist.md`](https://github.com/matura-finance/matura-finance/blob/main/docs/demo-operator-checklist.md).
+This is the ≤3-minute live demo flow, run against the app on BSC Testnet.
 
 ## Before the demo
 
@@ -33,5 +30,5 @@ in the repo, with a pre-flight checklist in
 ## If something's off
 
 Most demo failures are environment issues (a domain/origin mismatch, an unfunded wallet, or a short
-lag while a new transaction is indexed). The operator checklist in the repo enumerates the
-abort conditions; don't start with any open.
+lag while a new transaction is indexed). Run the `smoke:bsc-testnet` readiness gate first and don't
+start with any check failing.

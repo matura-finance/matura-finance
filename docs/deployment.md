@@ -263,8 +263,8 @@ service **Shell** for migrate); the exact "primary domain" toggle + default Trae
 
 ## Post-deploy smoke checklist
 
-> **Pre-demo operator sanity** (env/stack readiness + abort conditions): run through
-> `docs/demo-operator-checklist.md` before driving a demo.
+> **Pre-demo operator sanity** (env/stack readiness + abort conditions): run the `smoke:bsc-testnet`
+> readiness gate (above) before driving a demo.
 
 - [ ] `GET /api/v1/health` → `200 {status:"ok"}`; `GET /api/v1/health/ready` → `200` (db/rpc/cursor up).
 - [ ] Seeded claims visible: `GET /api/v1/account/:aliceWallet` returns her ELIGIBLE claims after the worker catches up.
@@ -396,10 +396,9 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
   generic `500`, so server faults remain visible to 5xx alerting). The pin-to-manifest control on the
   product `/request` signing path was hardened into the pure `prepareRoute` boundary (submit target +
   EIP-712 domain both pinned to the manifest router).
-- **New docs:** `SECURITY.md` (disclosure policy + **testnet-only, never-real-funds** warning),
-  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity — now referenced from the smoke
-  checklist above), and an extended full-stack `docs/threat-model.md`. Key learning: the
-  test-fidelity "a guard test must fail if the guard is removed" lesson.
+- **New docs:** `SECURITY.md` (disclosure policy + **testnet-only, never-real-funds** warning) and
+  an extended full-stack `docs/threat-model.md`. Key learning: the test-fidelity "a guard test must
+  fail if the guard is removed" lesson.
 - **New Open items surfaced:** fill the `SECURITY.md` disclosure-contact placeholder; install
   `gitleaks` locally for the pre-commit hook (see Open items).
 
