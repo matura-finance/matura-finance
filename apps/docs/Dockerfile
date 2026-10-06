@@ -26,6 +26,13 @@ COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
 
+# The reference-docs prebuild (`apps/docs` prebuild step) reads repo-root `docs/*.md` and the chain
+# deployment manifest to generate the Reference section + the deployed-addresses table. `turbo prune`
+# does NOT include these in the pruned sources, so copy them explicitly from the build context (repo
+# root). They are build-time-only inputs — never bundled into the runtime image.
+COPY docs ./docs
+COPY packages/chain/src/deployments ./packages/chain/src/deployments
+
 # NEXT_PUBLIC_* are inlined at build time (Next) — must be present BEFORE `next build`.
 # Docs only needs cross-domain URLs for canonical/OG + nav links; NO wallet/chain/secret vars.
 ARG NEXT_PUBLIC_DOCS_URL

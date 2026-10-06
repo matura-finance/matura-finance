@@ -4,7 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "sync-reference": "node scripts/sync-reference-docs.mjs",
+    "predev": "node scripts/sync-reference-docs.mjs",
     "dev": "next dev -p 3003",
+    "prebuild": "node scripts/sync-reference-docs.mjs",
     "build": "next build",
     "start": "next start -p 3003",
     "lint": "eslint .",
@@ -29,6 +32,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "^9.39.1",
+    "github-slugger": "^2.0.0",
     "tailwindcss": "^4.3.0",
     "typescript": "catalog:"
   }

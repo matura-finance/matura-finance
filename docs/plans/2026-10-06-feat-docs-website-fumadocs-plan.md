@@ -289,7 +289,15 @@ way search stays wallet-free and same-origin (`connect-src 'self'`).
 - **Deliverable / success:** `pnpm --filter @matura/docs dev` serves a themed "Hello docs" at :3003;
   `pnpm --filter @matura/docs build && lint && typecheck` pass; bundle grep (no wallet/chain) passes.
 
-### Phase 2 — Content pipeline (the risky core)
+### Phase 2 — Content pipeline (the risky core) ✅ DONE
+
+> **Completed 2026-10-06.** `scripts/sync-reference-docs.mjs` mirrors the 6-file Lane A allowlist into
+> gitignored `content/docs/reference/` as MDX-safe `.md` with injected frontmatter, stripped H1, a
+> GitHub source-link note, Mermaid→committed-SVG swaps, and a link checker (proven to catch dangling
+> anchors). Wired as `prebuild`/`predev`; Dockerfile now `COPY docs` + the chain manifest so it runs
+> in-image. Build/lint/typecheck green; all 6 reference pages SSG + searchable; diagrams load via
+> `next/image` under the strict CSP. Resolved C1 (allowlist+forbidden-path+git-ignore), C2 (`.md`
+> format tolerates `{`/`<`), C3 (frontmatter+H1), I3 (link checker), I4 (static SVG).
 
 - Write `scripts/sync-reference-docs.mjs` with all five requirements (allowlist+disjoint assert,
   frontmatter+H1 dedup, plain-Markdown mode, Mermaid→SVG, link checker). Wire as `prebuild`/`predev`.
@@ -339,21 +347,26 @@ way search stays wallet-free and same-origin (`connect-src 'self'`).
 
 ### Content pipeline
 
-- [ ] Prebuild copies **only** an explicit allowlist; build **fails** if it would touch any
+- [x] Prebuild copies **only** an explicit allowlist; build **fails** if it would touch any
       gitignored / `reviews/` / `brainstorms/` / `plans/` / `code-review.md` / `*-runbook.md` path.
-- [ ] Every mirrored file gets injected `title` (+ `description`) and its leading `# H1` is stripped;
-      build **fails** on a file with no H1.
-- [ ] `pnpm --filter @matura/docs build` compiles **every** mirrored + authored page with zero
-      MDX-parse errors (explicitly verified on `architecture.md`, `routing.md`, `threat-model.md`).
-- [ ] `architecture.md`'s Mermaid renders as **static SVG**; **no `unsafe-eval`** added to CSP.
-- [ ] Build-time link-checker passes: zero dangling in-page anchors, zero broken relative links.
+      _(Phase 2.)_
+- [x] Every mirrored file gets injected `title` (+ `description`) and its leading `# H1` is stripped;
+      build **fails** on a file with no H1. _(Phase 2.)_
+- [x] `pnpm --filter @matura/docs build` compiles **every** mirrored + authored page with zero
+      MDX-parse errors (verified on `architecture.md`, `routing.md`, `threat-model.md`). _(Phase 2 — `.md`
+      `format:'md'` tolerates raw `{`/`<`.)_
+- [x] `architecture.md`'s Mermaid (2 diagrams) renders as **static SVG** (`public/diagrams/` via
+      `next/image`); **no `unsafe-eval`** added to CSP. _(Phase 2.)_
+- [x] Build-time link-checker passes: zero dangling in-page anchors, zero broken relative links.
+      _(Phase 2 — proven to have teeth via a negative test.)_
 
 ### Freshness / addresses
 
 - [ ] Contracts page generated from `packages/chain/src/deployments/97.json` at build; changing an
       address + rebuilding changes the table with no hand edits. `31337.json` not surfaced.
-- [ ] Generated content (`content/docs/reference/**`, contracts page) is **gitignored** and
-      regenerated on every build (no committed generated content; no gate needed).
+- [x] Generated content (`content/docs/reference/**`, contracts page) is **gitignored** and
+      regenerated on every build (no committed generated content; no gate needed). _(Phase 2 — reference
+      mirror gitignored + `prebuild`/`predev` hooks; Dockerfile `COPY docs` so the prebuild runs in-image.)_
 
 ### Security / boundaries
 

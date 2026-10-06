@@ -14,6 +14,13 @@ export default [
   },
   ...nextJsConfig,
   {
+    // Build-time Node scripts (the reference-docs prebuild) — not part of the browser bundle.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly" },
+    },
+  },
+  {
     rules: {
       "no-restricted-imports": [
         "error",
