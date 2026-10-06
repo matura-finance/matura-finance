@@ -1,0 +1,34 @@
+---
+title: Authentication (SIWE)
+description: Sign-In With Ethereum — how wallets authenticate to the API without surrendering a key.
+---
+
+The API authenticates wallets with **SIWE** (Sign-In With Ethereum, verified with viem) and issues a
+**JWT**. It never holds a user key: you prove control of an address by signing a nonce-bound message.
+
+## Flow
+
+```
+GET  /api/v1/auth/nonce            → { nonce }          (Public)
+# wallet signs the SIWE message containing the nonce
+POST /api/v1/auth/verify           → { token }          (Public)
+# send `Authorization: Bearer <token>` on every protected route
+```
+
+1. **Nonce** — `GET /auth/nonce` returns a short-lived nonce (TTL-bounded).
+2. **Sign** — the client builds the SIWE message (domain-bound) and the wallet signs it.
+3. **Verify** — `POST /auth/verify` checks the signature + nonce and returns a **subject-bound JWT**.
+4. **Use** — send the JWT as a bearer token. The global guard is **fail-closed**: anything not marked
+   `@Public()` requires a valid token; rate limits are applied **per wallet**.
+
+## Session handling (product app)
+
+The app keeps the JWT in memory + `sessionStorage`, bound to the connected subject, and clears it on a
+`401` or a wallet switch. SIWE is **domain-exact**: the `SIWE_DOMAIN` must match the served host (no
+scheme), or every login is rejected — important when the app is deployed behind a baked domain.
+
+## Security notes
+
+- The JWT secret is a per-deployment CSPRNG value (runtime env, never a build arg).
+- CORS is exact-match against the app origin (scheme, no trailing slash).
+- Both are documented operationally in the [Deployment](/docs/operations/deployment) page.

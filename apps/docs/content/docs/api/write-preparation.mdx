@@ -1,0 +1,35 @@
+---
+title: Write-preparation
+description: Non-custodial endpoints that return unsigned calldata / EIP-712 typed data to sign.
+---
+
+Matura is **non-custodial**: the API never signs on your behalf. Write-preparation endpoints return
+either **unsigned calldata** or **EIP-712 typed data**; your wallet signs locally and you submit the
+transaction. All require a bearer token (see [Authentication](/docs/api/authentication)).
+
+| Method & path | Prepares |
+| --- | --- |
+| `POST /api/v1/claims/registration/prepare` | Register a claim from an issuer attestation. |
+| `POST /api/v1/issuer/attestations/prepare` | An issuer's EIP-712 claim attestation (typed data). |
+| `POST /api/v1/executions/prepare` | A financing execution transaction. |
+| `POST /api/v1/settlements/:claimId/prepare` | A settlement transaction for a matured claim. |
+| `GET /api/v1/claims/issued` | (Read) claims issued by the authenticated caller. |
+
+## The signing boundary
+
+- **One coerced message** is the single source of truth: the same payload feeds the signature, the
+  on-chain hash, and the contract call. Money crosses the boundary as `BigInt(str)` base units —
+  never `toBaseUnits`, never a float.
+- **Targets are pinned to the manifest** — the contract addresses in the prepared transaction come
+  from the generated deployment manifest, not from client input.
+- **EIP-712 typed data** (attestation + route types and domains) lives in `@matura/chain` (viem
+  -native); `@matura/contracts` keeps a copy behind a typehash parity test so the two never diverge.
+
+## Shape
+
+A prepare response contains everything the wallet needs (typed data or `to`/`data`/`value`) and
+nothing secret. You sign it, submit it, and the [indexer](/docs/api/indexer-worker) projects the
+resulting on-chain events so your [reads](/docs/api/read-endpoints) reflect the new state.
+
+> Best-execution financing uses its own two-step prepare flow — see
+> [Best-execution routing](/docs/api/routing).

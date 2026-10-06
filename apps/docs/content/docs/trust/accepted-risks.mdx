@@ -1,0 +1,35 @@
+---
+title: Accepted risks
+description: What this testnet MVP explicitly does not defend against — stated up front.
+---
+
+Matura is a **BSC-Testnet MVP**. Being explicit about what it does *not* do is part of the trust
+model. The authoritative list is in the [Threat model](/docs/reference/threat-model) and
+[`SECURITY.md`](https://github.com/matura-finance/matura-finance/blob/main/SECURITY.md); the headline
+items:
+
+## Testnet only — no real funds
+
+Everything runs on BNB Smart Chain **Testnet** (chain `97`) with a **MockUSDT** settlement asset and a
+**demo issuer simulator**. There are no real funds at stake, ever. Do not treat any address, balance,
+or attestation as representing real value.
+
+## Issuer trust is assumed
+
+The system trusts that approved issuers attest to **real** claims. A malicious or compromised issuer
+key could attest to fictitious claims — which is exactly why the issuer key is treated as the most
+sensitive secret, kept off the hosted API, and why the issuer-demo flow accepts raw calldata as a
+documented demo assumption rather than a production control.
+
+## Not a production deployment
+
+- No formal audit; the contracts carry an adversarial test suite but not a third-party review.
+- No upgrade/governance machinery (no proxies) — the deployed bytecode is fixed.
+- Operational hardening (key rotation, monitoring, incident response) is MVP-grade.
+
+## In scope vs. out of scope
+
+The threat model enumerates P0 contract surfaces and off-chain surfaces that **are** defended
+(attestation authorization, route re-validation, settlement conservation, non-custody, bundle secret
+-freedom) and the surfaces that are **accepted** for the MVP. Read it before relying on anything here
+beyond a demo.

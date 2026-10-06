@@ -1,0 +1,35 @@
+---
+title: Read endpoints
+description: Public read-model endpoints served from the Postgres projection.
+---
+
+Read endpoints are **public** (`@Public()`) and serve the projection built by the indexer worker, with
+chain read-through where needed. Money is returned as base-unit decimal strings; addresses are
+lowercased.
+
+| Method & path | Returns |
+| --- | --- |
+| `GET /api/v1/health` | Liveness. |
+| `GET /api/v1/health/ready` | Readiness (503 during first-boot reindex). |
+| `GET /api/v1/account/:wallet` | Account overview — balances and owned claims for a wallet. |
+| `GET /api/v1/activity/:wallet` | Chronological executions + settlements for a wallet. |
+| `GET /api/v1/vaults` | Active vaults with mandate, capital, and pricing. |
+| `GET /api/v1/claims/:claimId` | A single claim's state and financed-face. |
+| `GET /api/v1/executions/:executionId` | A single execution's status. |
+| `POST /api/v1/quotes/preview` | A non-binding financing quote preview for a claim. |
+
+## Example
+
+```bash
+curl https://api.usematura.xyz/api/v1/vaults
+curl https://api.usematura.xyz/api/v1/account/0xabc...123
+```
+
+## Notes
+
+- **Readiness vs liveness:** health checks should target `/health` for liveness; `/health/ready`
+  returns 503 while the worker performs its first reindex, so use it only where that's intended.
+- **Finality:** reads reflect the indexer's projection, which advances on finalized blocks — see
+  [Indexer & worker](/docs/api/indexer-worker).
+- **Authenticated reads:** `GET /claims/issued` (claims issued by the caller) requires a bearer token
+  — see [Write-preparation](/docs/api/write-preparation).

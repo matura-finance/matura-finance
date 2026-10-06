@@ -1,0 +1,36 @@
+---
+title: Vaults & liquidity
+description: How liquidity vaults supply capital and compete to finance claims.
+---
+
+A **liquidity vault** (`LiquidityVault`) is a pool of settlement capital (MockUSDT on testnet) that
+finances claims according to a **mandate** — the rules that bound what it will fund and at what price.
+The `VaultRegistry` keeps an enumerable set of active vaults so the router can discover supply.
+
+## What a vault does
+
+- **Holds capital** available to finance claim slices.
+- **Prices** a financing request: given a claim slice and a pinned block, it quotes the cost to fund.
+- **Reserves and funds**: when the router selects it, the vault reserves the slice and releases
+  capital to the beneficiary (only the router, holding `ROUTER_ROLE`, can drive this).
+- **Receives repayment** at settlement via the `SettlementManager` (`SETTLEMENT_ROLE`).
+
+## Mandates
+
+A vault's mandate constrains eligibility and pricing — which claim types it accepts, caps, and the
+pricing curve. Because vaults have different mandates, they produce different quotes for the same
+claim, which is exactly what makes a **best-execution** choice meaningful: the router compares real,
+competing offers rather than a single take-it-or-leave-it price.
+
+## Reservations
+
+Capital that the router has committed to a claim leg is **reserved** so it can't be double-spent by a
+concurrent route. Reservations are part of why routes are single-use and re-validated on-chain before
+funds move (see [Best-execution routing](/docs/concepts/routing)).
+
+## On testnet
+
+Two named vaults are seeded — **Stable Vault** and **Flex Vault** — with distinct mandates so the
+router has a genuine choice. Their live addresses are on the
+[Deployed addresses](/docs/contracts/deployed-addresses) page, and the `/vaults` screen in the app
+shows each vault's mandate, capital, and pricing.

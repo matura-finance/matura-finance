@@ -1,0 +1,45 @@
+---
+title: Best-execution routing
+description: How Matura selects the cheapest verifiable way to finance a claim.
+---
+
+Best-execution routing is Matura's core differentiator. Rather than funding a claim from a single
+vault at a single price, the router finds the **cheapest verifiable combination of vault legs** and
+proves that choice is honored on-chain.
+
+## The objective
+
+Given a claim (or slice) and the set of eligible vaults, choose the allocation of legs that
+**minimizes the cost to the beneficiary** (maximizes what they receive), subject to each vault's
+mandate, available capital, and reservations. The optimizer is a **pure integer** routine in
+`@matura/shared` — a bounded exact search with a greedy fallback — so results are deterministic and
+reproducible.
+
+## Determinism and the mirror
+
+The decisive property is that the off-chain choice is **re-validated on-chain** before any funds move:
+
+- The API validates each leg against a **pinned block** through one shared off-chain `_validateLegs`
+  mirror (`common/leg-mirror.ts`), so the API and the contract agree by construction.
+- It persists a **single-use `RouteIntent`** and emits the signable `ExecutionRoute`.
+- On submission, `MaturaRouter.executeRoute` **recomputes and re-checks** the legs on-chain; if the
+  world moved (price, liquidity, expiry), execution reverts rather than filling a stale route.
+
+## The flow
+
+```
+optimize  →  review  →  sign (EIP-712)  →  submit (executeRoute)  →  index
+```
+
+One coerced message is the single source of truth: the same payload feeds the signature, the on-chain
+hash, and `executeRoute`. Targets are pinned to the deployment manifest, and money crosses the signing
+boundary as `BigInt(str)` base units — never floats.
+
+## Why it matters
+
+A route you can't verify is just a quote you have to trust. Matura's router makes the cheapest option
+**checkable**: deterministic selection off-chain, exact re-validation on-chain, single-use intents.
+
+> Full design, constraints, and the `isBetter` comparator are in the mirrored
+> [routing reference](/docs/reference/routing); the signable endpoints are in
+> [API › Best-execution routing](/docs/api/routing).

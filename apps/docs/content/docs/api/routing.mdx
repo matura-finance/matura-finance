@@ -1,0 +1,38 @@
+---
+title: Best-execution routing (API)
+description: The two-step optimize → prepare-execution flow that produces a signable route.
+---
+
+Financing a claim uses a dedicated two-step flow backed by the deterministic optimizer (concept:
+[Best-execution routing](/docs/concepts/routing)). Both endpoints require a bearer token.
+
+```
+POST /api/v1/routes/optimize                      → OptimizeResult (+ routeId)
+POST /api/v1/routes/:routeId/prepare-execution    → signable ExecutionRoute
+```
+
+## 1. Optimize
+
+`POST /routes/optimize` runs the pure integer optimizer (bounded exact search + greedy fallback) over
+the eligible vaults for a claim/slice and returns the cheapest verifiable allocation. It validates each
+leg against a **pinned block** through the shared off-chain `_validateLegs` mirror and persists a
+**single-use `RouteIntent`**. The result (typed by `@matura/shared`'s `OptimizeResult`, which the app's
+API client re-uses and Zod-validates) includes the chosen legs, the total received, and a per-leg
+explanation.
+
+## 2. Prepare execution
+
+`POST /routes/:routeId/prepare-execution` re-validates the stored intent against a pinned block and
+emits the **signable `ExecutionRoute`** (EIP-712 typed data). The intent is single-use; expired intents
+are pruned. Your wallet signs the route and submits `executeRoute` to the `MaturaRouter`, which
+**recomputes and re-checks** the legs on-chain before any funds move.
+
+## Why two steps
+
+Separating *selection* (optimize) from *signing* (prepare-execution) lets the UI show a reviewable
+quote before committing, while the single-use intent + on-chain re-validation prevent a stale or
+tampered route from executing. If the world moved between steps, execution reverts rather than filling
+a bad route.
+
+> Determinism, the `isBetter` comparator, and `PinnedReads` are detailed in the mirrored
+> [routing reference](/docs/reference/routing).

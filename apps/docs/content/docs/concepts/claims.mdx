@@ -1,0 +1,49 @@
+---
+title: Claims
+description: What a claim is, its types, and the on-chain lifecycle states.
+---
+
+A **claim** is an on-chain record of future income, anchored to the real world by an **issuer's
+EIP-712 attestation**. It carries an amount, a maturity, a beneficiary, and a type, and it moves
+through a strict lifecycle in the `ClaimRegistry`.
+
+## Claim types
+
+The type enum is the single source of truth shared by Solidity (`uint8` ordinals), the Zod schema, and
+Prisma — a parity test guards against drift.
+
+| Type | Meaning |
+| --- | --- |
+| `PAYROLL` | Salary/wages accrued but not yet paid out. |
+| `FREELANCE_ESCROW` | Funds held in escrow against delivered freelance work. |
+| `STREAM` | A continuous payment stream (e.g. vesting). |
+
+## Lifecycle states
+
+Claim state is also an ordered enum (ordinals are law). The happy path runs
+`ATTESTED → ELIGIBLE → (PARTIALLY_FUNDED) → FUNDED → MATURED → PAID`; the remaining states capture
+failure and administrative outcomes.
+
+| State | Meaning |
+| --- | --- |
+| `ATTESTED` | Issuer attestation registered; not yet eligible to finance. |
+| `ELIGIBLE` | Passes checks; can be financed. |
+| `PARTIALLY_FUNDED` | Some, not all, of the face has been financed. |
+| `FUNDED` | Fully financed by one or more vault legs. |
+| `MATURED` | Maturity reached; awaiting settlement. |
+| `PAID` | Settled — vaults repaid, residual released. |
+| `DELAYED` | Expected payment is late. |
+| `DISPUTED` | Under dispute. |
+| `DEFAULTED` | Did not pay. |
+| `REJECTED` | Rejected before financing. |
+| `REVOKED` | Revoked by an authorized party. |
+
+## Attestation → registration
+
+An approved signer (tracked in the `IssuerRegistry`, with epochs) signs an EIP-712 attestation. The
+API's non-custodial write-preparation endpoint returns the typed data; the signature is submitted to
+register the claim. Adding a new claim type is a deliberate seven-site edit (see `ClaimEnums.sol`) so
+the on-chain and off-chain enums never diverge.
+
+See the [Glossary](/docs/concepts/glossary) for the value types involved and
+[Settlement](/docs/concepts/settlement) for how `MATURED → PAID` works.

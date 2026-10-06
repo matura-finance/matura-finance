@@ -1,0 +1,41 @@
+---
+title: What it looks like
+description: A tour of the Matura product surface — the five routes of the wallet-connected app.
+---
+
+The product app (`app.usematura.xyz`) is a wagmi + viem Next.js app that connects a wallet on **BNB
+Smart Chain Testnet only**. It never holds your key: every on-chain action is prepared server-side as
+unsigned calldata or EIP-712 typed data, which your wallet signs locally. Five routes cover the full
+flow.
+
+## `/request` — the best-execution flow
+
+The core screen. You pick a claim to finance; the app calls the router's `optimize` endpoint, shows
+the **cheapest verifiable route** across competing vaults (with a per-leg breakdown and the total you
+receive), then walks you through **review → sign → submit → index**. The signed message is the single
+source of truth: the same coerced payload feeds the signature, the on-chain hash, and `executeRoute`.
+
+## `/account`
+
+Your position overview — wallet balances, claims you own, and their state (registered, financed,
+settled). Reads come from the API's projection of on-chain events, so they reflect indexed finality.
+
+## `/activity`
+
+A chronological ledger of your executions and settlements, each linking to its on-chain transaction on
+BscScan. This is the "proof it happened" view.
+
+## `/vaults`
+
+The liquidity side: each vault's mandate, available capital, and pricing. Vaults compete to fund
+claims; this screen shows the supply the router chooses between.
+
+## `/issuer`
+
+A demo simulator for the issuer role — it produces EIP-712 claim attestations so you can drive the end
+-to-end flow on testnet without a real payroll/invoice integration.
+
+---
+
+> Live app: [`app.usematura.xyz`](https://app.usematura.xyz). It targets testnet only — fund a wallet
+> from the [BNB testnet faucet](https://www.bnbchain.org/en/testnet-faucet) to try it.

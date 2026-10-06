@@ -178,6 +178,83 @@ function checkLinks(body, srcLabel) {
   }
 }
 
+const CONTRACTS_DIR = join(APP_DIR, "content", "docs", "contracts");
+const MANIFEST = join(REPO_ROOT, "packages", "chain", "src", "deployments", "97.json");
+const BSCSCAN = "https://testnet.bscscan.com/address";
+
+/** Core contract address slots → display label + one-line note. */
+const CONTRACT_LABELS = {
+  router: ["MaturaRouter", "Best-execution routing + on-chain leg re-validation"],
+  settlementManager: ["SettlementManager", "Atomic, conservation-checked settlement waterfall"],
+  claimRegistry: ["ClaimRegistry", "Issuer-authorized claim state (EIP-712 attestations)"],
+  vaultRegistry: ["VaultRegistry", "Enumerable liquidity vaults + reservations"],
+  issuerRegistry: ["IssuerRegistry", "Approved attestation signers + epochs"],
+  mockUsdt: ["MockUSDT", "6-decimal test settlement asset (faucet)"],
+};
+const VAULT_LABELS = { stableVault: "Stable Vault", flexVault: "Flex Vault" };
+const SOURCE_LABELS = {
+  payroll: "Payroll claim source",
+  freelance: "Freelance claim source",
+  stream: "Stream claim source",
+};
+
+function addrRow(label, note, address) {
+  return `| ${label} | ${note} | [\`${address}\`](${BSCSCAN}/${address}) |`;
+}
+
+/** Generate the deployed-addresses page from the chain manifest (build-time fs read, never bundled). */
+function generateContractsPage() {
+  if (!existsSync(MANIFEST)) {
+    fail(`chain manifest not found at ${MANIFEST} — cannot generate the deployed-addresses page.`);
+  }
+  /** @type {{ chainId: number; deploymentBlock: string; addresses: Record<string,string>; namedVaults: Record<string,string>; sources: Record<string,string> }} */
+  const m = JSON.parse(readFileSync(MANIFEST, "utf8"));
+  if (m.chainId !== 97) fail(`manifest chainId is ${m.chainId}, expected 97 (BSC Testnet only).`);
+
+  const core = Object.entries(CONTRACT_LABELS)
+    .filter(([k]) => m.addresses[k])
+    .map(([k, [label, note]]) => addrRow(label, note, m.addresses[k]))
+    .join("\n");
+  const vaults = Object.entries(m.namedVaults ?? {})
+    .map(([k, a]) => addrRow(VAULT_LABELS[k] ?? k, "Liquidity vault", a))
+    .join("\n");
+  const sources = Object.entries(m.sources ?? {})
+    .map(([k, a]) => addrRow(SOURCE_LABELS[k] ?? k, "Demo claim source", a))
+    .join("\n");
+
+  const page = `---
+title: "Deployed addresses"
+description: "Verified BSC Testnet (chain 97) contract addresses, generated from the deployment manifest."
+---
+
+> **Generated** from \`packages/chain/src/deployments/97.json\` at build time — never hand-edited, so
+> it can never drift from the live deployment. **Network:** BNB Smart Chain **Testnet** (chain \`97\`).
+> First indexed block: \`${m.deploymentBlock}\`. Testnet only — no real funds.
+
+## Core contracts
+
+| Contract | Role | Address (BscScan) |
+| --- | --- | --- |
+${core}
+
+## Liquidity vaults
+
+| Vault | Role | Address (BscScan) |
+| --- | --- | --- |
+${vaults}
+
+## Demo claim sources
+
+| Source | Role | Address (BscScan) |
+| --- | --- | --- |
+${sources}
+`;
+
+  mkdirSync(CONTRACTS_DIR, { recursive: true });
+  writeFileSync(join(CONTRACTS_DIR, "deployed-addresses.md"), page);
+  console.log(`[sync-reference-docs] generated contracts/deployed-addresses.md from 97.json`);
+}
+
 function run() {
   // Fresh output dir every run — removed allowlist entries never linger.
   rmSync(OUT_DIR, { recursive: true, force: true });
@@ -237,6 +314,8 @@ function run() {
   };
   writeFileSync(join(OUT_DIR, "meta.json"), `${JSON.stringify(meta, null, 2)}\n`);
   console.log(`[sync-reference-docs] wrote reference/meta.json (${ALLOWLIST.length} pages)`);
+
+  generateContractsPage();
 }
 
 run();

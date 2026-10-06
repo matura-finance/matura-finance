@@ -1,0 +1,44 @@
+---
+title: Deployment
+description: How the Matura stack is deployed — EasyPanel + Docker, at a glance.
+---
+
+Matura deploys to **EasyPanel** using per-service multi-stage **Dockerfiles**. This is the overview;
+the full, living procedure (with the exact service setup, env matrix, and iteration log) is
+[`docs/deployment.md`](https://github.com/matura-finance/matura-finance/blob/main/docs/deployment.md)
+in the repo — it is the source of truth and is updated every iteration.
+
+## Services
+
+| Service | Image | Domain | Notes |
+| --- | --- | --- | --- |
+| API + worker | `apps/api/Dockerfile` | `api.usematura.xyz` | One image; role via `SERVICE_ROLE`. Needs Postgres. |
+| Product app | `apps/app/Dockerfile` | `app.usematura.xyz` | Next standalone, wallet-connected. |
+| Marketing | `apps/landing/Dockerfile` | `usematura.xyz` | Static, wallet-free. |
+| Docs | `apps/docs/Dockerfile` | `docs.usematura.xyz` | Static, wallet-free (this site). |
+| Postgres | EasyPanel Postgres | — | Projection store; migrations run as a one-off job. |
+
+Each app builds with `turbo prune --docker` (base `node:24-slim`) and ships a `.next/standalone`
+server run as a non-root user. **Build Path = repo root**, Dockerfile = `apps/<app>/Dockerfile`.
+
+## The secrets boundary (important)
+
+- **Build args are not secret** — only `NEXT_PUBLIC_*` are build args, and they are **inlined at build
+  time**, so a domain change requires a rebuild.
+- **Real secrets are runtime env on the API/worker only** (`DATABASE_URL`, `JWT_SECRET`, `RPC_URL`).
+  Frontends carry **zero** secret env. The hosted API runs with **no issuer key**.
+- **Domains are exact-match:** `SIWE_DOMAIN` = served host (no scheme); `API_CORS_ORIGINS` = exact app
+  origin (scheme, no trailing slash). A mismatch 401s every login until rebuilt — reconcile domain
+  across code, Dockerfile, DNS, and tests in one pass.
+
+## Contracts
+
+Contracts deploy via Hardhat Ignition + idempotent viem scripts; addresses land in the per-chain
+manifest (`@matura/chain/src/deployments/97.json`), never hand-edited. The deploy-produced manifest
+must be committed before building the API/app images (their `NEXT_PUBLIC_*` bake addresses). See
+[`packages/contracts/README.md`](https://github.com/matura-finance/matura-finance/blob/main/packages/contracts/README.md).
+
+## Health
+
+Target `/api/v1/health` for liveness (not `/health/ready`, which returns 503 during the first-boot
+reindex).

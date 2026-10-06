@@ -1,0 +1,32 @@
+---
+title: API overview
+description: Matura's orchestration + read-model service — how to read state and prepare transactions.
+---
+
+The API (`apps/api`, NestJS 11 + Prisma) is an **orchestration + read-model** service. It does two
+things and deliberately **never holds a user key**:
+
+1. **Read endpoints** — serve the Postgres projection of on-chain events (with chain read-through).
+2. **Write-preparation endpoints** — return **unsigned calldata** or **EIP-712 typed data** for the
+   user's wallet to sign. The server prepares; the wallet signs; the user submits.
+
+## Conventions
+
+- **Base path & versioning:** every route is under `/api/v1/...` (global prefix + URI versioning).
+- **Auth:** a fail-closed global SIWE/JWT guard protects everything; public routes opt out with
+  `@Public()`. Rate-limited **per wallet**. See [Authentication](/docs/api/authentication).
+- **Money:** base-unit **decimal strings** at the JSON boundary — never floats, and BigInt never leaks
+  across JSON. Addresses are lowercased.
+- **Dates:** ISO 8601 in APIs; Unix seconds on-chain.
+
+## Endpoint map
+
+| Area | Endpoints | Auth |
+| --- | --- | --- |
+| [Authentication](/docs/api/authentication) | `GET /auth/nonce`, `POST /auth/verify` | Public |
+| [Read](/docs/api/read-endpoints) | `account/:wallet`, `activity/:wallet`, `vaults`, `claims/:claimId`, `executions/:executionId`, `POST quotes/preview`, `health` | Public |
+| [Write-preparation](/docs/api/write-preparation) | `claims/registration/prepare`, `issuer/attestations/prepare`, `executions/prepare`, `settlements/:claimId/prepare`, `claims/issued` | Bearer |
+| [Best-execution routing](/docs/api/routing) | `POST routes/optimize`, `POST routes/:routeId/prepare-execution` | Bearer |
+
+> A Swagger UI is served at `/docs` in **non-production** only; there is no committed OpenAPI spec, so
+> this reference is authored from the controllers (verified against the source).

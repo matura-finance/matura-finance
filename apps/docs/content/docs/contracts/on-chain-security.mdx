@@ -1,0 +1,38 @@
+---
+title: On-chain security
+description: The security posture of Matura's contracts — patterns, invariants, and guarantees.
+---
+
+Matura's contracts are written to a deliberately conservative standard. This page summarizes the
+posture; the full-stack analysis is in the [Threat model](/docs/reference/threat-model).
+
+## Patterns
+
+- **Solidity 0.8.28 + OpenZeppelin 5.6.1**, no proxies (no upgrade/admin-key surface from proxies).
+- **CEI** (checks-effects-interactions) ordering throughout.
+- **`SafeERC20`** for all token movement.
+- **`ReentrancyGuardTransient`** on state-changing external entrypoints.
+- **Custom errors + NatSpec** on every contract.
+
+## Key invariants
+
+- **Attestations must be authorized.** The `ClaimRegistry` only accepts claims whose EIP-712
+  attestation is signed by a currently-active signer in the `IssuerRegistry` (epoch-aware).
+- **Routes are re-validated on-chain.** `MaturaRouter.executeRoute` recomputes the signed legs against
+  pinned reads and reverts if the world moved — a stale or tampered route can't fund.
+- **Settlement conserves value.** The `SettlementManager` waterfall checks that vault repayments plus
+  residual equal the settled amount; it is maturity-gated and cannot strand funds, even under pause.
+- **Least privilege.** `ROUTER_ROLE` and `SETTLEMENT_ROLE` are separate; the financing and settlement
+  paths are independently authorized.
+- **Enum ordinals are law.** Solidity `ClaimTypes`/`ClaimStates` mirror `@matura/shared`; parity tests
+  fail the build on drift.
+
+## Testing
+
+The contracts are covered by unit, integration, fuzz, and gas tests, plus an **adversarial suite** kept
+as regression (including a *false-green guard* — a guard test must fail if its guard is removed). See
+the [Test report](/docs/reference/test-report) and [Gas report](/docs/reference/gas-report).
+
+> **Testnet only.** These contracts are deployed to BSC Testnet for an MVP/demo. See
+> [`SECURITY.md`](https://github.com/matura-finance/matura-finance/blob/main/SECURITY.md) for the
+> disclosure policy and the testnet-only warning.
