@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * Hover/focus tooltip that renders the bubble with `position: fixed`, so it escapes ancestor
@@ -34,6 +34,28 @@ export function Tooltip({
   const hide = () => {
     setPos(null);
   };
+
+  // While shown, re-measure the trigger each frame so the fixed bubble follows it through scrolls,
+  // resizes, and table re-renders (the 6s poll can reorder rows under an open tooltip). Only runs
+  // while open (one tooltip at a time), and bails the state update when coordinates are unchanged.
+  const open = pos !== null;
+  useEffect(() => {
+    if (!open) return;
+    let raf = 0;
+    const tick = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) {
+        setPos((p) =>
+          p !== null && p.x === r.left && p.y === r.top ? p : { x: r.left, y: r.top },
+        );
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+    };
+  }, [open]);
 
   return (
     <span
