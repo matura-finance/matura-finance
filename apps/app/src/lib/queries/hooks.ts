@@ -147,6 +147,10 @@ export function useInvalidateOnSettled() {
     (wallet: string) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.portfolio(wallet) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.activity(wallet) });
+      // Also refresh wagmi contract reads (the MockUSDT balance hero) so the headline balance
+      // moves with the positions instead of lagging up to its 10s poll. wagmi keys read queries
+      // as ["readContract", …]; a prefix match covers the balance read.
+      void queryClient.invalidateQueries({ queryKey: ["readContract"] });
     },
     [queryClient],
   );
