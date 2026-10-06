@@ -69,7 +69,7 @@ export function IssuedClaimsTable({
             <TR key={claim.claimId}>
               <TD>
                 <span className="inline-flex items-center gap-1">
-                  <Tooltip label={claim.claimId} className="cursor-default">
+                  <Tooltip label={claim.claimId} className="cursor-default" mono>
                     <span className="font-mono text-xs text-foreground">
                       {shortenHex(claim.claimId)}
                     </span>

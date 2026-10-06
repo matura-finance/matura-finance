@@ -15,7 +15,9 @@ import type { ClaimWire } from "../../lib/api/schemas";
 import { formatUsdt, shortenAddress } from "../../lib/chain/format";
 import { CLAIM_TYPE_LABEL } from "../../lib/claim-display";
 import { useAccountPortfolio } from "../../lib/queries/hooks";
+import { UsdtBalanceCard } from "../portfolio/usdt-balance-card";
 import { Disconnected, NotDeployed, RpcUnavailable, StatePanel, WrongChain } from "../states";
+import { InfoHint } from "../ui/tooltip";
 
 /** Sum a list of base-unit strings with BigInt (never float). */
 function sumBaseUnits(values: string[]): string {
@@ -32,11 +34,16 @@ function availableToRoute(claim: ClaimWire): string {
   return (remaining > 0n ? remaining : 0n).toString();
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <Card>
       <CardContent className="py-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {label}
+          </p>
+          <InfoHint label={hint} />
+        </div>
         <p className="mt-1 font-heading text-2xl font-semibold tabular-nums text-foreground">
           {value}
         </p>
@@ -52,6 +59,30 @@ export function AccountView() {
   if (!isConnected || address === undefined) return <Disconnected />;
   if (chainId !== bscTestnet.id) return <WrongChain />;
   if (!isDeployed(bscTestnet.id)) return <NotDeployed />;
+
+  return (
+    <Stack gap="xl" className="gap-12">
+      <Stack gap="md" className="gap-6">
+        <h2 className="font-heading text-xl font-semibold text-foreground">Balance</h2>
+        <UsdtBalanceCard address={address} />
+      </Stack>
+
+      <Stack gap="md" className="gap-6">
+        <div>
+          <h2 className="font-heading text-xl font-semibold text-foreground">Future Payments</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Verified future payments (Matura Claims) issued to this wallet, and the value you can
+            route for liquidity.
+          </p>
+        </div>
+        <PositionsContent query={query} />
+      </Stack>
+    </Stack>
+  );
+}
+
+/** The positions body: loading / error / empty / claims table — rendered below the balance + title. */
+function PositionsContent({ query }: { query: ReturnType<typeof useAccountPortfolio> }) {
   if (query.isPending) {
     return (
       <Stack gap="md">
@@ -91,12 +122,25 @@ export function AccountView() {
   return (
     <Stack gap="lg">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Total verified value" value={formatUsdt(totalVerified)} />
-        <Metric label="Available to route" value={formatUsdt(eligible)} />
-        <Metric label="Financed value" value={formatUsdt(financed)} />
+        <Metric
+          label="Total verified value"
+          value={formatUsdt(totalVerified)}
+          hint="The full amount owed to you across every verified claim in this wallet, valued at maturity (face value, before any financing cost)."
+        />
+        <Metric
+          label="Available to route"
+          value={formatUsdt(eligible)}
+          hint="How much face value is still eligible to finance right now. This is what you can turn into an upfront USDT advance via Get Liquidity."
+        />
+        <Metric
+          label="Financed value"
+          value={formatUsdt(financed)}
+          hint="The face value you've already financed into an upfront advance. It's repaid automatically out of the claim when it settles."
+        />
         <Metric
           label="Next expected payment"
           value={nextDue !== undefined ? new Date(nextDue).toLocaleDateString() : "—"}
+          hint="The earliest maturity date among your active claims — when the next payment is due to be settled."
         />
       </div>
 
