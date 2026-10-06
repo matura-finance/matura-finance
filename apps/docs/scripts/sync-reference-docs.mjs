@@ -62,24 +62,6 @@ const ALLOWLIST = [
     description:
       "Full-stack threat model: assets, trust assumptions, attack surface, and explicitly accepted risks.",
   },
-  {
-    src: "docs/decisions.md",
-    out: "decisions.md",
-    title: "Design decisions",
-    description: "Architecture decision records — the key technology and design choices, and why.",
-  },
-  {
-    src: "docs/test-report.md",
-    out: "test-report.md",
-    title: "Test report",
-    description: "Test coverage across the contracts, API, and frontends.",
-  },
-  {
-    src: "docs/gas-report.md",
-    out: "gas-report.md",
-    title: "Gas report",
-    description: "Gas usage for the core on-chain operations.",
-  },
 ];
 
 /** Paths that must never be mirrored, even if added to the allowlist by mistake. */

@@ -16,8 +16,7 @@ transactions on BscScan.
 
 - **Contracts:** unit + integration + fuzz + gas, plus an **adversarial suite** kept as regression.
   The suite includes a *false-green guard* — a guard test that must fail if its guard is removed — so
-  passing tests mean the guards are actually wired. See the [Test report](/docs/reference/test-report).
-- **Gas:** per-operation gas usage is tracked in the [Gas report](/docs/reference/gas-report).
+  passing tests mean the guards are actually wired.
 - **Enum parity:** Solidity ↔ `@matura/shared` ↔ Prisma enum ordinals are asserted in CI.
 
 ## End-to-end reconciliation

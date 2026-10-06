@@ -47,6 +47,3 @@ docs
 !docs/architecture.md
 !docs/routing.md
 !docs/threat-model.md
-!docs/decisions.md
-!docs/test-report.md
-!docs/gas-report.md
