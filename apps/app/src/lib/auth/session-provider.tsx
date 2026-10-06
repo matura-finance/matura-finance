@@ -105,13 +105,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [address, lowerAddress, signMessageAsync]);
 
   // Called when an authed request 401s (dead/expired token). Drop the stale session and re-prompt
-  // SIWE automatically — no manual disconnect/reconnect. The 5s window collapses the burst of 401s
+  // SIWE automatically — no manual disconnect/reconnect. The cooldown collapses the burst of 401s
   // from concurrent in-flight requests into a single re-sign and guards against a prompt loop if a
-  // freshly minted token is also rejected.
+  // freshly minted token keeps being rejected. It MUST exceed the fastest authed poll interval
+  // (useIssuedClaims, 6s) — otherwise each poll tick slips past the guard and re-prompts endlessly.
   const lastRefreshRef = useRef(0);
   const refresh = useCallback(() => {
     const now = Date.now();
-    if (now - lastRefreshRef.current < 5_000) return;
+    if (now - lastRefreshRef.current < 30_000) return;
     lastRefreshRef.current = now;
     drop();
     void signIn();
