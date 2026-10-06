@@ -4,12 +4,15 @@ import type { z } from "zod";
 
 import { ChainService, type OnChainClaim } from "../../chain/chain.service";
 import { CursorService } from "../../cursor/cursor.service";
-import type { ClaimDetailSchema, ClaimSchema } from "../../common/dto";
-import { validateBytes32 } from "../../common/evm.util";
+import type { ClaimDetailSchema, ClaimSchema, IssuedClaimsSchema } from "../../common/dto";
+import { normalizeWallet, validateBytes32 } from "../../common/evm.util";
 import { mapClaim, mapSettlement } from "../../common/mappers";
 import { PrismaService } from "../../prisma/prisma.service";
 
 type ClaimDetailShape = z.infer<typeof ClaimDetailSchema>;
+
+/** Upper bound on the issuer-scoped claims read — bounds the payload on the client's poll. */
+const MAX_ISSUED_CLAIMS = 200;
 
 @Injectable()
 export class ClaimsReadService {
@@ -18,6 +21,24 @@ export class ClaimsReadService {
     private readonly chain: ChainService,
     private readonly cursor: CursorService,
   ) {}
+
+  /**
+   * GET /api/v1/claims/issued. Claims the authenticated issuer has registered (newest first),
+   * read from the projection. Scoped to the signed wallet — an issuer sees only their own claims.
+   * Capped at MAX_ISSUED_CLAIMS and backed by @@index([issuer, blockNumber, logIndex]).
+   */
+  async listIssued(rawWallet: string): Promise<z.infer<typeof IssuedClaimsSchema>> {
+    const issuer = normalizeWallet(rawWallet);
+    const [claims, finalizedThrough] = await Promise.all([
+      this.prisma.claimProjection.findMany({
+        where: { issuer },
+        orderBy: [{ blockNumber: "desc" }, { logIndex: "desc" }],
+        take: MAX_ISSUED_CLAIMS,
+      }),
+      this.cursor.finalizedThrough(),
+    ]);
+    return { issuer, claims: claims.map((claim) => mapClaim(claim)), finalizedThrough };
+  }
 
   /**
    * GET /api/v1/claims/:claimId. Serves the projection; on a miss within the finality gap,

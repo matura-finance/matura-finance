@@ -31,7 +31,7 @@ export function RouteBreakdown({
 
   // All derived values in one memo (deps: result, filteredOut, vaultLabel) — avoids rebuilding
   // the rate Map twice and re-sorting/re-reducing on every render.
-  const { segments, retained, rateByLeg, retainedTotal, rejected, filtered } = useMemo(() => {
+  const { segments, retained, rateByLeg, retainedTotal, considered } = useMemo(() => {
     const assigned = BigInt(result.totalFaceAssigned);
     const retTotal = result.retainedFace.reduce((a, r) => a + BigInt(r.retained), 0n);
     const whole = assigned + retTotal;
@@ -48,12 +48,25 @@ export function RouteBreakdown({
         sublabel: rate !== undefined ? formatBps(rate) : formatUsdt(leg.faceAmount),
       };
     });
+    // Combine rejected + filtered into one precedence-sorted "also considered" list; the view
+    // caps how many it shows.
+    const consideredList = [
+      ...sortByPrecedence(result.rejected).map((r) => ({
+        key: `r-${r.claimId}-${r.vault}`,
+        reason: r.reason,
+        label: vaultLabel(r.vault),
+      })),
+      ...sortByPrecedence(filteredOut).map((f) => ({
+        key: `f-${f.claimId}-${f.vault ?? "claim"}`,
+        reason: f.reason,
+        label: f.vault !== null ? vaultLabel(f.vault) : shortenHex(f.claimId),
+      })),
+    ];
     return {
       segments: segs,
       rateByLeg: rates,
       retainedTotal: retTotal,
-      rejected: sortByPrecedence(result.rejected),
-      filtered: sortByPrecedence(filteredOut),
+      considered: consideredList,
       retained:
         retTotal > 0n
           ? {
@@ -65,7 +78,7 @@ export function RouteBreakdown({
   }, [result, filteredOut, vaultLabel]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {result.approximation === "greedy" && (
         <p className="text-sm text-warning-foreground">
           This route is an approximation and may not be the absolute cheapest.
@@ -111,60 +124,74 @@ export function RouteBreakdown({
         </TBody>
       </Table>
 
+      {/* Receipt: the first two lines sum to the subtotal, so the cost is self-evident. */}
       <Card>
-        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 py-5 text-sm sm:grid-cols-3">
-          <Summary label="You receive" value={formatUsdt(result.totalAdvance)} strong />
-          <Summary label="Claim value assigned" value={formatUsdt(result.totalFaceAssigned)} />
-          <Summary label="Total cost" value={formatUsdt(result.totalCost)} />
-          <Summary label="Effective cost" value={formatBps(result.effectiveDiscountBps)} />
-          <Summary label="You retain" value={formatUsdt(retainedTotal.toString())} />
+        <CardContent className="flex flex-col gap-2.5 py-4">
+          <SummaryRow label="You receive" value={formatUsdt(result.totalAdvance)} emphasis />
+          <SummaryRow
+            label={`Total cost (${formatBps(result.effectiveDiscountBps)})`}
+            value={`+ ${formatUsdt(result.totalCost)}`}
+          />
+          <div aria-hidden className="h-px bg-border" />
+          <SummaryRow label="Claim value assigned" value={formatUsdt(result.totalFaceAssigned)} />
+          <SummaryRow
+            label="You retain (unfinanced)"
+            value={formatUsdt(retainedTotal.toString())}
+            muted
+          />
         </CardContent>
       </Card>
 
-      {(rejected.length > 0 || filtered.length > 0) && (
+      {considered.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Also considered
           </p>
           <div className="flex flex-col gap-1.5">
-            {rejected.map((r) => (
-              <ReasonRow
-                key={`r-${r.claimId}-${r.vault}`}
-                reason={r.reason}
-                label={vaultLabel(r.vault)}
-              />
-            ))}
-            {filtered.map((f) => (
-              <ReasonRow
-                key={`f-${f.claimId}-${f.vault ?? "claim"}`}
-                reason={f.reason}
-                label={f.vault !== null ? vaultLabel(f.vault) : shortenHex(f.claimId)}
-              />
+            {considered.slice(0, 3).map((c) => (
+              <ReasonRow key={c.key} reason={c.reason} label={c.label} />
             ))}
           </div>
+          {considered.length > 3 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              +{considered.length - 3} more not shown
+            </p>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function Summary({
+function SummaryRow({
   label,
   value,
-  strong = false,
+  emphasis = false,
+  muted = false,
 }: {
   label: string;
   value: string;
-  strong?: boolean;
+  emphasis?: boolean;
+  muted?: boolean;
 }) {
   return (
-    <div>
-      <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd
-        className={`mt-0.5 tabular-nums ${strong ? "font-heading text-lg font-semibold text-foreground" : "text-foreground"}`}
+    <div className="flex items-baseline justify-between gap-4">
+      <span
+        className={`text-sm ${emphasis ? "font-medium text-foreground" : "text-muted-foreground"}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`tabular-nums ${
+          emphasis
+            ? "font-heading text-xl font-semibold text-foreground"
+            : muted
+              ? "text-sm text-muted-foreground"
+              : "text-sm font-medium text-foreground"
+        }`}
       >
         {value}
-      </dd>
+      </span>
     </div>
   );
 }

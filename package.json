@@ -27,5 +27,18 @@
     "prettier": "^3.6.2",
     "lefthook": "^1.11.0",
     "typescript": "catalog:"
+  },
+  "pnpm": {
+    "overrides": {
+      "@reown/appkit": "1.8.24",
+      "@reown/appkit-common": "1.8.24",
+      "@reown/appkit-controllers": "1.8.24",
+      "@reown/appkit-pay": "1.8.24",
+      "@reown/appkit-polyfills": "1.8.24",
+      "@reown/appkit-scaffold-ui": "1.8.24",
+      "@reown/appkit-ui": "1.8.24",
+      "@reown/appkit-utils": "1.8.24",
+      "@reown/appkit-wallet": "1.8.24"
+    }
   }
 }

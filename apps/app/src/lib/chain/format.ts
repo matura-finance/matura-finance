@@ -9,9 +9,20 @@ import { env } from "../env";
  * = amount-input box only.
  */
 
-/** Format a base-unit integer string for display (e.g. "1500000" → "1.5"). */
+/** Insert thousand separators into the integer part of a decimal string (display only). */
+function withThousands(decimal: string): string {
+  const negative = decimal.startsWith("-");
+  const unsigned = negative ? decimal.slice(1) : decimal;
+  const dot = unsigned.indexOf(".");
+  const intPart = dot === -1 ? unsigned : unsigned.slice(0, dot);
+  const fracPart = dot === -1 ? "" : unsigned.slice(dot);
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${negative ? "-" : ""}${grouped}${fracPart}`;
+}
+
+/** Format a base-unit integer string for display with thousand separators (e.g. "1500000" → "1.5"). */
 export function formatAmount(baseUnits: string): string {
-  return fromBaseUnits(baseUnits);
+  return withThousands(fromBaseUnits(baseUnits));
 }
 
 /** Format a base-unit amount with a trailing token symbol. */

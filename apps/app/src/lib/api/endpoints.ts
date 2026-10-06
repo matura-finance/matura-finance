@@ -2,6 +2,7 @@ import { apiRequest } from "./client";
 import {
   ActivityPage,
   ExecutionResponse,
+  IssuedClaimsResponse,
   NonceResponse,
   OptimizeResponse,
   PortfolioResponse,
@@ -89,3 +90,7 @@ export const postSettlementPrepare = (claimId: string, token: string, signal?: A
     token,
     signal,
   });
+
+// Claims the authenticated issuer has registered (authed, issuer-scoped server-side).
+export const getIssuedClaims = (token: string, signal?: AbortSignal) =>
+  apiRequest({ path: "/claims/issued", schema: IssuedClaimsResponse, token, signal });

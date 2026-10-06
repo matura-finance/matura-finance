@@ -1,0 +1,111 @@
+"use client";
+
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+
+/**
+ * Hover/focus tooltip that renders the bubble with `position: fixed`, so it escapes ancestor
+ * `overflow` clipping (the data table wraps its rows in an `overflow-x-auto` box, which also clips
+ * vertically). Coordinates are captured from the trigger on enter; the bubble sits just above it.
+ *
+ * `mono` renders a code-style bubble that wraps on any character (for ids/addresses); the default
+ * renders readable prose that wraps on words (for explanatory hints).
+ */
+export function Tooltip({
+  label,
+  children,
+  className,
+  mono = false,
+  interactive = false,
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+  mono?: boolean;
+  /** Set when the child is itself focusable (e.g. a button) so the wrapper doesn't add a 2nd tab stop. */
+  interactive?: boolean;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+
+  const show = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (r) setPos({ x: r.left, y: r.top });
+  };
+  const hide = () => {
+    setPos(null);
+  };
+
+  // While shown, re-measure the trigger each frame so the fixed bubble follows it through scrolls,
+  // resizes, and table re-renders (the 6s poll can reorder rows under an open tooltip). Only runs
+  // while open (one tooltip at a time), and bails the state update when coordinates are unchanged.
+  const open = pos !== null;
+  useEffect(() => {
+    if (!open) return;
+    let raf = 0;
+    const tick = () => {
+      const r = ref.current?.getBoundingClientRect();
+      if (r) {
+        setPos((p) =>
+          p !== null && p.x === r.left && p.y === r.top ? p : { x: r.left, y: r.top },
+        );
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+    };
+  }, [open]);
+
+  const descId = useId();
+
+  return (
+    <span
+      ref={ref}
+      tabIndex={interactive ? undefined : 0}
+      aria-describedby={descId}
+      className={`inline-flex outline-none ${className ?? ""}`}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      {children}
+      {/* Always in the DOM (not just on hover) so screen readers can announce the label as the
+          trigger's description; the visual bubble below is decorative and hidden from AT. */}
+      <span id={descId} className="sr-only">
+        {label}
+      </span>
+      {pos !== null && (
+        <span
+          aria-hidden
+          style={{ left: pos.x, top: pos.y }}
+          className={`pointer-events-none fixed z-50 -translate-y-[calc(100%+6px)] rounded-md bg-foreground px-2.5 py-1.5 text-xs text-background shadow-md ${
+            mono
+              ? "max-w-[22rem] break-all font-mono leading-snug"
+              : "max-w-xs whitespace-normal leading-relaxed"
+          }`}
+        >
+          {label}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Small circled "?" that reveals an explanatory tooltip on hover or focus. Place next to a label
+ * whose meaning isn't self-evident.
+ */
+export function InfoHint({ label }: { label: string }) {
+  return (
+    <Tooltip label={label}>
+      <span
+        aria-label="More info"
+        className="flex size-4 cursor-help items-center justify-center rounded-full border border-border text-[10px] font-semibold leading-none text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+      >
+        ?
+      </span>
+    </Tooltip>
+  );
+}
