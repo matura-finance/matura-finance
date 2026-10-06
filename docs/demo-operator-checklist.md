@@ -77,8 +77,7 @@ start a demo with any **abort condition** open. This is testnet only — see
 ## 5. Hosted deploy (EasyPanel) — if serving from a hosted stack
 
 > Full per-service config + env matrix: `docs/deployment.md` →
-> "EasyPanel / Docker hosting"; live standup runbook:
-> `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md`.
+> "EasyPanel / Docker hosting"; live standup runbook: `docs/deployment-trackb-runbook.md`.
 
 - [ ] **API healthcheck = `/api/v1/health`** (liveness), **not** `/health/ready` —
       pointing the platform probe at `ready` restart-loops the container during a

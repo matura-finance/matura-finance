@@ -6,7 +6,7 @@
  * pages, injecting frontmatter (title + description), stripping the duplicate leading H1, swapping
  * Mermaid fences for pre-rendered static SVGs, and verifying in-page anchors resolve.
  *
- * Design invariants (see docs/plans/2026-10-06-feat-docs-website-fumadocs-plan.md):
+ * Design invariants:
  *  • C1 — ALLOWLIST ONLY, never a glob. The repo `docs/` tree mixes public-suitable docs with
  *    gitignored/internal artifacts (code-review.md, *-runbook.md, reviews/, brainstorms/, plans/).
  *    We copy only the listed files, assert each is NOT gitignored (best-effort; git may be absent in

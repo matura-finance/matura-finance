@@ -2,7 +2,7 @@
 
 Follow top-to-bottom. Each step tags **[YOU]** (operator) or **[CLAUDE]** (I run the CLI), has a
 **Verify**, and — where it matters — an **On fail**. 🔴 = irreversible/outward GO gate (I pause for
-your explicit go). Plan: `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md`.
+your explicit go).
 Live addresses + tx hashes get recorded in `docs/deployment-runbook.md` (gitignored).
 
 > **Key ordering fact:** EasyPanel builds images **from your git repo** (per-service Dockerfile).

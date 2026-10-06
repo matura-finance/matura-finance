@@ -78,9 +78,9 @@ pnpm --filter @matura/contracts demo:settle        # route → time-warp → obl
 - **Tier 1 — live testnet (primary).** `app.usematura.xyz` → BSC Testnet. This is the
   demo.
 - **Tier 2 — pre-recorded screen capture (fallback).** During rehearsal, record a clean
-  full-run screen capture and store it in **`docs/demo-assets/`** (the `.gitkeep` slot
-  is already there). If RPC, the faucet, or the indexer stalls mid-demo, **switch to the
-  recording and narrate over it** — and say out loud, clearly, that it is a recording.
+  full-run screen capture and keep it handy. If RPC, the faucet, or the indexer stalls
+  mid-demo, **switch to the recording and narrate over it** — and say out loud, clearly,
+  that it is a recording.
 
 > **NEVER fake a live transaction.** Do not mock a tx hash, doctor an explorer page, or
 > imply on-chain state that did not happen. If live fails, you narrate a labeled
@@ -264,4 +264,4 @@ is the credibility moment.
 4. Beat 5: **sign fast** (intent TTL ~120s) → submit → open the **matching** testnet.bscscan.com tx.
 5. Beat 7: point at **Also considered** (real exclusion).
 6. Close: **aggregation · partial slicing · best execution — the Matura Protocol.**
-7. If anything stalls: switch to the labeled recording in `docs/demo-assets/`. Never fake a tx.
+7. If anything stalls: switch to the labeled recording you prepared. Never fake a tx.

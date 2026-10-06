@@ -112,5 +112,5 @@ Two distinct kinds of mock live in the tree:
   export allowlist, never deployed, and never registered as a settlement token — they exist solely
   to exercise the reentrancy guards and SafeERC20 handling in the test suite.
 
-Toolchain gotchas (Node 24, tsc `unknown`, ABI/prettier gate):
-`../../docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`.
+Toolchain note: contracts require an even-LTS Node (22.13+/24); the repo pins `<25`. See the root
+`CLAUDE.md` for the toolchain setup.

@@ -81,37 +81,10 @@ the bundle wallet/secret-free). **`apps/docs`** (`docs.usematura.xyz`) — the d
 output gitignored + regenerated every build, Mermaid→committed SVG). See `apps/docs/README.md`.
 **`apps/e2e`** — Playwright: an always-on landing suite + a
 gated (`E2E_STACK=1`) product happy-path using a Node-side viem signer injected as an EIP-6963
-provider (no wallet code in the app). Frontend build/integration gotchas (connectors barrel,
-unstable-hook refetch loop, SIWE rehydrate race, EIP-712 boundary, e2e wallet injection):
-`docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`. Design + full
-build: `docs/plans/2026-09-26-feat-matura-frontends-landing-and-product-plan.md`.
+provider (no wallet code in the app).
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
-ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate. Gotchas: toolchain (Node,
-tsc `unknown`, ABI/prettier gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`;
-**demo-fixture codegen** (contracts→shared generator; `as const satisfies` needs `.readonly()` Zod
-arrays; `.js` specifiers since contracts lacks `allowImportingTsExtensions`; generator can't import
-`@matura/shared`; emit typed `.ts` not JSON; ephemeral local `31337.json`)
-`docs/solutions/build-errors/demo-fixture-codegen-contracts-to-shared.md`; deploy/seed pipeline
-(event-scan block, `.js`→`.ts` script imports, `noUncheckedIndexedAccess`+viem)
-`docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`; **apps/api toolchain**
-(CJS↔ESM chain consumption, `prisma-client` types, strict viem, `z.stringbool`, DB-less migrations)
-`docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`; **best-execution router**
-(one shared off-chain `_validateLegs` mirror, `PinnedReads` determinism, single-use intents pruned
-expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
-`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`; **cross-stack
-e2e harness** (instant-mine frontier lag → nonce override + cursor gating, block-timestamp skew →
-RouteExpired, fresh-node-per-run lifecycle, `INDEXER_CONFIRMATIONS=1` + `cwd=REPO_ROOT`, poll
-projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`;
-**security hardening** (adversarial-tests-as-regression, proof-of-pinning vs full harness,
-pause-can't-strand-settlement, the false-green guard test — a guard test must fail if the guard is
-removed, share prod bootstrap/orchestration with tests instead of copying, scan bundles for secret
-_values_ not env names) `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`;
-**BSC-testnet live deploy + EasyPanel** (public-RPC drops a confirmation → unrecoverable Ignition
-journal → wipe+redeploy; committed real manifest vs zero-manifest guard tests; BSCScan V1→V2 verify;
-scripted proof-claim time/nonce/label; post-settle read-lag → poll; Prisma engine not copied into
-`dist` → nest-cli assets + `node dist` smoke; local `test` ≠ CI `verify` incl. Playwright; SIWE/CORS
-exact-match on baked domains) `docs/solutions/deployment-issues/bsc-testnet-live-deploy-easypanel.md`.
+ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate.
 
 ## Conventions
 
@@ -145,7 +118,6 @@ exact-match on baked domains) `docs/solutions/deployment-issues/bsc-testnet-live
 
 ## Local-only docs (gitignored)
 
-`docs/deployment-runbook.md` (live addresses, update per deploy), `docs/code-review.md`, and
-`docs/reviews/` (per-PR review docs). Planning docs (`docs/brainstorms/`, `docs/plans/`),
-`docs/gas-report.md`, and **`docs/deployment.md`** (living whole-stack E2E deploy guide — update
-each iteration) are tracked.
+`docs/deployment-runbook.md` (live addresses, update per deploy) and `docs/code-review.md` are
+gitignored. `docs/gas-report.md` and **`docs/deployment.md`** (living whole-stack E2E deploy guide —
+update each iteration) are tracked.
