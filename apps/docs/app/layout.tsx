@@ -49,8 +49,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       suppressHydrationWarning
     >
       <body className="flex min-h-screen flex-col font-sans antialiased">
-        {/* Local Orama search backed by the /api/search route handler (no external service). */}
-        <RootProvider>{children}</RootProvider>
+        {/* Local Orama search backed by the /api/search route handler (no external service).
+            Default to the light theme (the toggle still switches to dark). */}
+        <RootProvider theme={{ defaultTheme: "light", enableSystem: false }}>
+          {children}
+        </RootProvider>
       </body>
     </html>
   );

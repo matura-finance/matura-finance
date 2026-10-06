@@ -46,3 +46,10 @@
   --color-fd-primary-foreground: var(--color-midnight);
   --color-fd-ring: var(--color-liquid-mint);
 }
+
+/* Side menu: display every nav/section title capitalized. This is presentation only — the page
+   titles themselves (frontmatter + <h1>) stay sentence-case. */
+#nd-sidebar a,
+#nd-sidebar button {
+  text-transform: capitalize;
+}
