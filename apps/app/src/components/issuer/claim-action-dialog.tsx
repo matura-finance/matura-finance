@@ -14,6 +14,12 @@ import { useConfig, useSendTransaction, useWriteContract } from "wagmi";
 import { useSession } from "../../lib/auth/session-provider";
 import { ApiError } from "../../lib/api/client";
 import { postSettlementPrepare } from "../../lib/api/endpoints";
+import {
+  assertAllowedTarget,
+  isUnexpectedTargetError,
+  manifestAllowedTargets,
+  UNEXPECTED_TARGET_MESSAGE,
+} from "../../lib/chain/allowed-targets";
 import type { ClaimWire } from "../../lib/api/schemas";
 import { toAddress, toHex32, toHexData } from "../../lib/chain/bridge";
 import { classifyTxError, TX_ERROR_COPY } from "../../lib/chain/errors";
@@ -128,9 +134,7 @@ export function ClaimActionDialog({
         if (token === null) throw new Error("Session expired — sign in again.");
         const prepared = await postSettlementPrepare(claim.claimId, token);
         const steps = prepared.steps;
-        const allowed = new Set(
-          [d.claimRegistry, d.settlementManager, d.mockUsdt].map((a) => a.toLowerCase()),
-        );
+        const allowed = manifestAllowedTargets();
         // When no approve is needed the server returns a single settle step — mark the approve
         // label done and run the settle at index 1.
         const offset = steps.length >= 2 ? 0 : 1;
@@ -138,9 +142,7 @@ export function ClaimActionDialog({
           setStep(offset + i);
           const s = steps[i];
           if (s === undefined) continue;
-          if (!allowed.has(s.to.toLowerCase())) {
-            throw new Error("Refusing to submit a transaction to an unexpected contract");
-          }
+          assertAllowedTarget(s.to, allowed);
           const hash = await sendTransactionAsync({
             to: toAddress(s.to),
             data: s.data === undefined ? undefined : toHexData(s.data),
@@ -160,12 +162,11 @@ export function ClaimActionDialog({
         onDone();
         return;
       }
-      const msg =
-        e instanceof Error && e.message.includes("unexpected contract")
+      const msg = isUnexpectedTargetError(e)
+        ? UNEXPECTED_TARGET_MESSAGE
+        : e instanceof Error && e.message.includes("sign in")
           ? e.message
-          : e instanceof Error && e.message.includes("sign in")
-            ? e.message
-            : TX_ERROR_COPY[classifyTxError(e)].body;
+          : TX_ERROR_COPY[classifyTxError(e)].body;
       setErrMsg(msg);
       setPhase("error");
     }

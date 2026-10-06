@@ -14,6 +14,12 @@ import { useAccount, useConfig, useSendTransaction } from "wagmi";
 import { useSession } from "../../lib/auth/session-provider";
 import { ApiError } from "../../lib/api/client";
 import { postClaimRegistrationPrepare } from "../../lib/api/endpoints";
+import {
+  assertAllowedTarget,
+  isUnexpectedTargetError,
+  manifestAllowedTargets,
+  UNEXPECTED_TARGET_MESSAGE,
+} from "../../lib/chain/allowed-targets";
 import { toAddress, toHexData } from "../../lib/chain/bridge";
 import { classifyTxError, TX_ERROR_COPY } from "../../lib/chain/errors";
 import { formatUsdt, parseAmountToBaseUnits, shortenHex } from "../../lib/chain/format";
@@ -105,13 +111,9 @@ export function CreateClaimDialog({
         },
         token,
       );
-      const allowed = new Set(
-        [d.claimRegistry, d.settlementManager, d.mockUsdt].map((a) => a.toLowerCase()),
-      );
+      const allowed = manifestAllowedTargets();
       for (const step of prepared.steps) {
-        if (!allowed.has(step.to.toLowerCase())) {
-          throw new Error("Refusing to submit a transaction to an unexpected contract");
-        }
+        assertAllowedTarget(step.to, allowed);
         const hash = await sendTransactionAsync({
           to: toAddress(step.to),
           data: step.data === undefined ? undefined : toHexData(step.data),
@@ -129,10 +131,9 @@ export function CreateClaimDialog({
         onCreated();
         return;
       }
-      const msg =
-        e instanceof Error && e.message.includes("unexpected contract")
-          ? e.message
-          : TX_ERROR_COPY[classifyTxError(e)].body;
+      const msg = isUnexpectedTargetError(e)
+        ? UNEXPECTED_TARGET_MESSAGE
+        : TX_ERROR_COPY[classifyTxError(e)].body;
       setPhase({ kind: "error", msg });
     }
   }
