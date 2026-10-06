@@ -15,11 +15,14 @@ export function Tooltip({
   children,
   className,
   mono = false,
+  interactive = false,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   mono?: boolean;
+  /** Set when the child is itself focusable (e.g. a button) so the wrapper doesn't add a 2nd tab stop. */
+  interactive?: boolean;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
@@ -35,7 +38,7 @@ export function Tooltip({
   return (
     <span
       ref={ref}
-      tabIndex={0}
+      tabIndex={interactive ? undefined : 0}
       className={`inline-flex outline-none ${className ?? ""}`}
       onMouseEnter={show}
       onMouseLeave={hide}

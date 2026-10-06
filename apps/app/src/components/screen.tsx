@@ -11,6 +11,8 @@ export type ScreenProps = {
   eyebrowVariant?: BadgeProps["variant"];
   /** Optional page title. When omitted the whole header block (eyebrow/title/description) is skipped. */
   title?: string;
+  /** Optional node rendered inline to the right of the title (e.g. a "How it works" hint). */
+  titleAccessory?: ReactNode;
   description?: string;
   children?: ReactNode;
 };
@@ -24,6 +26,7 @@ export function Screen({
   eyebrow,
   eyebrowVariant = "outline",
   title,
+  titleAccessory,
   description,
   children,
 }: ScreenProps) {
@@ -42,9 +45,12 @@ export function Screen({
                     {eyebrow}
                   </Badge>
                 )}
-                <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                  {title}
-                </h1>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                    {title}
+                  </h1>
+                  {titleAccessory}
+                </div>
                 {description !== undefined && (
                   <p className="text-sm text-muted-foreground sm:text-base">{description}</p>
                 )}

@@ -19,7 +19,7 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   dismissable?: boolean;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl" | "2xl";
   children: ReactNode;
 }) {
   useEffect(() => {
@@ -53,7 +53,13 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         className={`relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-card border border-border bg-background p-6 shadow-lg ${
-          size === "lg" ? "max-w-2xl" : "max-w-lg"
+          size === "2xl"
+            ? "max-w-5xl"
+            : size === "xl"
+              ? "max-w-4xl"
+              : size === "lg"
+                ? "max-w-2xl"
+                : "max-w-lg"
         }`}
       >
         {children}
