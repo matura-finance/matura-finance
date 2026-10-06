@@ -203,8 +203,13 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   else if (s === "broadcast" || s === "confirmed" || s === "indexing") stepIndex = 3;
   else if (s === "indexed") stepIndex = 4;
 
+  // Network/deployment/auth guards only apply before a tx starts. Once a tx is in flight or done
+  // (s !== "idle"), render purely from tx state so a mid-flight wallet network/account switch can't
+  // pre-empt the progress/success UI with "Wrong network".
+  const preFlight = s === "idle";
+
   let content: ReactNode;
-  if (chainId !== bscTestnet.id) {
+  if (preFlight && chainId !== bscTestnet.id) {
     content = (
       <StatusPane
         icon={<FailIcon />}
@@ -221,9 +226,9 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
         </Button>
       </StatusPane>
     );
-  } else if (!isDeployed(bscTestnet.id)) {
+  } else if (preFlight && !isDeployed(bscTestnet.id)) {
     content = <StatusPane icon={<FailIcon />} title="Contracts not deployed on this network" />;
-  } else if (!isAuthenticated) {
+  } else if (preFlight && !isAuthenticated) {
     content = (
       <StatusPane
         icon={<Spinner />}
