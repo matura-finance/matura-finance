@@ -106,6 +106,8 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   const optimizeWithTarget = useCallback(
     (targetAdvance: string) => {
       if (portfolio.data === undefined) return;
+      // The optimizer accepts at most 20 claims per request (OptimizeRequest.claimIds max). A
+      // wallet with more eligible claims routes only the first 20 here — acceptable for the demo.
       const claimIds = portfolio.data.claims
         .filter((c) => ELIGIBLE_STATES.has(c.state))
         .map((c) => c.claimId)

@@ -19,14 +19,14 @@ import { ApiError } from "../../lib/api/client";
 import type { ClaimWire } from "../../lib/api/schemas";
 import { useSession } from "../../lib/auth/session-provider";
 import { useInvalidateIssuedClaims, useIssuedClaims } from "../../lib/queries/hooks";
-import { Disconnected, NotDeployed, WrongChain } from "../states";
+import { NotDeployed, WrongChain } from "../states";
 import { Spinner } from "../ui/flow-visuals";
 import { ClaimActionDialog, type ClaimAction } from "./claim-action-dialog";
 import { CreateClaimDialog } from "./create-claim-dialog";
 import { IssuedClaimsTable } from "./issued-claims-table";
 
 export function IssuerView() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address, chainId } = useAccount();
   const { isAuthenticated, isSigningIn, signIn, refresh } = useSession();
   const issued = useIssuedClaims(address);
   const invalidate = useInvalidateIssuedClaims();
@@ -40,7 +40,9 @@ export function IssuerView() {
     if (e instanceof ApiError && e.status === 401) refresh();
   }, [issued.error, refresh]);
 
-  if (!isConnected || address === undefined) return <Disconnected />;
+  // Always rendered inside RequireConnected, so address is present; a null guard keeps the types
+  // honest (matches portfolio-view) without an unreachable Disconnected pane.
+  if (address === undefined) return null;
   if (chainId !== bscTestnet.id) return <WrongChain />;
   if (!isDeployed(bscTestnet.id)) return <NotDeployed />;
 

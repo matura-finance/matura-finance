@@ -30,30 +30,19 @@ export function StatusPane({
 
 /**
  * Vertical checklist of the steps in an action. Steps before `current` render done (✓), the one
- * at `current` is active (spinner), later ones are pending. If `failedAt` is set, that step shows
- * an error glyph and the rest stay pending.
+ * at `current` is active (spinner), later ones are pending. Failures are surfaced by the owning
+ * dialog's StatusPane, not inline here.
  */
-export function StepList({
-  steps,
-  current,
-  failedAt,
-}: {
-  steps: string[];
-  current: number;
-  failedAt?: number;
-}) {
+export function StepList({ steps, current }: { steps: string[]; current: number }) {
   return (
     <ol className="flex flex-col gap-3">
       {steps.map((label, i) => {
-        const failed = failedAt === i;
-        const done = failedAt === undefined && i < current;
-        const active = failedAt === undefined && i === current;
+        const done = i < current;
+        const active = i === current;
         return (
           <li key={label} className="flex items-center gap-3">
             <span className="flex size-6 shrink-0 items-center justify-center">
-              {failed ? (
-                <MiniFail />
-              ) : done ? (
+              {done ? (
                 <MiniCheck />
               ) : active ? (
                 <Spinner size={18} />
@@ -187,25 +176,6 @@ function MiniCheck() {
         aria-hidden
       >
         <path d="M20 6 9 17l-5-5" />
-      </svg>
-    </span>
-  );
-}
-
-function MiniFail() {
-  return (
-    <span className="flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground">
-      <svg
-        className="h-3.5 w-3.5"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden
-      >
-        <path d="M18 6 6 18M6 6l12 12" />
       </svg>
     </span>
   );

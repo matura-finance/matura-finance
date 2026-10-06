@@ -198,7 +198,8 @@ export function CreateClaimDialog({
             id="cc-type"
             value={claimType}
             onChange={(e) => {
-              setClaimType(e.target.value as ClaimType);
+              const next = CLAIM_TYPES.find((t) => t === e.target.value);
+              if (next !== undefined) setClaimType(next);
             }}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
