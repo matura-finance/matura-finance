@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 /**
  * Hover/focus tooltip that renders the bubble with `position: fixed`, so it escapes ancestor
@@ -57,10 +57,13 @@ export function Tooltip({
     };
   }, [open]);
 
+  const descId = useId();
+
   return (
     <span
       ref={ref}
       tabIndex={interactive ? undefined : 0}
+      aria-describedby={descId}
       className={`inline-flex outline-none ${className ?? ""}`}
       onMouseEnter={show}
       onMouseLeave={hide}
@@ -68,9 +71,14 @@ export function Tooltip({
       onBlur={hide}
     >
       {children}
+      {/* Always in the DOM (not just on hover) so screen readers can announce the label as the
+          trigger's description; the visual bubble below is decorative and hidden from AT. */}
+      <span id={descId} className="sr-only">
+        {label}
+      </span>
       {pos !== null && (
         <span
-          role="tooltip"
+          aria-hidden
           style={{ left: pos.x, top: pos.y }}
           className={`pointer-events-none fixed z-50 -translate-y-[calc(100%+6px)] rounded-md bg-foreground px-2.5 py-1.5 text-xs text-background shadow-md ${
             mono
