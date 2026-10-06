@@ -75,8 +75,11 @@ the bundle wallet/secret-free). **`apps/e2e`** — Playwright: an always-on land
 gated (`E2E_STACK=1`) product happy-path using a Node-side viem signer injected as an EIP-6963
 provider (no wallet code in the app). Frontend build/integration gotchas (connectors barrel,
 unstable-hook refetch loop, SIWE rehydrate race, EIP-712 boundary, e2e wallet injection):
-`docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`. Design + full
-build: `docs/plans/2026-09-26-feat-matura-frontends-landing-and-product-plan.md`.
+`docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`. Multi-step wallet-tx
+dialog robustness (indexing lock-in, idempotent retry on a thrown receipt, mid-flight wallet switch,
+stale confirm snapshot, `fixed` tooltip under `overflow`, 401-cooldown-vs-poll, fail-closed env,
+sort-covering index): `docs/solutions/integration-issues/wallet-tx-dialog-robustness.md`. Design +
+full build: `docs/plans/2026-09-26-feat-matura-frontends-landing-and-product-plan.md`.
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
 ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate. Gotchas: toolchain (Node,
