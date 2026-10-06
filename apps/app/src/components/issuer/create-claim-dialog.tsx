@@ -275,7 +275,13 @@ export function CreateClaimDialog({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} dismissable={phase.kind !== "submitting"} size="lg">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      dismissable={phase.kind !== "submitting"}
+      size="lg"
+      label="Create a claim"
+    >
       <StepBar steps={STEPS} current={stepIndex} />
       <div className="mt-6">{content}</div>
     </Dialog>

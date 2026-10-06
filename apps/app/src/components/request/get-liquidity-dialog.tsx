@@ -451,7 +451,13 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} dismissable={!inFlight} size="lg">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      dismissable={!inFlight}
+      size="lg"
+      label="Get Liquidity"
+    >
       <StepBar steps={STEPS} current={stepIndex} />
       <div className="mt-6 [&_button]:capitalize">{content}</div>
     </Dialog>

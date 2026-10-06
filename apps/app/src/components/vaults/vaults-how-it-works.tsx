@@ -63,6 +63,7 @@ export function VaultsHowItWorks() {
           setOpen(false);
         }}
         size="2xl"
+        label="How Matura Vaults work"
       >
         <div className="relative py-8 md:py-14">
           <button

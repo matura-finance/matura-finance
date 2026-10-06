@@ -253,7 +253,13 @@ export function ClaimActionDialog({
   }
 
   return (
-    <Dialog open={open} onClose={handleClose} dismissable={phase !== "running"} size="md">
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      dismissable={phase !== "running"}
+      size="md"
+      label={copy.title}
+    >
       {content}
     </Dialog>
   );
