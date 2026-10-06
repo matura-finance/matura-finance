@@ -1,44 +1,32 @@
 ---
 title: Deployment
-description: How the Matura stack is deployed — EasyPanel + Docker, at a glance.
+description: How Matura is hosted, at a high level — and the security boundaries that come with it.
 ---
 
-Matura deploys to **EasyPanel** using per-service multi-stage **Dockerfiles**. This is the overview;
-the full, living procedure (with the exact service setup, env matrix, and iteration log) is
-[`docs/deployment.md`](https://github.com/matura-finance/matura-finance/blob/main/docs/deployment.md)
-in the repo — it is the source of truth and is updated every iteration.
+Matura runs entirely on **BNB Smart Chain Testnet**. The smart contracts are deployed and verified
+on-chain, and the off-chain pieces — the API + indexer, the product app, the marketing site, and this
+documentation site — run as independent **containerized services**.
 
-## Services
+This is a high-level overview. The exact operator procedure (service setup, environment configuration,
+and the step-by-step deploy checklist) lives **with the code in the repository** and is intentionally
+not reproduced on this public site.
 
-| Service | Image | Domain | Notes |
-| --- | --- | --- | --- |
-| API + worker | `apps/api/Dockerfile` | `api.usematura.xyz` | One image; role via `SERVICE_ROLE`. Needs Postgres. |
-| Product app | `apps/app/Dockerfile` | `app.usematura.xyz` | Next standalone, wallet-connected. |
-| Marketing | `apps/landing/Dockerfile` | `usematura.xyz` | Static, wallet-free. |
-| Docs | `apps/docs/Dockerfile` | `docs.usematura.xyz` | Static, wallet-free (this site). |
-| Postgres | EasyPanel Postgres | — | Projection store; migrations run as a one-off job. |
+## Security posture
 
-Each app builds with `turbo prune --docker` (base `node:24-slim`) and ships a `.next/standalone`
-server run as a non-root user. **Build Path = repo root**, Dockerfile = `apps/<app>/Dockerfile`.
+The way Matura is deployed is part of how it stays trustworthy:
 
-## The secrets boundary (important)
-
-- **Build args are not secret** — only `NEXT_PUBLIC_*` are build args, and they are **inlined at build
-  time**, so a domain change requires a rebuild.
-- **Real secrets are runtime env on the API/worker only** (`DATABASE_URL`, `JWT_SECRET`, `RPC_URL`).
-  Frontends carry **zero** secret env. The hosted API runs with **no issuer key**.
-- **Domains are exact-match:** `SIWE_DOMAIN` = served host (no scheme); `API_CORS_ORIGINS` = exact app
-  origin (scheme, no trailing slash). A mismatch 401s every login until rebuilt — reconcile domain
-  across code, Dockerfile, DNS, and tests in one pass.
+- **Non-custodial throughout.** The API never holds your wallet key — it only prepares the
+  transactions your own wallet signs.
+- **The user-facing apps carry no secrets.** The product app, marketing site, and docs site ship with
+  nothing sensitive baked in — an automated check enforces this on every build. Real secrets exist
+  only on the backend services, at runtime.
+- **The hosted API holds no attestation signing key.** Claims are signed out-of-band, so a
+  compromise of the running server can't forge new claims.
 
 ## Contracts
 
-Contracts deploy via Hardhat Ignition + idempotent viem scripts; addresses land in the per-chain
-manifest (`@matura/chain/src/deployments/97.json`), never hand-edited. The deploy-produced manifest
-must be committed before building the API/app images (their `NEXT_PUBLIC_*` bake addresses). See
-[`packages/contracts/README.md`](https://github.com/matura-finance/matura-finance/blob/main/packages/contracts/README.md).
+Smart contracts are deployed with reproducible scripts, and their **verified** addresses are published
+on the [Deployed addresses](/docs/contracts/deployed-addresses) page — click through to read the
+verified source on BscScan.
 
-## Health
-
-Target `/api/v1/health` for liveness (not `/health/ready`, which returns 503 during the first-boot
-reindex).
+> Testnet only — no real funds, ever. See [Trust & Security](/docs/trust) for the full model.

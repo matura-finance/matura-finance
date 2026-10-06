@@ -18,9 +18,9 @@ stated plainly rather than hidden. This page is the honest summary; the full ana
 ## What you DO trust
 
 - **The issuer.** A claim is only as real as the issuer who attests it. Approved signers live in the
-  `IssuerRegistry` (epoch-aware). The **issuer private key is the most sensitive secret** in the
-  system — it is the attestation signer. In the hosted MVP the API runs with **no issuer key**
-  (`ISSUER_PRIVATE_KEY` absent, demo signing off); claims are signed at seed time.
+  `IssuerRegistry` (epoch-aware). The **issuer signing key is the most sensitive secret** in the
+  system — it's what vouches that a claim is real. In the hosted MVP the API runs with **no attestation
+  signing key at all**, so even a full compromise of the running server can't forge new claims.
 - **The deploying operator** (for this MVP) to have deployed the audited bytecode at the published,
   verified addresses — which you can check on BscScan via [Deployed
   addresses](/docs/contracts/deployed-addresses).

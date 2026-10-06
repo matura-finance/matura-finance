@@ -23,12 +23,13 @@ POST /api/v1/auth/verify           → { token }          (Public)
 
 ## Session handling (product app)
 
-The app keeps the JWT in memory + `sessionStorage`, bound to the connected subject, and clears it on a
-`401` or a wallet switch. SIWE is **domain-exact**: the `SIWE_DOMAIN` must match the served host (no
-scheme), or every login is rejected — important when the app is deployed behind a baked domain.
+The app holds the token only for the current browser session, tied to the connected wallet, and drops
+it the moment the session expires or you switch wallets. The sign-in message is **bound to the site's
+domain**, so a signature for one site can't be replayed against another.
 
-## Security notes
+## Good to know
 
-- The JWT secret is a per-deployment CSPRNG value (runtime env, never a build arg).
-- CORS is exact-match against the app origin (scheme, no trailing slash).
-- Both are documented operationally in the [Deployment](/docs/operations/deployment) page.
+- The auth guard is **fail-closed**: every protected endpoint requires a valid token — nothing is
+  accessible by accident.
+- Requests are **rate-limited per wallet**.
+- Tokens are **subject-bound** — a token only works for the wallet that signed in.

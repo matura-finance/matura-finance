@@ -3,33 +3,28 @@ title: Indexer & worker
 description: How on-chain events become the fast read-model the API serves.
 ---
 
-The read endpoints are fast because they don't hit the chain on every request — they read a **Postgres
-projection** built by a separate-process **indexer worker** (`worker.ts`, run with
-`pnpm --filter @matura/api worker:dev`). The HTTP API and the worker share one image; the role is
-chosen by `SERVICE_ROLE`.
+The read endpoints are fast because they don't query the blockchain on every request. A background
+**indexer** watches the chain and projects on-chain events into a database; the API then serves reads
+from that projection. This keeps reads quick while staying faithful to what actually happened on-chain.
 
 ## How it works
 
-- **Polls on the `finalized` tag.** The worker advances a cursor over finalized blocks, so projections
-  reflect finality rather than reorg-prone head state.
-- **Idempotent upserts under one advisory-locked transaction.** Event projection + cursor advance
-  happen together, so re-processing a block is safe and the cursor can't diverge from the data.
-- **Reorg safety.** A block-hash mismatch triggers a **full wipe + reindex** from the deployment block,
-  rather than trusting a stale projection.
-- **Confirmations are configurable** (`INDEXER_CONFIRMATIONS`): `0` works with an RPC that supports the
-  `finalized` tag; a tagless RPC needs `> 0`.
+- **Follows finalized blocks.** The indexer advances over blocks that the chain has finalized, so the
+  data reflects settled history rather than a tip that could still be reorganized.
+- **Atomic, idempotent updates.** Each block's events and the indexer's progress marker are written
+  together, so re-processing a block is always safe and the projection can't drift out of sync.
+- **Reorg-safe.** If the chain's history ever disagrees with what was indexed, the indexer rebuilds
+  from the start rather than trusting stale data.
 
-## Operating it
+## What this means for you
 
-- **Reindex from scratch:** `pnpm --filter @matura/api reindex` wipes projections and rebuilds from the
-  deployment block.
-- **Readiness:** during a first-boot reindex, `/health/ready` returns 503 — target `/health` for
-  liveness probes.
-- **Post-write lag:** after you submit a transaction, reads reflect it once the worker has indexed the
-  finalized block — poll the projected state, not the cursor.
+- **Readiness:** right after a cold start the service may rebuild its projection; use the liveness
+  health endpoint for probes during that window.
+- **After you submit a transaction:** reads reflect it once the indexer has processed the finalized
+  block it landed in. Poll the read endpoints until the new state appears.
 
 ## Reconciliation
 
-A local-only cross-stack harness (`apps/e2e-stack`) boots node + Postgres + worker + API, drives
-optimize → execute → settle, and **reconciles events ↔ DB projections ↔ balances** to prove the
-indexer and the chain agree.
+An end-to-end test harness drives a full lifecycle (optimize → execute → settle) and **reconciles the
+on-chain events against the database projection and account balances**, proving the read-model and the
+chain agree.

@@ -1,41 +1,56 @@
 ---
 title: What it looks like
-description: A tour of the Matura product surface — the five routes of the wallet-connected app.
+description: A plain-language tour of the Matura app, page by page, the way the navbar is laid out.
 ---
 
-The product app (`app.usematura.xyz`) is a wagmi + viem Next.js app that connects a wallet on **BNB
-Smart Chain Testnet only**. It never holds your key: every on-chain action is prepared server-side as
-unsigned calldata or EIP-712 typed data, which your wallet signs locally. Five routes cover the full
-flow.
+The Matura app lives at [`app.usematura.xyz`](https://app.usematura.xyz). You connect a crypto wallet
+(on the BNB Chain test network), and from then on everything is organized into a handful of pages you
+switch between from the top navigation bar. Matura never touches your wallet's secret key — when an
+action needs a signature, your own wallet asks you to approve it.
 
-## `/request` — the best-execution flow
+Here's what each page in the navbar is for.
 
-The core screen. You pick a claim to finance; the app calls the router's `optimize` endpoint, shows
-the **cheapest verifiable route** across competing vaults (with a per-leg breakdown and the total you
-receive), then walks you through **review → sign → submit → index**. The signed message is the single
-source of truth: the same coerced payload feeds the signature, the on-chain hash, and `executeRoute`.
+## Account
 
-## `/account`
+Your home base. It shows your balances and the income claims you own, along with where each one
+stands — newly created, being financed, or paid out. Think of it as your portfolio view.
 
-Your position overview — wallet balances, claims you own, and their state (registered, financed,
-settled). Reads come from the API's projection of on-chain events, so they reflect indexed finality.
+{/* screenshot: Account page — drop image at /screens/account.png and embed with ![Account](/screens/account.png) */}
 
-## `/activity`
+## Get liquidity
 
-A chronological ledger of your executions and settlements, each linking to its on-chain transaction on
-BscScan. This is the "proof it happened" view.
+The main event. You pick a claim — money you're owed but haven't received yet — and Matura finds you
+the **best deal** to get cash for it today. Behind the scenes, several lenders ("vaults") compete, and
+Matura shows you the cheapest combination and exactly how much you'll receive. You review it, your
+wallet signs, you submit, and the cash is yours. (In the app's navbar this page is labelled
+**Get liquidity**.)
 
-## `/vaults`
+{/* screenshot: Get liquidity / request flow — /screens/get-liquidity.png */}
 
-The liquidity side: each vault's mandate, available capital, and pricing. Vaults compete to fund
-claims; this screen shows the supply the router chooses between.
+## Activity
 
-## `/issuer`
+Your history. Every financing request and every repayment shows up here in order, each with a link to
+the public blockchain record (BscScan) so anyone can verify it actually happened.
 
-A demo simulator for the issuer role — it produces EIP-712 claim attestations so you can drive the end
--to-end flow on testnet without a real payroll/invoice integration.
+{/* screenshot: Activity page — /screens/activity.png */}
+
+## Vaults
+
+The lenders' side. Each vault is a pool of money with its own rules and prices. This page shows what
+each vault offers — the choices Matura's best-deal engine picks between on your behalf.
+
+{/* screenshot: Vaults page — /screens/vaults.png */}
+
+## Issuer
+
+A demo tool. In the real world, an employer or platform would vouch for your income by signing a
+digital attestation. For this testnet demo, the Issuer page lets you play that role yourself so you can
+try the whole flow end to end.
+
+{/* screenshot: Issuer page — /screens/issuer.png */}
 
 ---
 
-> Live app: [`app.usematura.xyz`](https://app.usematura.xyz). It targets testnet only — fund a wallet
-> from the [BNB testnet faucet](https://www.bnbchain.org/en/testnet-faucet) to try it.
+> **Want the screenshots here?** Drop PNGs into `apps/docs/public/screens/` (one per page above) and
+> they'll be embedded. This is a testnet app — connect a test wallet and try it yourself at
+> [`app.usematura.xyz`](https://app.usematura.xyz).
