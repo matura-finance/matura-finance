@@ -12,6 +12,7 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 import { useAccount, useConfig, useSendTransaction } from "wagmi";
 
 import { useSession } from "../../lib/auth/session-provider";
+import { ApiError } from "../../lib/api/client";
 import { postClaimRegistrationPrepare } from "../../lib/api/endpoints";
 import { toAddress, toHexData } from "../../lib/chain/bridge";
 import { classifyTxError, TX_ERROR_COPY } from "../../lib/chain/errors";
@@ -53,9 +54,13 @@ export function CreateClaimDialog({
   const [dueMinutes, setDueMinutes] = useState("30");
   const [beneficiary, setBeneficiary] = useState("");
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
+  // Frozen claim identity for this dialog session so a retry re-sends the SAME claimId rather than
+  // minting a second claim. Cleared only on close (a fresh dialog session → a fresh claim).
+  const [identity, setIdentity] = useState<{ claimId: string; dueAt: string } | null>(null);
 
   const reset = () => {
     setPhase({ kind: "form" });
+    setIdentity(null);
     setBeneficiary("");
     setFace("20000");
     setDueMinutes("30");
@@ -80,19 +85,22 @@ export function CreateClaimDialog({
       return;
     }
     const beneficiaryLc = beneficiary.toLowerCase();
-    const claimId = keccak256(stringToHex(`matura-demo:${crypto.randomUUID()}`));
-    const dueAt = new Date(Date.now() + minutes * 60_000).toISOString();
+    const id = identity ?? {
+      claimId: keccak256(stringToHex(`matura-demo:${crypto.randomUUID()}`)),
+      dueAt: new Date(Date.now() + minutes * 60_000).toISOString(),
+    };
+    if (identity === null) setIdentity(id);
     const faceBase = parseAmountToBaseUnits(face);
     setPhase({ kind: "submitting" });
     try {
       const d = getDeployment(bscTestnet.id);
       const prepared = await postClaimRegistrationPrepare(
         {
-          claimId,
+          claimId: id.claimId,
           beneficiary: beneficiaryLc,
           token: d.mockUsdt,
           faceValue: faceBase,
-          dueAt,
+          dueAt: id.dueAt,
           claimType,
         },
         token,
@@ -111,9 +119,16 @@ export function CreateClaimDialog({
         });
         await waitForTransactionReceipt(config, { hash });
       }
-      setPhase({ kind: "done", claimId, beneficiary: beneficiaryLc, face: faceBase });
+      setPhase({ kind: "done", claimId: id.claimId, beneficiary: beneficiaryLc, face: faceBase });
       onCreated();
     } catch (e) {
+      // A lost receipt on a prior attempt may have actually registered the claim; re-preparing the
+      // same claimId then 409s CLAIM_ALREADY_EXISTS. Treat that as success — the claim does exist.
+      if (e instanceof ApiError && e.code === "CLAIM_ALREADY_EXISTS") {
+        setPhase({ kind: "done", claimId: id.claimId, beneficiary: beneficiaryLc, face: faceBase });
+        onCreated();
+        return;
+      }
       const msg =
         e instanceof Error && e.message.includes("unexpected contract")
           ? e.message
