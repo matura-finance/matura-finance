@@ -3,14 +3,16 @@
 import { claimRegistryAbi } from "@matura/chain/abis";
 import { bscTestnet } from "@matura/chain/chains";
 import { getDeployment } from "@matura/chain/deployments";
+import { CLAIM_STATES } from "@matura/shared";
 import { Badge } from "@matura/ui/components/badge";
 import { Button } from "@matura/ui/components/button";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { waitForTransactionReceipt } from "wagmi/actions";
+import { readContract, waitForTransactionReceipt } from "wagmi/actions";
 import { useConfig, useSendTransaction, useWriteContract } from "wagmi";
 
 import { useSession } from "../../lib/auth/session-provider";
+import { ApiError } from "../../lib/api/client";
 import { postSettlementPrepare } from "../../lib/api/endpoints";
 import type { ClaimWire } from "../../lib/api/schemas";
 import { toAddress, toHex32, toHexData } from "../../lib/chain/bridge";
@@ -90,6 +92,24 @@ export function ClaimActionDialog({
     onClose();
   };
 
+  // Re-read the claim on-chain and report whether the action's target state is already reached.
+  // Used to recover from a lost receipt or a stale confirm snapshot without re-sending.
+  async function reachedTarget(): Promise<boolean> {
+    if (claim === null) return false;
+    try {
+      const c = await readContract(config, {
+        address: toAddress(getDeployment(bscTestnet.id).claimRegistry),
+        abi: claimRegistryAbi,
+        functionName: "getClaim",
+        args: [toHex32(claim.claimId)],
+      });
+      const state = CLAIM_STATES[c.state];
+      return action === "settle" ? state === "PAID" : state === "DELAYED";
+    } catch {
+      return false;
+    }
+  }
+
   async function run(): Promise<void> {
     if (claim === null) return;
     setPhase("running");
@@ -132,6 +152,14 @@ export function ClaimActionDialog({
       setPhase("done");
       onDone();
     } catch (e) {
+      // A lost receipt or a stale confirm snapshot can mean the action already succeeded on-chain:
+      // settle 409s ALREADY_SETTLED on re-prepare, and either action may have reached its target
+      // state on a prior attempt. Re-read before reporting a revert.
+      if ((e instanceof ApiError && e.code === "ALREADY_SETTLED") || (await reachedTarget())) {
+        setPhase("done");
+        onDone();
+        return;
+      }
       const msg =
         e instanceof Error && e.message.includes("unexpected contract")
           ? e.message
