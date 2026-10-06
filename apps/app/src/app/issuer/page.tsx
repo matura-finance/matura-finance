@@ -12,9 +12,10 @@ export default function IssuerPage() {
   return (
     <RequireConnected>
       <Screen
-        eyebrow="Demo · admin"
-        title="Issuer simulator"
-        description="Create synthetic testnet claims, settle them, or mark a claim delayed. This is a demo surface — nothing here represents a real financial obligation."
+        eyebrow="Demo · Admin"
+        eyebrowVariant="warning"
+        title="Issuer Simulator"
+        description="Stand in for an issuer to drive the demo end to end: create a claim for your wallet, finance it on Portfolio, then come back to settle or delay it. Everything here uses synthetic testnet claims and mock USDT — nothing represents a real financial obligation."
       >
         <IssuerView />
       </Screen>

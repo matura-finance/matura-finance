@@ -1,12 +1,14 @@
-import { Badge } from "@matura/ui/components/badge";
+import { Badge, type BadgeProps } from "@matura/ui/components/badge";
 import { Stack } from "@matura/ui/components/stack";
 import type { ReactNode } from "react";
 
 import { AppNav } from "./app-nav";
 
 export type ScreenProps = {
-  /** Optional section eyebrow label rendered as a pill badge above the title. */
+  /** Optional section eyebrow label rendered as an uppercase pill badge above the title. */
   eyebrow?: string;
+  /** Badge variant for the eyebrow (e.g. "warning" for the demo/admin surface). Defaults to outline. */
+  eyebrowVariant?: BadgeProps["variant"];
   /** Optional page title. When omitted the whole header block (eyebrow/title/description) is skipped. */
   title?: string;
   description?: string;
@@ -18,7 +20,13 @@ export type ScreenProps = {
  * section header. Honest prototype framing — these screens describe what they
  * will show once the underlying flows are wired up.
  */
-export function Screen({ eyebrow, title, description, children }: ScreenProps) {
+export function Screen({
+  eyebrow,
+  eyebrowVariant = "outline",
+  title,
+  description,
+  children,
+}: ScreenProps) {
   return (
     <div className="min-h-dvh bg-muted text-foreground">
       <AppNav />
@@ -30,7 +38,7 @@ export function Screen({ eyebrow, title, description, children }: ScreenProps) {
             {title !== undefined && (
               <Stack gap="sm" className="max-w-4xl">
                 {eyebrow !== undefined && (
-                  <Badge variant="outline" className="w-fit border-border text-foreground">
+                  <Badge variant={eyebrowVariant} className="w-fit uppercase tracking-wide">
                     {eyebrow}
                   </Badge>
                 )}

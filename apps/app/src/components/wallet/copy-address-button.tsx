@@ -3,10 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * Copies an address to the clipboard and briefly flips to a check mark. Reused by the wallet
- * popover and the Portfolio header.
+ * Copies a value to the clipboard and briefly flips to a check mark. Reused by the wallet
+ * popover, the Portfolio header, and the issuer claims table (`label="claim ID"`).
  */
-export function CopyAddressButton({ address, size = 15 }: { address: string; size?: number }) {
+export function CopyAddressButton({
+  address,
+  size = 15,
+  label = "address",
+}: {
+  address: string;
+  size?: number;
+  label?: string;
+}) {
   const [copied, setCopied] = useState(false);
   const resetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -20,8 +28,8 @@ export function CopyAddressButton({ address, size = 15 }: { address: string; siz
   return (
     <button
       type="button"
-      aria-label={copied ? "Address copied" : "Copy address"}
-      title={copied ? "Copied" : "Copy address"}
+      aria-label={copied ? "Copied" : `Copy ${label}`}
+      title={copied ? "Copied" : `Copy ${label}`}
       onClick={() => {
         void navigator.clipboard.writeText(address);
         setCopied(true);

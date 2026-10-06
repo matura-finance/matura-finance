@@ -31,16 +31,29 @@ export const SettlementSchema = z.object({
 
 export const ClaimDetailSchema = ClaimSchema.extend({
   settlement: SettlementSchema.nullable(),
-  finalizedThrough: z.string().describe("Decimal block number the read projection is complete through"),
+  finalizedThrough: z
+    .string()
+    .describe("Decimal block number the read projection is complete through"),
 });
 export class ClaimDetailDto extends createZodDto(ClaimDetailSchema) {}
 
 export const PortfolioSchema = z.object({
   wallet: z.string(),
   claims: z.array(ClaimSchema),
-  finalizedThrough: z.string().describe("Decimal block number the read projection is complete through"),
+  finalizedThrough: z
+    .string()
+    .describe("Decimal block number the read projection is complete through"),
 });
 export class PortfolioDto extends createZodDto(PortfolioSchema) {}
+
+export const IssuedClaimsSchema = z.object({
+  issuer: z.string(),
+  claims: z.array(ClaimSchema),
+  finalizedThrough: z
+    .string()
+    .describe("Decimal block number the read projection is complete through"),
+});
+export class IssuedClaimsDto extends createZodDto(IssuedClaimsSchema) {}
 
 export const ExecutionLegSchema = z.object({
   claimId: z.string(),
@@ -59,7 +72,9 @@ export const ExecutionSchema = z.object({
   totalCost: z.string(),
   status: z.enum(["PENDING", "EXECUTED", "FAILED"]),
   legs: z.array(ExecutionLegSchema),
-  finalizedThrough: z.string().describe("Decimal block number the read projection is complete through"),
+  finalizedThrough: z
+    .string()
+    .describe("Decimal block number the read projection is complete through"),
 });
 export class ExecutionDto extends createZodDto(ExecutionSchema) {}
 
@@ -77,7 +92,9 @@ export const ActivityPageSchema = z.object({
   wallet: z.string(),
   items: z.array(ActivityEventSchema),
   nextCursor: z.string().nullable(),
-  finalizedThrough: z.string().describe("Decimal block number the read projection is complete through"),
+  finalizedThrough: z
+    .string()
+    .describe("Decimal block number the read projection is complete through"),
 });
 export class ActivityPageDto extends createZodDto(ActivityPageSchema) {}
 

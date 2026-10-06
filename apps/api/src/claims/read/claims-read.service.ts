@@ -4,8 +4,8 @@ import type { z } from "zod";
 
 import { ChainService, type OnChainClaim } from "../../chain/chain.service";
 import { CursorService } from "../../cursor/cursor.service";
-import type { ClaimDetailSchema, ClaimSchema } from "../../common/dto";
-import { validateBytes32 } from "../../common/evm.util";
+import type { ClaimDetailSchema, ClaimSchema, IssuedClaimsSchema } from "../../common/dto";
+import { normalizeWallet, validateBytes32 } from "../../common/evm.util";
 import { mapClaim, mapSettlement } from "../../common/mappers";
 import { PrismaService } from "../../prisma/prisma.service";
 
@@ -23,6 +23,22 @@ export class ClaimsReadService {
    * GET /api/v1/claims/:claimId. Serves the projection; on a miss within the finality gap,
    * falls back to a chain read tagged `pending: true`. 404 only when the claim exists nowhere.
    */
+  /**
+   * GET /api/v1/claims/issued. Claims the authenticated issuer has registered (newest first),
+   * read from the projection. Scoped to the signed wallet — an issuer sees only their own claims.
+   */
+  async listIssued(rawWallet: string): Promise<z.infer<typeof IssuedClaimsSchema>> {
+    const issuer = normalizeWallet(rawWallet);
+    const [claims, finalizedThrough] = await Promise.all([
+      this.prisma.claimProjection.findMany({
+        where: { issuer },
+        orderBy: [{ blockNumber: "desc" }, { logIndex: "desc" }],
+      }),
+      this.cursor.finalizedThrough(),
+    ]);
+    return { issuer, claims: claims.map((claim) => mapClaim(claim)), finalizedThrough };
+  }
+
   async getClaim(rawClaimId: string): Promise<ClaimDetailShape> {
     const claimId = validateBytes32(rawClaimId, "claimId");
     const [row, finalizedThrough] = await Promise.all([

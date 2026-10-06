@@ -9,6 +9,7 @@ import { ApiError } from "../api/client";
 import {
   getActivity,
   getExecution,
+  getIssuedClaims,
   getPortfolio,
   getVaults,
   postOptimize,
@@ -22,6 +23,7 @@ export const queryKeys = {
   vaults: () => ["vaults", env.chainId] as const,
   activity: (wallet: string) => ["activity", env.chainId, wallet] as const,
   execution: (executionId: string) => ["execution", env.chainId, executionId] as const,
+  issuedClaims: (issuer: string) => ["issued-claims", env.chainId, issuer] as const,
 };
 
 const POLL_INTERVAL_MS = 2_500;
@@ -50,6 +52,24 @@ export function useActivity(wallet: string | undefined, limit = 25) {
     queryKey: [...queryKeys.activity(wallet ?? ""), limit],
     enabled: wallet !== undefined,
     queryFn: ({ signal }) => getActivity(wallet ?? "", limit, signal),
+  });
+}
+
+/**
+ * Claims the signed-in issuer has registered. Authed + issuer-scoped server-side, so it only
+ * returns on a valid session. Polls on a short interval so newly created claims (and state
+ * changes driven off-chain, e.g. mark-eligible/mark-matured) surface as the indexer projects them.
+ */
+export function useIssuedClaims(issuer: string | undefined) {
+  const { token } = useSession();
+  return useQuery({
+    queryKey: queryKeys.issuedClaims(issuer ?? ""),
+    enabled: issuer !== undefined && token !== null,
+    queryFn: ({ signal }) => {
+      if (token === null) throw new ApiError(401, "NO_SESSION", "Sign in to continue");
+      return getIssuedClaims(token, signal);
+    },
+    refetchInterval: 6_000,
   });
 }
 
@@ -127,6 +147,17 @@ export function useInvalidateOnSettled() {
     (wallet: string) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.portfolio(wallet) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.activity(wallet) });
+    },
+    [queryClient],
+  );
+}
+
+/** Refetch the issuer's claim list after a create/settle/delay (the indexer catches up shortly). */
+export function useInvalidateIssuedClaims() {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (issuer: string) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.issuedClaims(issuer) });
     },
     [queryClient],
   );

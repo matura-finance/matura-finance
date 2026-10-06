@@ -54,6 +54,13 @@ export const PortfolioResponse = z.object({
 });
 export type PortfolioResponse = z.infer<typeof PortfolioResponse>;
 
+export const IssuedClaimsResponse = z.object({
+  issuer: Address,
+  claims: z.array(ClaimWire),
+  finalizedThrough: z.string(),
+});
+export type IssuedClaimsResponse = z.infer<typeof IssuedClaimsResponse>;
+
 // ── Routes: optimize + prepare ────────────────────────────────────────────────
 export const OptimizeRequest = z.object({
   claimIds: z.array(Bytes32).min(1).max(20),
