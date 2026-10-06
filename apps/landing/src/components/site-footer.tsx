@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { APP_URL, GITHUB_DOCS, GITHUB_URL } from "../lib/site";
+import { APP_URL, DOCS_URL, GITHUB_URL } from "../lib/site";
 
 type FooterLink = { label: string; href: string; external?: boolean };
 
@@ -17,7 +17,7 @@ const GROUPS: { heading: string; links: FooterLink[] }[] = [
     heading: "Protocol",
     links: [
       { label: "Live Contracts", href: "/#protocol" },
-      { label: "Documentation", href: GITHUB_DOCS.readme, external: true },
+      { label: "Documentation", href: DOCS_URL, external: true },
     ],
   },
   {

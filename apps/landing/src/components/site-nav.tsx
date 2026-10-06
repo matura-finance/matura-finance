@@ -3,7 +3,7 @@ import { cn } from "@matura/ui/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 
-import { APP_URL, NAV_LINKS } from "../lib/site";
+import { APP_URL, DOCS_URL, NAV_LINKS } from "../lib/site";
 import { MobileNav } from "./mobile-nav";
 
 /**
@@ -45,7 +45,10 @@ export function SiteNav() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-4 md:flex">
+          <a href={DOCS_URL} className={linkClass}>
+            Docs
+          </a>
           <a href={APP_URL} className={cn(buttonVariants({ size: "sm" }))}>
             Open Matura
           </a>

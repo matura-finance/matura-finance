@@ -1,0 +1,49 @@
+---
+title: Local development
+description: Running the monorepo locally — toolchain, commands, and ports.
+---
+
+Matura is a **pnpm + Turborepo** monorepo. See [Quickstart](/docs/overview/quickstart) for the
+end-to-end "run the stack" recipe; this page is the reference for toolchain and commands.
+
+## Toolchain
+
+- **Node:** an **even-LTS Node (22.13+/24)** — Hardhat 3 requires it; the repo pins `<25`. Node 24 may
+  be installed keg-only (not on PATH):
+  ```bash
+  export PATH="/opt/homebrew/opt/node@24/bin:$PATH"   # verify: node -v → v24.x
+  ```
+- **pnpm** (via Corepack), **Postgres** (API), **Docker** (integration + cross-stack e2e tests).
+
+## Whole-monorepo commands
+
+```bash
+pnpm build | lint | typecheck | test     # turbo, across every package/app
+```
+
+## Ports
+
+| App | Command | Port |
+| --- | --- | --- |
+| Marketing (`@matura/landing`) | `pnpm --filter @matura/landing dev` | 3001 |
+| Product (`@matura/app`) | `pnpm --filter @matura/app dev` | 3002 |
+| Docs (`@matura/docs`) | `pnpm --filter @matura/docs dev` | 3003 |
+| API (`@matura/api`) | `pnpm --filter @matura/api dev` | — |
+
+## Contracts
+
+```bash
+pnpm --filter @matura/contracts contracts:compile
+pnpm --filter @matura/contracts contracts:test     # unit + integration + fuzz + gas
+pnpm --filter @matura/contracts demo:local         # deploy → seed → verify (local chain)
+```
+
+## This docs site
+
+`apps/docs` regenerates its [Reference](/docs/reference/architecture) section and the [Deployed
+addresses](/docs/contracts/deployed-addresses) table on every `dev`/`build` via a `prebuild` step
+(`scripts/sync-reference-docs.mjs`) that reads the repo `docs/` and the chain manifest. That generated
+content is gitignored — edit the **source** docs, not the generated pages.
+
+For CI order and build gotchas, see
+[`CLAUDE.md`](https://github.com/matura-finance/matura-finance/blob/main/CLAUDE.md).

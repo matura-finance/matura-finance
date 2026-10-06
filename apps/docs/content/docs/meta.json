@@ -1,0 +1,5 @@
+{
+  "title": "Documentation",
+  "root": true,
+  "pages": ["index", "overview", "concepts", "contracts", "api", "trust", "operations", "reference"]
+}

@@ -1,0 +1,44 @@
+---
+title: Quickstart
+description: Try Matura on BSC Testnet, or run the whole stack locally.
+---
+
+## Try it on testnet (no setup)
+
+1. Open the app at [`app.usematura.xyz`](https://app.usematura.xyz).
+2. Fund a wallet with test BNB from the [BNB Testnet faucet](https://www.bnbchain.org/en/testnet-faucet)
+   (gas for signing `executeRoute`).
+3. Connect the wallet (BNB Smart Chain Testnet, chain `97`) and sign in with SIWE.
+4. Use **Issuer Demo** to create a claim, then your **Portfolio → Position** to finance it
+   (optimize → sign → submit). Watch it land in **Portfolio → Activity** with a BscScan link.
+
+Verified contract addresses are on the [Deployed addresses](/docs/contracts/deployed-addresses) page.
+
+## Run the stack locally
+
+Matura is a pnpm + Turborepo monorepo. Contracts need an **even-LTS Node (22.13+/24)** — the repo
+pins `<25`.
+
+```bash
+# from the repo root
+pnpm install
+pnpm build            # turbo: builds every package/app
+
+# contracts: one terminal runs a local chain, another deploys + seeds
+pnpm --filter @matura/contracts hardhat node
+pnpm --filter @matura/contracts demo:local      # deploy → seed → verify
+
+# services
+pnpm --filter @matura/api db:migrate            # needs Postgres
+pnpm --filter @matura/api dev                    # HTTP API
+pnpm --filter @matura/api worker:dev             # indexer worker (separate process)
+
+# frontends
+pnpm --filter @matura/app dev                    # product app  → :3002
+pnpm --filter @matura/landing dev                # marketing     → :3001
+pnpm --filter @matura/docs dev                   # these docs    → :3003
+```
+
+For the full contract build/deploy/seed/faucet flow see the repository
+[`packages/contracts/README.md`](https://github.com/matura-finance/matura-finance/blob/main/packages/contracts/README.md),
+and for the end-to-end deploy procedure the [Deployment](/docs/operations/deployment) page.

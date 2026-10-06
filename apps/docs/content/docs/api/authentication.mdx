@@ -1,0 +1,35 @@
+---
+title: Authentication (SIWE)
+description: Sign-In With Ethereum — how wallets authenticate to the API without surrendering a key.
+---
+
+The API authenticates wallets with **SIWE** (Sign-In With Ethereum, verified with viem) and issues a
+**JWT**. It never holds a user key: you prove control of an address by signing a nonce-bound message.
+
+## Flow
+
+```
+GET  /api/v1/auth/nonce            → { nonce }          (Public)
+# wallet signs the SIWE message containing the nonce
+POST /api/v1/auth/verify           → { token }          (Public)
+# send `Authorization: Bearer <token>` on every protected route
+```
+
+1. **Nonce** — `GET /auth/nonce` returns a short-lived nonce (TTL-bounded).
+2. **Sign** — the client builds the SIWE message (domain-bound) and the wallet signs it.
+3. **Verify** — `POST /auth/verify` checks the signature + nonce and returns a **subject-bound JWT**.
+4. **Use** — send the JWT as a bearer token. The global guard is **fail-closed**: anything not marked
+   `@Public()` requires a valid token; rate limits are applied **per wallet**.
+
+## Session handling (product app)
+
+The app holds the token only for the current browser session, tied to the connected wallet, and drops
+it the moment the session expires or you switch wallets. The sign-in message is **bound to the site's
+domain**, so a signature for one site can't be replayed against another.
+
+## Good to know
+
+- The auth guard is **fail-closed**: every protected endpoint requires a valid token — nothing is
+  accessible by accident.
+- Requests are **rate-limited per wallet**.
+- Tokens are **subject-bound** — a token only works for the wallet that signed in.

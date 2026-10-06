@@ -1,0 +1,37 @@
+---
+title: What you're trusting
+description: Matura's trust assumptions stated plainly — what's trustless and what isn't.
+---
+
+Matura is designed so you have to trust as little as possible, and so that what you *do* trust is
+stated plainly rather than hidden. This page is the honest summary; the full analysis is the mirrored
+[Threat model](/docs/reference/threat-model).
+
+## What you do NOT have to trust
+
+- **Matura with your funds.** The API is non-custodial — it only prepares unsigned calldata / EIP-712
+  typed data. Your wallet signs; you submit. No server holds a user key.
+- **That the route is fair.** The cheapest route is selected deterministically off-chain and
+  **re-validated on-chain** before funds move. A stale or tampered route reverts.
+- **That settlement is honest.** The waterfall is conservation-checked and maturity-gated on-chain.
+
+## What you DO trust
+
+- **The issuer.** A claim is only as real as the issuer who attests it. Approved signers live in the
+  `IssuerRegistry` (epoch-aware). The **issuer signing key is the most sensitive secret** in the
+  system — it's what vouches that a claim is real. In the hosted MVP the API runs with **no attestation
+  signing key at all**, so even a full compromise of the running server can't forge new claims.
+- **The deploying operator** (for this MVP) to have deployed the audited bytecode at the published,
+  verified addresses — which you can check on BscScan via [Deployed
+  addresses](/docs/contracts/deployed-addresses).
+- **The RPC / chain** for liveness and finality of reads.
+
+## Boundaries that enforce this
+
+- The frontends are **wallet/secret-free** where they must be (a CI grep keeps the landing + docs
+  bundles free of chain code and secret values).
+- Secrets never cross the build-arg boundary — only `NEXT_PUBLIC_*` are build args; real secrets are
+  runtime-only on the API.
+
+See [Accepted risks](/docs/trust/accepted-risks) for what this MVP explicitly does **not** defend
+against, and [Proof it works](/docs/trust/proof) for the verification.

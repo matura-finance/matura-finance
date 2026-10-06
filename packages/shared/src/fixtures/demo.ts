@@ -3,8 +3,8 @@ import { z } from "zod";
 /**
  * Deterministic demo-scenario fixture — the checked-in, judge-facing mirror of
  * `packages/contracts/config/demo.ts` (Alice's claims, Request A/B calibration, the two vault
- * mandates). It is the single source of truth for the numbers cited in `README.md` and
- * `docs/demo-script.md`, and the pre-demo smoke test asserts the live chain matches it.
+ * mandates). It is the single source of truth for the numbers cited in `README.md`, and the
+ * pre-demo smoke test asserts the live chain matches it.
  *
  * The concrete data lives in the generated `demo.generated.ts` (`export const DEMO_FIXTURE = {…}
  * as const satisfies DemoFixture`), emitted by `packages/contracts/scripts/export-demo-fixture.ts`

@@ -5,8 +5,8 @@
 > HTTP API → web app). Live addresses and secrets stay in the **gitignored**
 > `docs/deployment-runbook.md`; contract-deploy detail lives in `packages/contracts/README.md`.
 > Hosting is documented (EasyPanel/Docker — see [EasyPanel / Docker hosting](#7-easypanel--docker-hosting))
-> but not yet executed against a live instance — that lands with Track B of
-> `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md`; remaining gaps in
+> but not yet executed against a live instance — that lands with Track B (the live runbook,
+> `docs/deployment-trackb-runbook.md`); remaining gaps in
 > [Open items](#open-items). Append an entry to the [Iteration log](#iteration-log) whenever the
 > deploy surface changes.
 
@@ -155,9 +155,8 @@ to the **seeded claim beneficiary** (`E2E_PRIVATE_KEY`), or optimize returns `NO
 ### 7. EasyPanel / Docker hosting
 
 > Target hosting for the testnet deploy: all four services (landing, product app, API, indexer
-> worker) + Postgres on **EasyPanel via Docker**. Authored in
-> `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md` (Track B is the live runbook with
-> GO gates); this section is the standing per-service reference.
+> worker) + Postgres on **EasyPanel via Docker**. The live runbook with GO gates is
+> `docs/deployment-trackb-runbook.md`; this section is the standing per-service reference.
 
 **Ordering (non-negotiable):** deploy contracts → write `97.json` → **commit the manifest +
 regenerated `deployments.generated.ts`** → rebuild `@matura/chain` → **then** build the app/api
@@ -269,8 +268,8 @@ service **Shell** for migrate); the exact "primary domain" toggle + default Trae
 
 ## Post-deploy smoke checklist
 
-> **Pre-demo operator sanity** (env/stack readiness + abort conditions): run through
-> `docs/demo-operator-checklist.md` before driving a demo.
+> **Pre-demo operator sanity** (env/stack readiness + abort conditions): run the `smoke:bsc-testnet`
+> readiness gate (above) before driving a demo.
 
 - [ ] `GET /api/v1/health` → `200 {status:"ok"}`; `GET /api/v1/health/ready` → `200` (db/rpc/cursor up).
 - [ ] Seeded claims visible: `GET /api/v1/account/:aliceWallet` returns her ELIGIBLE claims after the worker catches up.
@@ -362,15 +361,13 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
   `@@index([issuer, blockNumber, logIndex])` for the issuer-scoped claims read). Picked up by the
   standard `prisma migrate deploy` step — no special handling.
 - **No contract/ABI/manifest change.** App-only + one additive index; local (31337) env unaffected.
-  Lessons from the review hardening: `docs/solutions/integration-issues/wallet-tx-dialog-robustness.md`.
 
 ### 2026-09-28 — BSC-testnet deploy + EasyPanel/Docker hosting
 
 - **No contract change:** no new contracts, **no ABI/manifest schema change**, no Prisma migration.
   This is an infra/ops iteration — deploy chain **97 only**, host on EasyPanel, and land **≥1 real
-  BSC-testnet execute + settle**; the local (31337) env stays untouched. Driven by
-  `docs/plans/2026-09-28-feat-bsc-testnet-deploy-easypanel-plan.md` (Track A = parallel authoring,
-  Track B = the sequential live runbook with GO gates).
+  BSC-testnet execute + settle**; the local (31337) env stays untouched. The sequential live runbook
+  with GO gates is `docs/deployment-trackb-runbook.md`.
 - **New tooling (Track A):** `scripts/preflight.ts` (chainId-97 + config-vars-present + tBNB-balance
   guard, prints addresses never values) and `scripts/check-deployment.ts` (bytecode / role-wiring /
   vault-config / balances / `manifest == on-chain`); `hardhat-verify` wired for chain 97
@@ -414,11 +411,9 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
   generic `500`, so server faults remain visible to 5xx alerting). The pin-to-manifest control on the
   product `/request` signing path was hardened into the pure `prepareRoute` boundary (submit target +
   EIP-712 domain both pinned to the manifest router).
-- **New docs:** `SECURITY.md` (disclosure policy + **testnet-only, never-real-funds** warning),
-  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity — now referenced from the smoke
-  checklist above), and an extended full-stack `docs/threat-model.md`. Learnings (incl. the
-  test-fidelity "a guard test must fail if the guard is removed" lesson):
-  `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`.
+- **New docs:** `SECURITY.md` (disclosure policy + **testnet-only, never-real-funds** warning) and
+  an extended full-stack `docs/threat-model.md`. Key learning: the test-fidelity "a guard test must
+  fail if the guard is removed" lesson.
 - **New Open items surfaced:** fill the `SECURITY.md` disclosure-contact placeholder; install
   `gitleaks` locally for the pre-commit hook (see Open items).
 
@@ -443,8 +438,7 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
   optimize→execute→settle flow, and reconciles on-chain events ↔ DB projections ↔ token balances; runs
   the worker with `INDEXER_CONFIRMATIONS=1` (local EDR has no `finalized` tag). Self-cleans (restores
   the zero manifest + rebuilds `@matura/chain`) and refuses to run with dirty manifest files. Not in
-  CI yet (Docker dependency) — see Open items. Harness gotchas:
-  `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`.
+  CI yet (Docker dependency) — see Open items.
 
 ### 2026-09-27 — landing + product frontends (PR #5)
 
@@ -461,7 +455,7 @@ The hosted stack points at a public BSC-testnet RPC. Key constraints:
 - **CI:** the `verify` job's E2E step now installs Playwright Chromium and runs the landing suite
   (product happy-path stays gated behind `E2E_STACK`).
 - **Not yet wired:** frontend hosting, the seed-beneficiary parameterization, and the demo-signing
-  chain-scope guard (see Open items). Gotchas: `docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`.
+  chain-scope guard (see Open items).
 
 ### 2026-09-26 — deterministic best-execution router (PR #4)
 

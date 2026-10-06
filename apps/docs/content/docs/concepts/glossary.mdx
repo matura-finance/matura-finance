@@ -1,0 +1,43 @@
+---
+title: Glossary
+description: The core terms and value types used across Matura.
+---
+
+**Claim** — an on-chain record of future income (amount, maturity, beneficiary, type), anchored by an
+issuer attestation. See [Claims](/docs/concepts/claims).
+
+**Issuer** — an entity whose EIP-712 attestations are trusted to create claims. Approved signers are
+tracked (with epochs) in the `IssuerRegistry`. The issuer key is the most sensitive secret in the
+system — see [What you're trusting](/docs/trust).
+
+**Attestation** — an EIP-712-signed statement by an approved issuer that a claim is real.
+
+**Vault** — a pool of settlement capital that finances claims under a mandate. See
+[Vaults](/docs/concepts/vaults).
+
+**Mandate** — the rules bounding what a vault will finance and how it prices.
+
+**Leg** — one vault's portion of a financing route. A route is one or more legs.
+
+**Route / `ExecutionRoute`** — the selected set of legs that finance a claim, re-validated on-chain
+before funds move. See [Best-execution routing](/docs/concepts/routing).
+
+**`RouteIntent`** — a persisted, **single-use** record of an optimized route, pinned to a block;
+pruned when expired.
+
+**Settlement** — the maturity-gated, conservation-checked repayment of vaults and release of residual.
+See [Settlement](/docs/concepts/settlement).
+
+**Base units** — all money is `uint256` base units on-chain (6-decimal MockUSDT) and decimal
+**strings** across APIs — never floats. The signing boundary coerces with `BigInt(str)`.
+
+**SIWE** — Sign-In With Ethereum. The API authenticates wallets with a signed message → JWT; it never
+holds a user key. See [Authentication](/docs/api/authentication).
+
+**Non-custodial write-preparation** — API endpoints return unsigned calldata or EIP-712 typed data for
+your wallet to sign; the server never signs on your behalf.
+
+**Indexer / worker** — a separate process that projects on-chain events into Postgres so the API can
+serve fast reads. See [Indexer & worker](/docs/api/indexer-worker).
+
+**Projection** — the read-model in Postgres built from indexed on-chain events.

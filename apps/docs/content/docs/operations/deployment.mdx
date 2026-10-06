@@ -1,0 +1,32 @@
+---
+title: Deployment
+description: How Matura is hosted, at a high level — and the security boundaries that come with it.
+---
+
+Matura runs entirely on **BNB Smart Chain Testnet**. The smart contracts are deployed and verified
+on-chain, and the off-chain pieces — the API + indexer, the product app, the marketing site, and this
+documentation site — run as independent **containerized services**.
+
+This is a high-level overview. The exact operator procedure (service setup, environment configuration,
+and the step-by-step deploy checklist) lives **with the code in the repository** and is intentionally
+not reproduced on this public site.
+
+## Security posture
+
+The way Matura is deployed is part of how it stays trustworthy:
+
+- **Non-custodial throughout.** The API never holds your wallet key — it only prepares the
+  transactions your own wallet signs.
+- **The user-facing apps carry no secrets.** The product app, marketing site, and docs site ship with
+  nothing sensitive baked in — an automated check enforces this on every build. Real secrets exist
+  only on the backend services, at runtime.
+- **The hosted API holds no attestation signing key.** Claims are signed out-of-band, so a
+  compromise of the running server can't forge new claims.
+
+## Contracts
+
+Smart contracts are deployed with reproducible scripts, and their **verified** addresses are published
+on the [Deployed addresses](/docs/contracts/deployed-addresses) page — click through to read the
+verified source on BscScan.
+
+> Testnet only — no real funds, ever. See [Trust & Security](/docs/trust) for the full model.

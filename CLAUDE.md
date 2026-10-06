@@ -3,7 +3,7 @@
 Guidance for working in this repo. Keep it short; link out for detail.
 
 **Matura** — a BSC-Testnet RWA/invoice-financing MVP. pnpm + Turborepo monorepo:
-`apps/{api,app,landing}`, `packages/{contracts,chain,shared,ui,eslint-config,typescript-config}`.
+`apps/{api,app,landing,docs}`, `packages/{contracts,chain,shared,ui,eslint-config,typescript-config}`.
 Architecture: `docs/architecture.md`. Rationale: `docs/decisions.md`.
 
 ## ⚠️ Node 24 (not the machine default)
@@ -31,6 +31,7 @@ pnpm --filter @matura/api test:int                   # Testcontainers integratio
 pnpm --filter @matura/api reindex                    # CLI: wipe projections + reindex from deploymentBlock
 pnpm --filter @matura/app dev                        # next dev — product app (:3002)
 pnpm --filter @matura/landing dev                    # next dev — marketing site (:3001)
+pnpm --filter @matura/docs dev                       # next dev — docs site, Fumadocs (:3003)
 pnpm --filter @matura/app test                       # vitest (unit: tx reducer, chain bridge, money format)
 pnpm --filter @matura/e2e e2e:install                # one-time: download Playwright Chromium
 pnpm --filter @matura/e2e test:e2e                   # Playwright: landing always; product happy path needs E2E_STACK=1 + seeded stack
@@ -45,7 +46,7 @@ demo:local` (deploy→seed→verify) in another; `demo:settle` (local-only e2e),
 is a read-only **pre-demo readiness gate** (Request B claims ELIGIBLE, per-leg vault liquidity, operator
 gas). Testnet: `deploy:bsc-testnet` then `seed:bsc-testnet` (uses the seed-only `bscTestnetSeed` network
 so the issuer key stays out of deploy/verify). Full flow + faucet: `packages/contracts/README.md`.
-Judge/demo assets: `README.md`, `docs/demo-script.md` (≤3-min live script), `docs/test-report.md`.
+Judge/demo assets: `README.md`, `docs/test-report.md`.
 
 **`apps/api`** — orchestration + read-model service. A separate-process **indexer worker**
 (`worker.ts`; `finalized`-tag polling, block-hash-mismatch → full-wipe+reindex, idempotent upserts
@@ -71,42 +72,19 @@ optimize→review→sign→submit→index flow), `/activity`, `/vaults`, `/issue
 signing money boundary is `BigInt(str)` (never `toBaseUnits`), one coerced message feeds
 sign+hash+`executeRoute`, and targets are pinned to the manifest. **`apps/landing`** (`usematura.xyz`)
 — static, wallet-free marketing site (approved copy, SEO/OG/sitemap/robots/JSON-LD; a CI grep keeps
-the bundle wallet/secret-free). **`apps/e2e`** — Playwright: an always-on landing suite + a
+the bundle wallet/secret-free). **`apps/docs`** (`docs.usematura.xyz`) — the documentation site, a
+**Fumadocs** (Next 15) app pinned to the Next-15 line (`fumadocs-ui@15.8.5`/`fumadocs-core@15.8.5`/
+`fumadocs-mdx@11.10.0`; `lib/source.ts` carries the one version-impedance shim). Static + wallet-free
+(same CSP + bundle guard as landing). Two content lanes: **authored** MDX (committed) + a
+**generated** Reference section and deployed-addresses table (a `prebuild` script
+`scripts/sync-reference-docs.mjs` mirrors an allowlist of repo `docs/*.md` + reads `97.json` via `fs`;
+output gitignored + regenerated every build, Mermaid→committed SVG). See `apps/docs/README.md`.
+**`apps/e2e`** — Playwright: an always-on landing suite + a
 gated (`E2E_STACK=1`) product happy-path using a Node-side viem signer injected as an EIP-6963
-provider (no wallet code in the app). Frontend build/integration gotchas (connectors barrel,
-unstable-hook refetch loop, SIWE rehydrate race, EIP-712 boundary, e2e wallet injection):
-`docs/solutions/integration-issues/next15-wallet-frontend-siwe-eip712-e2e.md`. Multi-step wallet-tx
-dialog robustness (indexing lock-in, idempotent retry on a thrown receipt, mid-flight wallet switch,
-stale confirm snapshot, `fixed` tooltip under `overflow`, 401-cooldown-vs-poll, fail-closed env,
-sort-covering index): `docs/solutions/integration-issues/wallet-tx-dialog-robustness.md`. Design +
-full build: `docs/plans/2026-09-26-feat-matura-frontends-landing-and-product-plan.md`.
+provider (no wallet code in the app).
 
 CI order: build → lint → typecheck → test → contracts:compile → contracts:test →
-ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate. Gotchas: toolchain (Node,
-tsc `unknown`, ABI/prettier gate) `docs/solutions/build-errors/hardhat3-viem-node24-toolchain.md`;
-**demo-fixture codegen** (contracts→shared generator; `as const satisfies` needs `.readonly()` Zod
-arrays; `.js` specifiers since contracts lacks `allowImportingTsExtensions`; generator can't import
-`@matura/shared`; emit typed `.ts` not JSON; ephemeral local `31337.json`)
-`docs/solutions/build-errors/demo-fixture-codegen-contracts-to-shared.md`; deploy/seed pipeline
-(event-scan block, `.js`→`.ts` script imports, `noUncheckedIndexedAccess`+viem)
-`docs/solutions/deployment-issues/hardhat3-deploy-seed-manifest-pipeline.md`; **apps/api toolchain**
-(CJS↔ESM chain consumption, `prisma-client` types, strict viem, `z.stringbool`, DB-less migrations)
-`docs/solutions/build-errors/apps-api-cjs-chain-prisma-viem-toolchain.md`; **best-execution router**
-(one shared off-chain `_validateLegs` mirror, `PinnedReads` determinism, single-use intents pruned
-expired-only, bounded optimizer, `tsc`-vs-ESLint `Hex` in specs)
-`docs/solutions/integration-issues/best-execution-router-mirror-intent-optimizer.md`; **cross-stack
-e2e harness** (instant-mine frontier lag → nonce override + cursor gating, block-timestamp skew →
-RouteExpired, fresh-node-per-run lifecycle, `INDEXER_CONFIRMATIONS=1` + `cwd=REPO_ROOT`, poll
-projected state not the cursor) `docs/solutions/integration-issues/cross-stack-e2e-harness-instant-mine-chain.md`;
-**security hardening** (adversarial-tests-as-regression, proof-of-pinning vs full harness,
-pause-can't-strand-settlement, the false-green guard test — a guard test must fail if the guard is
-removed, share prod bootstrap/orchestration with tests instead of copying, scan bundles for secret
-_values_ not env names) `docs/solutions/integration-issues/security-hardening-adversarial-suite.md`;
-**BSC-testnet live deploy + EasyPanel** (public-RPC drops a confirmation → unrecoverable Ignition
-journal → wipe+redeploy; committed real manifest vs zero-manifest guard tests; BSCScan V1→V2 verify;
-scripted proof-claim time/nonce/label; post-settle read-lag → poll; Prisma engine not copied into
-`dist` → nest-cli assets + `node dist` smoke; local `test` ≠ CI `verify` incl. Playwright; SIWE/CORS
-exact-match on baked domains) `docs/solutions/deployment-issues/bsc-testnet-live-deploy-easypanel.md`.
+ABI-freshness gate → manifest-freshness gate → demo-fixture-freshness gate.
 
 ## Conventions
 
@@ -130,8 +108,7 @@ exact-match on baked domains) `docs/solutions/deployment-issues/bsc-testnet-live
   deliberate MVP operator escape hatch. See `docs/deployment-trackb-runbook.md`.
 - **Solidity:** 0.8.28 + OpenZeppelin 5.6.1; custom errors + NatSpec; CEI + SafeERC20 +
   `ReentrancyGuardTransient`; no proxies. Security posture: `docs/threat-model.md` (full-stack
-  threat model), `SECURITY.md` (disclosure policy + testnet-only warning), and
-  `docs/demo-operator-checklist.md` (pre-demo env/stack sanity).
+  threat model) and `SECURITY.md` (disclosure policy + testnet-only warning).
 - **Boundaries:** `apps/landing` stays wallet-free (lint-guarded, incl. subpath imports);
   `@matura/shared` is framework-free Zod; `@matura/contracts` is self-contained (no `@matura/*` deps).
   `@matura/chain` ships a **tsup dual CJS/ESM build** (`dist`) so the CommonJS `apps/api` can
@@ -140,7 +117,6 @@ exact-match on baked domains) `docs/solutions/deployment-issues/bsc-testnet-live
 
 ## Local-only docs (gitignored)
 
-`docs/deployment-runbook.md` (live addresses, update per deploy), `docs/code-review.md`, and
-`docs/reviews/` (per-PR review docs). Planning docs (`docs/brainstorms/`, `docs/plans/`),
-`docs/gas-report.md`, and **`docs/deployment.md`** (living whole-stack E2E deploy guide — update
-each iteration) are tracked.
+`docs/deployment-runbook.md` (live addresses, update per deploy) and `docs/code-review.md` are
+gitignored. `docs/gas-report.md` and **`docs/deployment.md`** (living whole-stack E2E deploy guide —
+update each iteration) are tracked.

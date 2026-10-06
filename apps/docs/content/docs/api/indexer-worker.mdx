@@ -1,0 +1,30 @@
+---
+title: Indexer & worker
+description: How on-chain events become the fast read-model the API serves.
+---
+
+The read endpoints are fast because they don't query the blockchain on every request. A background
+**indexer** watches the chain and projects on-chain events into a database; the API then serves reads
+from that projection. This keeps reads quick while staying faithful to what actually happened on-chain.
+
+## How it works
+
+- **Follows finalized blocks.** The indexer advances over blocks that the chain has finalized, so the
+  data reflects settled history rather than a tip that could still be reorganized.
+- **Atomic, idempotent updates.** Each block's events and the indexer's progress marker are written
+  together, so re-processing a block is always safe and the projection can't drift out of sync.
+- **Reorg-safe.** If the chain's history ever disagrees with what was indexed, the indexer rebuilds
+  from the start rather than trusting stale data.
+
+## What this means for you
+
+- **Readiness:** right after a cold start the service may rebuild its projection; use the liveness
+  health endpoint for probes during that window.
+- **After you submit a transaction:** reads reflect it once the indexer has processed the finalized
+  block it landed in. Poll the read endpoints until the new state appears.
+
+## Reconciliation
+
+An end-to-end test harness drives a full lifecycle (optimize → execute → settle) and **reconciles the
+on-chain events against the database projection and account balances**, proving the read-model and the
+chain agree.

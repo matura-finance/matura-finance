@@ -1,0 +1,55 @@
+---
+title: Contracts overview
+description: The six core Matura contracts, their roles, and how they interact.
+---
+
+Matura's on-chain system is six core contracts (plus a MockUSDT settlement asset), written in Solidity
+0.8.28 on OpenZeppelin 5.6.1. No proxies; custom errors + NatSpec; CEI + SafeERC20 +
+`ReentrancyGuardTransient`. ABIs are generated into `@matura/chain` — never hand-copied.
+
+The interaction graph (registries gate, the router funds, the settlement manager repays) is in the
+mirrored [Architecture](/docs/reference/architecture#smart-contracts-p0) diagram; live addresses are
+on [Deployed addresses](/docs/contracts/deployed-addresses).
+
+## The contracts
+
+### `MaturaRouter`
+The best-execution entrypoint. Holds `ROUTER_ROLE`. It recomputes and re-validates the signed
+`ExecutionRoute` legs on-chain (against pinned reads) before moving funds, reserves slices in the
+`ClaimRegistry`, pulls capital from the chosen `LiquidityVault`s, funds the beneficiary, and registers
+the allocation with the `SettlementManager`. Verifies an EIP-712 route signature.
+
+### `SettlementManager`
+Runs the maturity-gated, conservation-checked settlement waterfall. Holds `SETTLEMENT_ROLE`. Releases
+claim slices in the `ClaimRegistry` and returns capital to vaults (`onSettlementReturn`). A pause
+cannot strand an in-flight settlement.
+
+### `ClaimRegistry`
+The source of truth for claim state and financed-face amounts. Verifies EIP-712 issuer attestations
+against the `IssuerRegistry`, exposes `reserveSlice` (router-only) and `releaseSlice`
+(settlement-only), and enforces the claim lifecycle.
+
+### `VaultRegistry`
+An enumerable registry of active liquidity vaults, so the router can discover eligible supply and
+check `isActive`.
+
+### `IssuerRegistry`
+The allowlist of approved attestation signers, with epochs. `ClaimRegistry` consults it
+(`isActiveSigner` / `isActive`) when accepting attestations.
+
+### `LiquidityVault` (×N)
+A capital pool with a mandate and pricing. Quotes and funds financing legs (`quoteAndCheck` / fund,
+router-only) and receives repayment at settlement (settlement-only).
+
+### `MockUSDT`
+A 6-decimal ERC-20 test settlement asset with a faucet. Testnet stand-in for a real stablecoin.
+
+## Roles at a glance
+
+| Role | Held by | Grants |
+| --- | --- | --- |
+| `ROUTER_ROLE` | `MaturaRouter` | reserve slices, quote/fund vault legs, register allocations |
+| `SETTLEMENT_ROLE` | `SettlementManager` | release slices, return capital to vaults |
+
+See [On-chain security](/docs/contracts/on-chain-security) for the security posture and
+[EIP-712 typed data](/docs/api/write-preparation) for the signing boundary.

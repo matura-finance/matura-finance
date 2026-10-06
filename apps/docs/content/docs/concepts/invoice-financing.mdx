@@ -1,0 +1,36 @@
+---
+title: RWA & invoice financing
+description: The real-world problem Matura solves and how it maps on-chain.
+---
+
+## The problem
+
+People and businesses routinely hold **income they've already earned but can't yet spend** — an
+invoice due in 60 days, salary accruing until payday, a vesting stream. That future income is a
+real-world asset (RWA), but it's illiquid: converting it to cash early usually means opaque fees or a
+loan against it.
+
+## Matura's approach
+
+Matura makes that future income **liquid today**, non-custodially and at a transparent, competitive
+price:
+
+1. **Attestation.** An approved **issuer** signs an EIP-712 attestation that a specific claim (amount,
+   maturity, beneficiary) is real. This is what anchors the on-chain claim to a real-world obligation.
+2. **Registration.** The claim is registered on-chain in the `ClaimRegistry` with its state and
+   financed-face amount.
+3. **Financing.** Liquidity **vaults** compete to fund the claim. A deterministic **best-execution
+   router** picks the cheapest verifiable combination of vault "legs" and funds the beneficiary now.
+4. **Settlement.** At maturity, the real-world payment flows back and the `SettlementManager` runs a
+   conservation-checked waterfall that repays the vaults and releases any residual to the beneficiary.
+
+## Why on-chain
+
+Every step is verifiable: the attestation signer must be allowlisted, the route is re-validated on
+-chain against pinned reads before funds move, and settlement conserves value by construction. Nothing
+depends on trusting Matura to hold funds — the API only *prepares* transactions; your wallet signs
+them. The trade-offs we explicitly accept are documented in the [Trust & Security](/docs/trust)
+section.
+
+> This MVP runs on **BSC Testnet** with a mock 6-decimal USDT and a demo issuer simulator — the
+> mechanics are real, the assets are not.

@@ -1,0 +1,35 @@
+---
+title: Settlement
+description: How financed claims repay vaults at maturity via a conservation-checked waterfall.
+---
+
+Settlement is the back half of the lifecycle: once a financed claim reaches **maturity**, the
+real-world payment returns and must be distributed. The `SettlementManager` runs a **maturity-gated,
+conservation-checked waterfall** that cannot strand funds.
+
+## The waterfall
+
+At settlement, the returning amount is distributed in order:
+
+1. **Vault repayment** — each funding leg's principal + agreed return is released back to its vault
+   (`onSettlementReturn`, `SETTLEMENT_ROLE`).
+2. **Residual to the beneficiary** — anything left over after vaults are made whole.
+
+The claim's slice state in the `ClaimRegistry` is released as part of the same flow
+(`releaseSlice`), moving the claim toward `PAID`.
+
+## Conservation by construction
+
+The waterfall is **value-conserving**: the sum released to vaults plus the residual equals the amount
+settled — the contract checks this rather than trusting the caller. Settlement is **maturity-gated**,
+so it can't run early, and the design ensures a pause can't strand an in-flight settlement (an
+adversarial test guards this).
+
+## Roles
+
+Only the `SettlementManager` (holding `SETTLEMENT_ROLE`) can release claim slices and return capital to
+vaults; only the `MaturaRouter` (holding `ROUTER_ROLE`) can reserve and fund. This separation keeps the
+financing and settlement paths independently authorized.
+
+See [Contracts](/docs/contracts) for the full role model and the
+[Threat model](/docs/reference/threat-model) for the assets and trust assumptions involved.

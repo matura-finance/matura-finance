@@ -8,7 +8,7 @@
     "test:e2e:remote": "playwright test --config playwright.remote.config.ts",
     "e2e:install": "playwright install chromium",
     "typecheck": "tsc --noEmit",
-    "check:bundle": "node scripts/check-landing-bundle.mjs && node scripts/check-app-secrets.mjs",
+    "check:bundle": "node scripts/check-landing-bundle.mjs && node scripts/check-docs-bundle.mjs && node scripts/check-app-secrets.mjs",
     "assert:public-config": "node scripts/assert-public-config.mjs",
     "smoke:api": "node scripts/smoke-api.mjs"
   },

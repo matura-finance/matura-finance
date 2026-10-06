@@ -1,0 +1,36 @@
+---
+title: Proof it works
+description: The verifiable evidence — on-chain addresses, tests, and reconciliation.
+---
+
+Claims about Matura are checkable. Here's the evidence, and where to verify it yourself.
+
+## Verified on-chain
+
+Every core contract is deployed and **verified on BscScan** at a published address. The list is
+generated from the deployment manifest (never hand-edited) on the [Deployed
+addresses](/docs/contracts/deployed-addresses) page — click through to read the verified source and
+transactions on BscScan.
+
+## Tests
+
+- **Contracts:** unit + integration + fuzz + gas, plus an **adversarial suite** kept as regression.
+  The suite includes a *false-green guard* — a guard test that must fail if its guard is removed — so
+  passing tests mean the guards are actually wired.
+- **Enum parity:** Solidity ↔ `@matura/shared` ↔ Prisma enum ordinals are asserted in CI.
+
+## End-to-end reconciliation
+
+A cross-stack harness (`apps/e2e-stack`) boots the whole stack — node + Postgres + indexer worker +
+API — drives **optimize → execute → settle**, and reconciles **events ↔ DB projections ↔ balances**.
+This proves the off-chain read-model and the on-chain truth agree after a full lifecycle.
+
+## CI gates
+
+The pipeline runs build → lint → typecheck → test → contracts compile/test, plus **freshness gates**
+(ABI, manifest, demo-fixture) and a **bundle secret-free grep** on the static frontends. A drift in any
+of these fails the build.
+
+## Live demo
+
+A ≤3-minute live script walks the full flow on testnet — see the [Demo runbook](/docs/operations/demo-runbook).

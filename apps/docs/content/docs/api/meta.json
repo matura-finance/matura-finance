@@ -1,0 +1,11 @@
+{
+  "title": "API & Integration",
+  "pages": [
+    "index",
+    "authentication",
+    "read-endpoints",
+    "write-preparation",
+    "routing",
+    "indexer-worker"
+  ]
+}

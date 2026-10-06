@@ -1,0 +1,51 @@
+---
+title: What it looks like
+description: A plain-language tour of the Matura app, by the pages in its navigation.
+---
+
+The Matura app lives at [`app.usematura.xyz`](https://app.usematura.xyz). You connect a crypto wallet
+(on the BNB Chain test network), and from then on the app is organized into a few pages you switch
+between. Matura never touches your wallet's secret key — when an action needs a signature, your own
+wallet asks you to approve it.
+
+Here's what each page is for.
+
+## Portfolio
+
+Your home base — everything about *your* money lives here, split into two views:
+
+### Position
+
+Your claims and balances: the income you're owed, how much of each claim you've already turned into
+cash, and what's still available. This is where you **turn a claim into cash** — Matura finds you the
+best deal across the competing vaults, shows you exactly how much you'll receive, you review it, your
+wallet signs, and the money is yours.
+
+### Activity
+
+Your history: every financing request and every repayment, in order, each with a link to the public
+blockchain record (BscScan) so anyone can verify it actually happened.
+
+{/* screenshot: Portfolio (Position + Activity) — drop images at /screens/portfolio-position.png and /screens/portfolio-activity.png */}
+
+## Vaults
+
+The lenders' side. Each vault is a pool of money with its own rules and prices. This page shows what
+each vault offers — the choices Matura's best-deal engine picks between on your behalf when you finance
+a claim from your Position.
+
+{/* screenshot: Vaults page — /screens/vaults.png */}
+
+## Issuer Demo
+
+A demo tool. In the real world, an employer or platform would vouch for your income by signing a
+digital attestation. For this testnet demo, the Issuer Demo page lets you play that role yourself, so
+you can create a claim and try the whole flow end to end.
+
+{/* screenshot: Issuer Demo page — /screens/issuer-demo.png */}
+
+---
+
+> **Want the screenshots here?** Drop PNGs into `apps/docs/public/screens/` (one per page above) and
+> they'll be embedded. This is a testnet app — connect a test wallet and try it yourself at
+> [`app.usematura.xyz`](https://app.usematura.xyz).

@@ -1,0 +1,34 @@
+---
+title: Demo runbook
+description: The ≤3-minute live demo flow on BSC Testnet.
+---
+
+This is the ≤3-minute live demo flow, run against the app on BSC Testnet.
+
+## Before the demo
+
+- A wallet funded with test BNB from the [faucet](https://www.bnbchain.org/en/testnet-faucet) (gas for
+  `executeRoute`).
+- The readiness gate green — a read-only pre-demo check confirms a request claims `ELIGIBLE`, per-leg
+  vault liquidity is sufficient, and the operator has gas. (`smoke:bsc-testnet` / `smoke:local`.)
+- Contracts verified and seeded (see [Deployed addresses](/docs/contracts/deployed-addresses)).
+
+## The flow (≤3 min)
+
+1. **Connect & sign in.** Open [`app.usematura.xyz`](https://app.usematura.xyz), connect the wallet on
+   chain `97`, sign in with SIWE.
+2. **Create a claim.** Use **Issuer Demo** to produce an attestation and register a claim.
+3. **Finance it.** In your **Portfolio → Position**, run the best-execution step — show the cheapest
+   route across the competing vaults, with the per-leg breakdown and total received.
+4. **Sign & submit.** Review → sign the typed data → submit. The router re-validates on-chain before
+   funds move.
+5. **Prove it.** **Portfolio → Activity** shows the execution with a BscScan link; your **Position**
+   reflects the new state once indexed.
+6. **Settle (optional).** Drive settlement to show the conservation-checked waterfall repay the vaults
+   (`demo:settle` locally for the full e2e).
+
+## If something's off
+
+Most demo failures are environment issues (a domain/origin mismatch, an unfunded wallet, or a short
+lag while a new transaction is indexed). Run the `smoke:bsc-testnet` readiness gate first and don't
+start with any check failing.

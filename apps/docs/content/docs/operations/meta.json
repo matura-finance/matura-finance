@@ -1,0 +1,4 @@
+{
+  "title": "Operations & Demo",
+  "pages": ["demo-runbook", "deployment", "local-development"]
+}
