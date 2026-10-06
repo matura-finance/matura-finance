@@ -52,6 +52,17 @@ Off-chain trust assumptions (see the surface sections below):
 - The frontend trusts the **on-chain manifest**, not the API response, for
   contract targets: prepared typed data is pinned to `@matura/chain` manifest
   addresses before signing. `apps/landing` is wallet-free by construction.
+- **Issuer-demo raw-calldata path (accepted, testnet-only).** The issuer
+  simulator's create-claim and settle flows submit server-produced calldata via
+  `sendTransactionAsync` with no user EIP-712 signature. The client validates the
+  destination (`step.to` must be a manifest address — claimRegistry /
+  settlementManager / mockUsdt) but **not** the `data` payload, so a compromised
+  API could return an allowlisted `to` with hostile calldata (e.g.
+  `mockUsdt.approve(attacker, max)`). Unlike the Get-Liquidity router flow — where
+  the signed `ExecutionRoute` (pinned `verifyingContract`, bound `route.user`) is
+  an on-chain backstop — there is no signature check here. Impact is bounded to
+  valueless testnet MockUSDT and matches the "API is trusted to produce calldata"
+  model; a production issuer flow would require signed, typed intents.
 
 ## Threats and mitigations
 
