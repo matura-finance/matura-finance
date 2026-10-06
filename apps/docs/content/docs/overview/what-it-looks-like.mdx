@@ -1,51 +1,66 @@
 ---
 title: What it looks like
-description: A plain-language tour of the Matura app, by the pages in its navigation.
+description: A plain-language tour of the Matura app, page by page, with screenshots.
 ---
 
 The Matura app lives at [`app.usematura.xyz`](https://app.usematura.xyz). You connect a crypto wallet
-(on the BNB Chain test network), and from then on the app is organized into a few pages you switch
-between. Matura never touches your wallet's secret key — when an action needs a signature, your own
-wallet asks you to approve it.
+(on the BNB Chain test network), and the app is organized into three pages you switch between from the
+top navigation bar: **Vaults**, **Portfolio**, and **Issuer Demo**. Matura never touches your wallet's
+secret key — when an action needs a signature, your own wallet asks you to approve it.
 
 Here's what each page is for.
 
 ## Portfolio
 
-Your home base — everything about *your* money lives here, split into two views:
+Your home base — everything about *your* money lives here, split into two tabs: **Positions** and
+**Activity**.
 
-### Position
+### Positions
 
-Your claims and balances: the income you're owed, how much of each claim you've already turned into
-cash, and what's still available. This is where you **turn a claim into cash** — Matura finds you the
-best deal across the competing vaults, shows you exactly how much you'll receive, you review it, your
-wallet signs, and the money is yours.
+Your balance and your claims — the income you're owed, how much of each you've already turned into
+cash, and what's still available to finance.
+
+![Portfolio Positions — wallet balance and a summary of your verified future payments.](/app/02-portfolio.png)
+
+Each claim shows its state (attested → eligible → funded → paid), its face value, and how much is
+still **available to route** for liquidity.
+
+![Your claims, each with its state, face value, maturity, and available-to-route amount.](/app/03-portfolio.png)
+
+From here, the **Get Liquidity** button starts the financing flow: you enter how much you need, and
+Matura compares your eligible claims against the competing vaults and finds the cheapest route —
+*review → sign → confirm*, and the cash is yours.
+
+![Get Liquidity — enter the amount you need and Matura finds your best route across the vaults.](/app/05-get-liquidity.png)
 
 ### Activity
 
-Your history: every financing request and every repayment, in order, each with a link to the public
-blockchain record (BscScan) so anyone can verify it actually happened.
+Your history: every financing and settlement event, in order, each linking to the transaction on the
+public block explorer (BscScan) so anyone can verify it happened.
 
-{/* screenshot: Portfolio (Position + Activity) — drop images at /screens/portfolio-position.png and /screens/portfolio-activity.png */}
+![Portfolio Activity — the on-chain event ledger with a BscScan link per transaction.](/app/04-porfolio-activity.png)
 
 ## Vaults
 
-The lenders' side. Each vault is a pool of money with its own rules and prices. This page shows what
-each vault offers — the choices Matura's best-deal engine picks between on your behalf when you finance
-a claim from your Position.
+The lenders' side. Each vault is a pool of capital with its own mandate (which claim types it accepts)
+and pricing. This page compares them — the choices Matura's best-execution engine picks between on your
+behalf.
 
-{/* screenshot: Vaults page — /screens/vaults.png */}
+![The Vaults page — comparing each vault's supported claims, liquidity, and pricing.](/app/01-vaullts.png)
 
 ## Issuer Demo
 
 A demo tool. In the real world, an employer or platform would vouch for your income by signing a
-digital attestation. For this testnet demo, the Issuer Demo page lets you play that role yourself, so
-you can create a claim and try the whole flow end to end.
+digital attestation. For this testnet demo, the Issuer Demo page lets you play that role yourself — so
+you can create a claim and drive the whole flow end to end.
 
-{/* screenshot: Issuer Demo page — /screens/issuer-demo.png */}
+![The Issuer Simulator — stand in for an issuer to drive the demo from issued to financed to settled.](/app/06-demo-issuer.png)
+
+It lists the claims you've issued, which you can settle (or mark delayed) once they mature.
+
+![Your issued claims, with their status and settle/delay actions.](/app/07-demo-issuer.png)
 
 ---
 
-> **Want the screenshots here?** Drop PNGs into `apps/docs/public/screens/` (one per page above) and
-> they'll be embedded. This is a testnet app — connect a test wallet and try it yourself at
+> This is a testnet app — connect a test wallet and try it yourself at
 > [`app.usematura.xyz`](https://app.usematura.xyz).
