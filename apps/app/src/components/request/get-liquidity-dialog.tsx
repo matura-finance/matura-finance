@@ -61,6 +61,9 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   // Splits the single awaitingWallet state into two visible steps: Sign (route signature) then
   // Confirm (the executeRoute transaction). Flipped true once the gasless signature resolves.
   const [routeSigned, setRouteSigned] = useState(false);
+  // Flips true if indexing drags on, so we can reassure the user (funds already arrived) and let
+  // them close — the poll gives up silently after a bounded window and never transitions state.
+  const [indexingSlow, setIndexingSlow] = useState(false);
 
   const poll = useExecutionPoll(
     executionId,
@@ -80,6 +83,21 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
       markFailed();
     }
   }, [poll.data?.status, markIndexed, markFailed, invalidate, address]);
+
+  // After the receipt lands, indexing can stall (slow/paused indexer). Flip to a reassuring,
+  // dismissable state after a bounded wait so the user is never trapped behind the spinner.
+  useEffect(() => {
+    if (tx.state.status !== "indexing") {
+      setIndexingSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setIndexingSlow(true);
+    }, 45_000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [tx.state.status]);
 
   const onExpire = useCallback(() => {
     setExpired(true);
@@ -115,6 +133,7 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
     setExpired(false);
     setPrepareError(null);
     setRouteSigned(false);
+    setIndexingSlow(false);
     setAmount("");
     setMaxCost("");
     onClose();
@@ -173,12 +192,10 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
   const routeId = optimize.data?.routeId ?? null;
   const s = tx.state.status;
   const inReview = executable !== null && routeId !== null && s === "idle";
-  const inFlight =
-    s === "awaitingWallet" ||
-    s === "broadcast" ||
-    s === "confirmed" ||
-    s === "indexing" ||
-    prepare.isPending;
+  // Lock dismissal only while the user is signing/submitting. Once the receipt is in
+  // (confirmed/indexing) the tx is irreversible, so keeping the modal locked would only trap the
+  // user — allow dismissal there (see the confirmed/indexing pane, which offers an explicit Close).
+  const inFlight = s === "awaitingWallet" || s === "broadcast" || prepare.isPending;
 
   let stepIndex = 0;
   if (optimize.isPending || inReview || result?.executable === false) stepIndex = 1;
@@ -251,6 +268,20 @@ export function GetLiquidityDialog({ open, onClose }: { open: boolean; onClose: 
         title="Sign your route"
         body="Sign the route authorization in your wallet — this is gasless and moves no funds."
       />
+    );
+  } else if (indexingSlow && s === "indexing") {
+    // The receipt is in (funds have arrived) but indexing is slow. Reassure and let the user close.
+    content = (
+      <StatusPane
+        icon={<SuccessIcon />}
+        title="Your liquidity has arrived"
+        body="The transaction is confirmed on-chain. Matura is still indexing it, so your positions may take a moment to update."
+      >
+        <Button onClick={handleClose}>Close</Button>
+        <Link href="/portfolio" className="text-xs text-foreground underline underline-offset-2">
+          View your activity
+        </Link>
+      </StatusPane>
     );
   } else if (s === "broadcast" || s === "confirmed" || s === "indexing") {
     content = (
