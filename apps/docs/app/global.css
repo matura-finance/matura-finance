@@ -47,9 +47,12 @@
   --color-fd-ring: var(--color-liquid-mint);
 }
 
-/* Side menu: display every nav/section title capitalized. This is presentation only — the page
-   titles themselves (frontmatter + <h1>) stay sentence-case. */
+/* Display titles + headings capitalized across the whole docs UI. Presentation only — the
+   underlying frontmatter/markdown text stays sentence-case (so slugs, search, and anchors are
+   unaffected). Covers: the side menu, the page title + every content heading, and the TOC. */
 #nd-sidebar a,
-#nd-sidebar button {
+#nd-sidebar button,
+#nd-page :is(h1, h2, h3, h4, h5, h6),
+#nd-toc a {
   text-transform: capitalize;
 }

@@ -1,53 +1,48 @@
 ---
 title: What it looks like
-description: A plain-language tour of the Matura app, page by page, the way the navbar is laid out.
+description: A plain-language tour of the Matura app, by the pages in its navigation.
 ---
 
 The Matura app lives at [`app.usematura.xyz`](https://app.usematura.xyz). You connect a crypto wallet
-(on the BNB Chain test network), and from then on everything is organized into a handful of pages you
-switch between from the top navigation bar. Matura never touches your wallet's secret key — when an
-action needs a signature, your own wallet asks you to approve it.
+(on the BNB Chain test network), and from then on the app is organized into a few pages you switch
+between. Matura never touches your wallet's secret key — when an action needs a signature, your own
+wallet asks you to approve it.
 
-Here's what each page in the navbar is for.
+Here's what each page is for.
 
-## Account
+## Portfolio
 
-Your home base. It shows your balances and the income claims you own, along with where each one
-stands — newly created, being financed, or paid out. Think of it as your portfolio view.
+Your home base — everything about *your* money lives here, split into two views:
 
-{/* screenshot: Account page — drop image at /screens/account.png and embed with ![Account](/screens/account.png) */}
+### Position
 
-## Get liquidity
+Your claims and balances: the income you're owed, how much of each claim you've already turned into
+cash, and what's still available. This is where you **turn a claim into cash** — Matura finds you the
+best deal across the competing vaults, shows you exactly how much you'll receive, you review it, your
+wallet signs, and the money is yours.
 
-The main event. You pick a claim — money you're owed but haven't received yet — and Matura finds you
-the **best deal** to get cash for it today. Behind the scenes, several lenders ("vaults") compete, and
-Matura shows you the cheapest combination and exactly how much you'll receive. You review it, your
-wallet signs, you submit, and the cash is yours. (In the app's navbar this page is labelled
-**Get liquidity**.)
+### Activity
 
-{/* screenshot: Get liquidity / request flow — /screens/get-liquidity.png */}
+Your history: every financing request and every repayment, in order, each with a link to the public
+blockchain record (BscScan) so anyone can verify it actually happened.
 
-## Activity
-
-Your history. Every financing request and every repayment shows up here in order, each with a link to
-the public blockchain record (BscScan) so anyone can verify it actually happened.
-
-{/* screenshot: Activity page — /screens/activity.png */}
+{/* screenshot: Portfolio (Position + Activity) — drop images at /screens/portfolio-position.png and /screens/portfolio-activity.png */}
 
 ## Vaults
 
 The lenders' side. Each vault is a pool of money with its own rules and prices. This page shows what
-each vault offers — the choices Matura's best-deal engine picks between on your behalf.
+each vault offers — the choices Matura's best-deal engine picks between on your behalf when you finance
+a claim from your Position.
 
 {/* screenshot: Vaults page — /screens/vaults.png */}
 
-## Issuer
+## Issuer Demo
 
 A demo tool. In the real world, an employer or platform would vouch for your income by signing a
-digital attestation. For this testnet demo, the Issuer page lets you play that role yourself so you can
-try the whole flow end to end.
+digital attestation. For this testnet demo, the Issuer Demo page lets you play that role yourself, so
+you can create a claim and try the whole flow end to end.
 
-{/* screenshot: Issuer page — /screens/issuer.png */}
+{/* screenshot: Issuer Demo page — /screens/issuer-demo.png */}
 
 ---
 

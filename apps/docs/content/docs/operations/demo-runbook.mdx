@@ -20,14 +20,13 @@ in the repo, with a pre-flight checklist in
 
 1. **Connect & sign in.** Open [`app.usematura.xyz`](https://app.usematura.xyz), connect the wallet on
    chain `97`, sign in with SIWE.
-2. **Create a claim.** Use `/issuer` (the demo simulator) to produce an EIP-712 attestation and
-   register a claim.
-3. **Optimize.** On `/request`, run the best-execution optimizer — show the cheapest route across the
-   competing vaults, with the per-leg breakdown and total received.
-4. **Sign & submit.** Review → sign the EIP-712 `ExecutionRoute` → submit `executeRoute`. The router
-   re-validates on-chain before funds move.
-5. **Prove it.** `/activity` shows the execution with a BscScan link; `/account` reflects the new
-   state once indexed.
+2. **Create a claim.** Use **Issuer Demo** to produce an attestation and register a claim.
+3. **Finance it.** In your **Portfolio → Position**, run the best-execution step — show the cheapest
+   route across the competing vaults, with the per-leg breakdown and total received.
+4. **Sign & submit.** Review → sign the typed data → submit. The router re-validates on-chain before
+   funds move.
+5. **Prove it.** **Portfolio → Activity** shows the execution with a BscScan link; your **Position**
+   reflects the new state once indexed.
 6. **Settle (optional).** Drive settlement to show the conservation-checked waterfall repay the vaults
    (`demo:settle` locally for the full e2e).
 
