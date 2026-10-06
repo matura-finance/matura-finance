@@ -4,7 +4,7 @@ import { buttonVariants } from "@matura/ui/components/button";
 import { cn } from "@matura/ui/lib/utils";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { APP_URL, NAV_LINKS } from "../lib/site";
+import { APP_URL, DOCS_URL, NAV_LINKS } from "../lib/site";
 
 /**
  * The ONLY client island on the marketing site: the mobile navigation toggle
@@ -132,6 +132,13 @@ export function MobileNav() {
                 {link.label}
               </a>
             ))}
+            <a
+              href={DOCS_URL}
+              onClick={close}
+              className="rounded-md px-3 py-3 text-base font-medium text-midnight transition-colors hover:bg-midnight/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              Docs
+            </a>
             <a
               href={APP_URL}
               onClick={close}

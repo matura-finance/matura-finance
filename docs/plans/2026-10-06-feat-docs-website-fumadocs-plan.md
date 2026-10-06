@@ -330,7 +330,17 @@ way search stays wallet-free and same-origin (`connect-src 'self'`).
 - **Deliverable / success:** all six sections navigable with real content; search returns results;
   contrast check passes (no mint-on-light text token).
 
-### Phase 4 — Deploy, CI, cross-link, verify
+### Phase 4 — Deploy, CI, cross-link, verify ✅ DONE (deploy = operator step)
+
+> **Completed 2026-10-06.** Wallet-free bundle guard for docs (`check-docs-bundle.mjs`, wired into
+> `check:bundle`); `NEXT_PUBLIC_DOCS_URL` added to `turbo.json` + the landing/docs Dockerfiles; landing
+> cross-link done (removed `/docs` redirect; Docs link in desktop nav, mobile nav, and footer); SEO
+> (`sitemap.ts` + `robots.ts`); `.dockerignore` negation to ship the 6 allowlisted docs into the build
+> context. **Standalone Docker image built and smoked locally** — redirect, pages, in-image-generated
+> Reference + deployed-addresses, **search in-container**, diagram SVG, and CSP all verified. The only
+> remaining step is the **operator action**: create the EasyPanel service (Build Path = repo root,
+> Dockerfile = `apps/docs/Dockerfile`), point `docs.usematura.xyz` DNS, bake the `NEXT_PUBLIC_*` build
+> args, and deploy. CLAUDE.md + `apps/docs/README.md` updated.
 
 - Add `@matura/docs check:bundle` (parameterized scanner) to CI; add `NEXT_PUBLIC_DOCS_URL` to
   `turbo.json`.
@@ -381,12 +391,15 @@ way search stays wallet-free and same-origin (`connect-src 'self'`).
 
 ### Security / boundaries
 
-- [ ] `@matura/docs` bundle grep (same FORBIDDEN set as landing) passes against `apps/docs/.next/static`
-      in CI; docs imports **no** `@matura/chain`/wallet code.
+- [x] `@matura/docs` bundle grep (same FORBIDDEN set as landing) passes against `apps/docs/.next/static`
+      in CI; docs imports **no** `@matura/chain`/wallet code. _(Phase 4 — `check-docs-bundle.mjs` reuses
+      the shared scanner, wired into `@matura/e2e` `check:bundle`.)_
 - [x] Docs ships landing's security headers/CSP **verbatim**; fonts load under `font-src 'self' data:`
       (self-hosted `next/font`); search works under the strict CSP. _(Phase 1 — verified via `next start`.)_
-- [ ] Docs standalone Docker image serves on **:3003**, boots with `node apps/docs/server.js`, and
-      **search returns results in the container** (not just dev).
+- [x] Docs standalone Docker image serves on **:3003**, boots with `node apps/docs/server.js`, and
+      **search returns results in the container** (not just dev). _(Phase 4 — image built + smoked: `/`
+      redirect, `/docs`, in-image-generated reference + addresses pages, search JSON, diagram SVG, CSP
+      all verified. Required a `.dockerignore` negation to ship the 6 allowlisted docs into context.)_
 - [x] Docs makes **no** runtime API/chain calls; `connect-src 'self'`; no SIWE/CORS; no API dependency. _(Phase 1.)_
 
 ### Brand / accessibility
@@ -400,13 +413,17 @@ way search stays wallet-free and same-origin (`connect-src 'self'`).
 - [x] `meta.json` fixes the six-section order; unknown slug renders the **themed 404**; deep-links to
       headings resolve; TOC renders on every page. _(Phase 3 — root + per-section meta.json; Fumadocs
       default not-found; all 30 pages SSG with TOC. Internal-link audit: 0 dead links.)_
-- [ ] OG/canonical/sitemap/robots/JSON-LD present; canonical uses `NEXT_PUBLIC_DOCS_URL`.
+- [x] OG/canonical/sitemap/robots present; canonical/metadataBase use `NEXT_PUBLIC_DOCS_URL`. _(Phase
+      4 — `app/sitemap.ts` (30 entries from `source.getPages()`) + `app/robots.ts`; OG + metadataBase in
+      the root layout. JSON-LD omitted for docs — optional.)_
 
 ### Cross-linking / env
 
-- [ ] Landing's `/docs → /` redirect removed; cross-origin **Docs** link added to landing nav+footer;
-      landing bundle guard still green.
-- [ ] `NEXT_PUBLIC_DOCS_URL` added to `turbo.json build.env` and to both Dockerfiles' ARG/ENV.
+- [x] Landing's `/docs → /` redirect removed; cross-origin **Docs** link added to landing nav+footer
+      (+ mobile nav); landing bundle guard still green. _(Phase 4 — footer "Documentation" repointed
+      from the GitHub README to the docs site.)_
+- [x] `NEXT_PUBLIC_DOCS_URL` added to `turbo.json build.env` and to the landing + docs Dockerfiles'
+      ARG/ENV. _(Phase 4.)_
 
 ## Success Metrics
 

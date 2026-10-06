@@ -46,12 +46,13 @@ const config: NextConfig = {
   },
   // The old multi-page routes were folded into the one-pager; keep prior URLs
   // (and search-engine equity) alive by redirecting to their in-page anchors.
+  // (`/docs` is NOT redirected here — the docs site is a separate origin,
+  // docs.usematura.xyz, linked cross-origin from the nav/footer.)
   async redirects() {
     return [
       { source: "/how-it-works", destination: "/#how-it-works", permanent: true },
       { source: "/protocol", destination: "/#protocol", permanent: true },
       { source: "/for-issuers", destination: "/#issuers", permanent: true },
-      { source: "/docs", destination: "/", permanent: true },
     ];
   },
 };

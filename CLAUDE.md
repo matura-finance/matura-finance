@@ -3,7 +3,7 @@
 Guidance for working in this repo. Keep it short; link out for detail.
 
 **Matura** — a BSC-Testnet RWA/invoice-financing MVP. pnpm + Turborepo monorepo:
-`apps/{api,app,landing}`, `packages/{contracts,chain,shared,ui,eslint-config,typescript-config}`.
+`apps/{api,app,landing,docs}`, `packages/{contracts,chain,shared,ui,eslint-config,typescript-config}`.
 Architecture: `docs/architecture.md`. Rationale: `docs/decisions.md`.
 
 ## ⚠️ Node 24 (not the machine default)
@@ -31,6 +31,7 @@ pnpm --filter @matura/api test:int                   # Testcontainers integratio
 pnpm --filter @matura/api reindex                    # CLI: wipe projections + reindex from deploymentBlock
 pnpm --filter @matura/app dev                        # next dev — product app (:3002)
 pnpm --filter @matura/landing dev                    # next dev — marketing site (:3001)
+pnpm --filter @matura/docs dev                       # next dev — docs site, Fumadocs (:3003)
 pnpm --filter @matura/app test                       # vitest (unit: tx reducer, chain bridge, money format)
 pnpm --filter @matura/e2e e2e:install                # one-time: download Playwright Chromium
 pnpm --filter @matura/e2e test:e2e                   # Playwright: landing always; product happy path needs E2E_STACK=1 + seeded stack
@@ -71,7 +72,14 @@ optimize→review→sign→submit→index flow), `/activity`, `/vaults`, `/issue
 signing money boundary is `BigInt(str)` (never `toBaseUnits`), one coerced message feeds
 sign+hash+`executeRoute`, and targets are pinned to the manifest. **`apps/landing`** (`usematura.xyz`)
 — static, wallet-free marketing site (approved copy, SEO/OG/sitemap/robots/JSON-LD; a CI grep keeps
-the bundle wallet/secret-free). **`apps/e2e`** — Playwright: an always-on landing suite + a
+the bundle wallet/secret-free). **`apps/docs`** (`docs.usematura.xyz`) — the documentation site, a
+**Fumadocs** (Next 15) app pinned to the Next-15 line (`fumadocs-ui@15.8.5`/`fumadocs-core@15.8.5`/
+`fumadocs-mdx@11.10.0`; `lib/source.ts` carries the one version-impedance shim). Static + wallet-free
+(same CSP + bundle guard as landing). Two content lanes: **authored** MDX (committed) + a
+**generated** Reference section and deployed-addresses table (a `prebuild` script
+`scripts/sync-reference-docs.mjs` mirrors an allowlist of repo `docs/*.md` + reads `97.json` via `fs`;
+output gitignored + regenerated every build, Mermaid→committed SVG). See `apps/docs/README.md`.
+**`apps/e2e`** — Playwright: an always-on landing suite + a
 gated (`E2E_STACK=1`) product happy-path using a Node-side viem signer injected as an EIP-6963
 provider (no wallet code in the app). Frontend build/integration gotchas (connectors barrel,
 unstable-hook refetch loop, SIWE rehydrate race, EIP-712 boundary, e2e wallet injection):

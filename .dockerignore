@@ -39,5 +39,14 @@ packages/contracts/ignition/deployments
 **/.DS_Store
 **/*.log
 
-# Docs + planning (not needed at build time)
+# Docs + planning (not needed at build time) — EXCEPT the public, secret-free files the docs-site
+# prebuild mirrors into its Reference section (apps/docs/scripts/sync-reference-docs.mjs). Keep this
+# allowlist in sync with that script's ALLOWLIST. Internal docs (code-review, *-runbook, brainstorms,
+# plans, reviews, solutions) stay excluded so they never enter the build context.
 docs
+!docs/architecture.md
+!docs/routing.md
+!docs/threat-model.md
+!docs/decisions.md
+!docs/test-report.md
+!docs/gas-report.md

@@ -17,6 +17,9 @@ function envUrl(value: string | undefined, fallback: string): string {
 /** The product app origin. Linked via a plain `<a>` (cross-origin). */
 export const APP_URL = envUrl(process.env.NEXT_PUBLIC_APP_URL, "https://app.usematura.xyz");
 
+/** The documentation site origin. Linked via a plain `<a>` (cross-origin). */
+export const DOCS_URL = envUrl(process.env.NEXT_PUBLIC_DOCS_URL, "https://docs.usematura.xyz");
+
 /** The canonical marketing origin — used for `metadataBase`, sitemap, robots. */
 export const SITE_URL = envUrl(process.env.NEXT_PUBLIC_LANDING_URL, "https://usematura.xyz");
 
